@@ -2,35 +2,31 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { Database, Cpu } from "lucide-react";
 import {
-  GraduationCap,
-  BookOpen,
-  Terminal,
-  Users,
-  Database,
-  Cpu,
-  Zap,
-} from "lucide-react";
+  IconGraduation,
+  IconBook,
+  IconTerminal,
+  IconUsers,
+  IconZap,
+} from "./components/RefinedIcons";
 
-// ========== Animation Variants ==========
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 40 },
+  hidden: { opacity: 0, y: 24 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
-
-// ========== Sub-components ==========
 
 const SectionTitle = ({
   children,
@@ -43,20 +39,13 @@ const SectionTitle = ({
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    transition={{ duration: 0.6 }}
-    className="flex items-center gap-4 mb-14"
+    className="flex items-center gap-4 mb-10"
   >
-    <motion.div
-      initial={{ scale: 0 }}
-      whileInView={{ scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-      className="p-3.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl text-blue-500 dark:text-blue-400 shadow-lg"
-    >
-      <Icon size={28} />
-    </motion.div>
-    <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-      {children}
+    <div className="p-2 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88]">
+      <Icon />
+    </div>
+    <h2 className="font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[#00ff88] tracking-widest uppercase">
+      [ {children} ]
     </h2>
   </motion.div>
 );
@@ -76,28 +65,28 @@ const TimelineItem = ({
 }) => (
   <motion.div
     variants={itemVariants}
-    className="relative pl-10 md:pl-0 md:grid md:grid-cols-12 gap-8 mb-16 group"
+    className="relative pl-8 md:pl-0 md:grid md:grid-cols-12 gap-6 mb-12"
   >
-    <div className="absolute left-0 top-2 bottom-[-64px] w-px bg-gradient-to-b from-blue-400/50 to-transparent dark:from-blue-500/30 md:left-auto md:right-1/2 md:mr-[-0.5px]" />
-    <div className="absolute left-[-6px] top-2 w-4 h-4 rounded-full bg-blue-500 border-4 border-white dark:border-zinc-900 md:left-auto md:right-1/2 md:mr-[-8px] z-10 group-hover:scale-125 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all duration-300" />
+    <div className="absolute left-0 top-2 bottom-[-48px] w-px bg-[#00ff88]/30 md:left-auto md:right-1/2 md:mr-[-1px]" />
+    <div className="absolute left-[-4px] top-2 w-3 h-3 bg-[#00ff88] md:left-auto md:right-1/2 md:mr-[-6px] z-10" />
 
-    <div className="md:col-span-5 md:text-right md:pr-10">
-      <span className="inline-block px-4 py-1.5 rounded-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-white/20 dark:border-white/10 text-sm font-mono text-zinc-600 dark:text-zinc-400 mb-3">
+    <div className="md:col-span-5 md:text-right md:pr-8">
+      <span className="inline-block px-3 py-1 border border-[#00ff88]/50 text-[10px] font-mono text-[#6b7b6f] mb-2">
         {year}
       </span>
-      <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88]">
         {title}
       </h3>
-      <p className="text-zinc-500 dark:text-zinc-400 font-medium">{place}</p>
+      <p className="text-sm text-[#6b7b6f]">{place}</p>
     </div>
     <div className="md:col-span-2" />
-    <div className="md:col-span-5 md:pl-10 mt-3 md:mt-0">
-      <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+    <div className="md:col-span-5 md:pl-8 mt-2 md:mt-0">
+      <p className="text-sm text-[#e0ffe8] font-[family-name:var(--font-jetbrains)] leading-relaxed">
         {desc}
       </p>
       {highlight && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 font-medium">
-          <Zap size={14} /> {highlight}
+        <div className="mt-2 flex items-center gap-2 text-xs text-[#00d4ff] font-mono">
+          <IconZap /> {highlight}
         </div>
       )}
     </div>
@@ -116,12 +105,9 @@ const PublicationCard = ({
   desc: string;
 }) => {
   const statusColors: Record<string, string> = {
-    Accepted:
-      "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
-    Published:
-      "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30",
-    "Under Review":
-      "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    Accepted: "border-[#00ff88] text-[#00ff88] bg-[#00ff88]/10",
+    Published: "border-[#00d4ff] text-[#00d4ff] bg-[#00d4ff]/10",
+    "Under Review": "border-[#ff6b35] text-[#ff6b35] bg-[#ff6b35]/10",
   };
   const statusKey = status.split(" - ")[0];
 
@@ -129,26 +115,24 @@ const PublicationCard = ({
     <motion.div
       variants={itemVariants}
       whileHover={{
-        scale: 1.03,
-        y: -8,
-        transition: { type: "spring", stiffness: 300, damping: 20 },
+        scale: 1.02,
+        borderColor: "#00ff88",
+        boxShadow: "0 0 20px rgba(0,255,136,0.15)",
       }}
-      className="p-6 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.25)] dark:hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.15)] transition-shadow duration-300"
+      className="p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b]"
     >
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-3">
         <span
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${statusColors[statusKey] || "bg-zinc-500/20"}`}
+          className={`px-2 py-1 border text-[10px] font-mono ${statusColors[statusKey] || "border-[#6b7b6f]"}`}
         >
           {status}
         </span>
       </div>
-      <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 leading-tight">
+      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88] mb-2 leading-tight">
         {title}
       </h3>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4 font-mono">
-        {meta}
-      </p>
-      <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed border-l-2 border-blue-500/50 pl-4">
+      <p className="text-xs text-[#6b7b6f] font-mono mb-3">{meta}</p>
+      <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)] border-l-2 border-[#00ff88]/50 pl-4">
         {desc}
       </p>
     </motion.div>
@@ -166,44 +150,42 @@ const SkillBar = ({
   icon: React.ElementType;
   highlight?: boolean;
 }) => (
-  <div className="mb-6">
+  <div className="mb-5">
     <div className="flex justify-between mb-2">
-      <div className="flex items-center gap-2 font-semibold text-zinc-800 dark:text-zinc-200">
-        <Icon size={18} className="text-blue-500" /> {name}
+      <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm text-[#e0ffe8]">
+        <Icon size={16} className="text-[#00ff88]" /> {name}
         {highlight && (
-          <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
-            底层性能
+          <span className="text-[10px] px-2 py-0.5 border border-[#00ff88]/50 text-[#00ff88]">
+            LOW_LEVEL
           </span>
         )}
       </div>
-      <span className="text-xs font-mono text-zinc-500">{level}%</span>
+      <span className="text-[10px] font-mono text-[#6b7b6f]">{level}%</span>
     </div>
-    <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800/80 rounded-full overflow-hidden">
+    <div className="h-2 w-full bg-[#121214] border border-[#00ff88]/30 overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         whileInView={{ width: `${level}%` }}
         viewport={{ once: true }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] as const }}
-        className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-full"
+        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] as const }}
+        className="h-full bg-[#00ff88]"
       />
     </div>
   </div>
 );
 
-// ========== Main Component ==========
-
 export default function ResumeSections() {
   return (
-    <div className="max-w-6xl mx-auto px-6 py-24 md:py-32 space-y-32 md:space-y-40">
-      {/* About & Education */}
+    <div className="max-w-5xl mx-auto px-6 py-20 md:py-28 space-y-24 md:space-y-32">
+      {/* Education */}
       <motion.section
         id="education"
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
+        viewport={{ once: true, margin: "-60px" }}
         variants={containerVariants}
       >
-        <SectionTitle icon={GraduationCap}>About & Education</SectionTitle>
+        <SectionTitle icon={IconGraduation}>About & Education</SectionTitle>
         <div className="relative">
           <TimelineItem
             year="Sep 2025 - Present"
@@ -229,16 +211,16 @@ export default function ResumeSections() {
         </div>
       </motion.section>
 
-      {/* Publications - Card Waterfall */}
+      {/* Publications */}
       <motion.section
         id="publications"
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
+        viewport={{ once: true, margin: "-60px" }}
         variants={containerVariants}
       >
-        <SectionTitle icon={BookOpen}>Publications</SectionTitle>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <SectionTitle icon={IconBook}>Publications</SectionTitle>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <PublicationCard
             status="Accepted - SIGMOD 2025"
             title="Accelerating Core Decomposition in Billion-Scale Hypergraphs"
@@ -260,22 +242,22 @@ export default function ResumeSections() {
         </div>
       </motion.section>
 
-      {/* Technical Arsenal */}
+      {/* Skills & Teaching */}
       <motion.section
         id="skills"
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
+        viewport={{ once: true, margin: "-60px" }}
         variants={containerVariants}
-        className="grid md:grid-cols-2 gap-16 lg:gap-24"
+        className="grid md:grid-cols-2 gap-16 lg:gap-20"
       >
         <div>
-          <SectionTitle icon={Terminal}>Technical Arsenal</SectionTitle>
-          <p className="text-zinc-600 dark:text-zinc-400 mb-8 -mt-6">
-            Languages & Systems — emphasizing C++/Rust for low-level performance.
+          <SectionTitle icon={IconTerminal}>Technical Arsenal</SectionTitle>
+          <p className="text-[#6b7b6f] text-sm mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
+            Languages & Systems — C++/Rust for low-level performance.
           </p>
-          <div className="p-8 rounded-3xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
-            <h4 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-6">
+          <div className="p-6 border-2 border-[#00ff88]/40 bg-[#0a0a0b]">
+            <h4 className="text-[10px] font-mono text-[#6b7b6f] uppercase tracking-wider mb-5">
               Languages
             </h4>
             <SkillBar name="C++" level={95} icon={Cpu} highlight />
@@ -286,10 +268,10 @@ export default function ResumeSections() {
           </div>
         </div>
         <div>
-          <h4 className="text-sm font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-6 mt-12 md:mt-0">
+          <h4 className="text-[10px] font-mono text-[#6b7b6f] uppercase tracking-wider mb-5 mt-12 md:mt-0">
             Systems & Tools
           </h4>
-          <div className="flex flex-wrap gap-3 mb-16">
+          <div className="flex flex-wrap gap-2 mb-12">
             {[
               "Apache Spark",
               "Apache Flink",
@@ -300,39 +282,43 @@ export default function ResumeSections() {
               <motion.span
                 key={tech}
                 variants={itemVariants}
-                className="px-4 py-2.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-white/20 dark:border-white/10 text-zinc-700 dark:text-zinc-300 rounded-xl font-medium hover:border-blue-500/50 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-default"
+                whileHover={{
+                  borderColor: "#00ff88",
+                  color: "#00ff88",
+                }}
+                className="px-3 py-2 border border-[#00ff88]/40 text-[#6b7b6f] text-sm font-[family-name:var(--font-jetbrains)] hover:bg-[#00ff88]/5 transition-colors"
               >
                 {tech}
               </motion.span>
             ))}
           </div>
 
-          <SectionTitle icon={Users}>Teaching Experience</SectionTitle>
-          <ul className="space-y-6">
+          <SectionTitle icon={IconUsers}>Teaching Experience</SectionTitle>
+          <ul className="space-y-4">
             <motion.li
               variants={itemVariants}
-              className="flex items-start gap-4 p-5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10"
+              className="flex items-start gap-4 p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b]"
             >
-              <div className="mt-1 w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+              <div className="mt-1 w-2 h-2 bg-[#00d4ff] flex-shrink-0" />
               <div>
-                <strong className="block text-zinc-900 dark:text-zinc-100 text-lg mb-1">
+                <strong className="block text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                   Database Systems (COMP3311/9311)
                 </strong>
-                <span className="text-zinc-500 dark:text-zinc-400 text-sm">
+                <span className="text-[#6b7b6f] text-sm">
                   Instructed 500+ students on SQL and Relational Algebra.
                 </span>
               </div>
             </motion.li>
             <motion.li
               variants={itemVariants}
-              className="flex items-start gap-4 p-5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10"
+              className="flex items-start gap-4 p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b]"
             >
-              <div className="mt-1 w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
+              <div className="mt-1 w-2 h-2 bg-[#ff6b35] flex-shrink-0" />
               <div>
-                <strong className="block text-zinc-900 dark:text-zinc-100 text-lg mb-1">
+                <strong className="block text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                   Data Analytics for Graphs (COMP9312)
                 </strong>
-                <span className="text-zinc-500 dark:text-zinc-400 text-sm">
+                <span className="text-[#6b7b6f] text-sm">
                   Taught advanced graph theory and algorithms.
                 </span>
               </div>
@@ -342,8 +328,8 @@ export default function ResumeSections() {
       </motion.section>
 
       {/* Footer */}
-      <footer className="text-center py-16 border-t border-zinc-200/50 dark:border-zinc-800/50">
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+      <footer className="text-center py-12 border-t-2 border-[#00ff88]/20">
+        <p className="text-[#6b7b6f] text-xs font-[family-name:var(--font-jetbrains)]">
           © 2026 Wenqian Zhang. Built with Next.js, Tailwind & Framer Motion.
         </p>
       </footer>

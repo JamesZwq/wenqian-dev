@@ -21,11 +21,11 @@ export default function BackToTop() {
     <motion.button
       style={{ opacity, scale, pointerEvents: show ? "auto" : "none" }}
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      whileHover={{ scale: 1.1 }}
+      whileHover={{ scale: 1.1, boxShadow: "0 0 20px rgba(0,255,136,0.4)" }}
       whileTap={{ scale: 0.95 }}
-      className="fixed bottom-8 right-8 z-50 p-3 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl hover:shadow-2xl"
+      className="fixed bottom-8 right-8 z-50 p-3 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px]"
     >
-      <ArrowUp size={24} className="text-zinc-700 dark:text-zinc-300" />
+      <ArrowUp size={20} />
     </motion.button>
   );
 }

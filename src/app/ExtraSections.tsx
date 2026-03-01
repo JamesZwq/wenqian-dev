@@ -3,36 +3,21 @@
 import React, { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
-  Lightbulb,
   Rocket,
-  Sparkles,
   Mail,
   Github,
   Linkedin,
-  Twitter,
   Target,
   Layers,
   Cpu,
   Award,
-  Coffee,
-  Music,
-  Gamepad2,
   ChevronRight,
 } from "lucide-react";
 import ScrollProgress from "./components/ScrollProgress";
 import BackToTop from "./components/BackToTop";
-import MagneticButton from "./components/MagneticButton";
-import TiltCard from "./components/TiltCard";
 import ResearchDetailModal from "./components/ResearchDetailModal";
 
-// ========== Animated Counter ==========
-function AnimatedCounter({
-  value,
-  suffix = "",
-}: {
-  value: number;
-  suffix?: string;
-}) {
+function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [count, setCount] = React.useState(0);
 
@@ -42,9 +27,8 @@ function AnimatedCounter({
         if (entry?.isIntersecting) {
           let start = 0;
           const end = value;
-          const duration = 1500;
+          const duration = 1200;
           const startTime = performance.now();
-
           const animate = (currentTime: number) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
@@ -69,50 +53,40 @@ function AnimatedCounter({
   );
 }
 
-// ========== Staggered Text Reveal ==========
-const wordVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.05, duration: 0.5 },
-  }),
-};
+const sectionTitleClass = "font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[#00ff88] tracking-widest uppercase";
 
-// ========== Section Title with Animation ==========
-const SectionTitleAnimated = ({
+const SectionTitle = ({
   children,
   icon: Icon,
 }: {
   children: React.ReactNode;
   icon: React.ElementType;
 }) => (
-  <div className="flex items-center gap-4 mb-14">
-    <motion.div
-      initial={{ scale: 0, rotate: -180 }}
-      whileInView={{ scale: 1, rotate: 0 }}
-      viewport={{ once: true }}
-      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-      className="p-3.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl text-blue-500 dark:text-blue-400 shadow-lg"
-    >
-      <Icon size={28} />
-    </motion.div>
-    <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-      {children}
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    className="flex items-center gap-4 mb-10"
+  >
+    <div className="p-2 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88]">
+      <Icon size={20} />
+    </div>
+    <h2 className={`${sectionTitleClass}`}>
+      [ {children} ]
     </h2>
-  </div>
+  </motion.div>
 );
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
@@ -134,55 +108,53 @@ export default function ExtraSections() {
         topic={modalTopic}
       />
 
-      <div ref={ref} className="max-w-6xl mx-auto px-6 py-24 md:py-32">
-        {/* Stats Banner - Animated Numbers */}
+      <div ref={ref} className="max-w-5xl mx-auto px-6 py-20 md:py-28">
+        {/* Stats - Pixel blocks */}
         <motion.section
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="mb-32"
+          className="mb-24"
         >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { value: 7, suffix: "x", label: "Efficiency Gain", icon: Rocket },
-              { value: 36, suffix: "x", label: "Memory Reduction", icon: Layers },
-              { value: 500, suffix: "+", label: "Students Taught", icon: Target },
-              { value: 3, suffix: "", label: "Top-Tier Papers", icon: Award },
+              { value: 7, suffix: "x", label: "Efficiency", icon: Rocket },
+              { value: 36, suffix: "x", label: "Memory ↓", icon: Layers },
+              { value: 500, suffix: "+", label: "Students", icon: Target },
+              { value: 3, suffix: "", label: "Papers", icon: Award },
             ].map(({ value, suffix, label, icon: Icon }, i) => (
               <motion.div
                 key={label}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.5 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-                className="p-6 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-center"
-              >
-                <Icon className="mx-auto mb-3 text-blue-500" size={32} />
-                <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600">
+                transition={{ delay: i * 0.1 }}
+                whileHover={{
+                  scale: 1.05,
+                  borderColor: "#00ff88",
+                  boxShadow: "0 0 20px rgba(0,255,136,0.2)",
+                }}
+                className="p-5 border-2 border-[#00ff88]/50 bg-[#0a0a0b] text-center font-[family-name:var(--font-jetbrains)]">
+                <Icon className="mx-auto mb-2 text-[#00ff88]" size={24} />
+                <div className="text-2xl md:text-3xl font-bold text-[#00ff88]">
                   <AnimatedCounter value={value} suffix={suffix} />
                 </div>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  {label}
-                </p>
+                <p className="text-xs text-[#6b7b6f] mt-1">{label}</p>
               </motion.div>
             ))}
           </div>
         </motion.section>
 
-        {/* Projects / Highlights */}
+        {/* Projects */}
         <motion.section
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
+          viewport={{ once: true, margin: "-60px" }}
           variants={containerVariants}
-          className="mb-32"
+          className="mb-24"
         >
-          <SectionTitleAnimated icon={Rocket}>
-            Selected Projects
-          </SectionTitleAnimated>
-          <div className="grid md:grid-cols-2 gap-6">
+          <SectionTitle icon={Rocket}>Projects</SectionTitle>
+          <div className="grid md:grid-cols-2 gap-4">
             {[
               {
                 title: "Billion-Scale Hypergraph Engine",
@@ -198,18 +170,22 @@ export default function ExtraSections() {
               <motion.div
                 key={project.title}
                 variants={itemVariants}
-                whileHover={{ x: 5, transition: { type: "spring", stiffness: 400 } }}
-                className="group p-6 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 hover:border-blue-500/30 transition-colors"
+                whileHover={{
+                  x: 4,
+                  borderColor: "#00ff88",
+                  boxShadow: "0 0 15px rgba(0,255,136,0.15)",
+                }}
+                className="group p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b] hover:border-[#00ff88] transition-colors"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88]">
                     {project.title}
                   </h3>
-                  <span className="text-xs font-mono text-blue-500 dark:text-blue-400">
+                  <span className="text-[10px] font-mono text-[#00d4ff]">
                     {project.tech}
                   </span>
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+                <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)]">
                   {project.desc}
                 </p>
               </motion.div>
@@ -221,57 +197,52 @@ export default function ExtraSections() {
         <motion.section
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true }}
           variants={containerVariants}
-          className="mb-32"
+          className="mb-24"
         >
-          <SectionTitleAnimated icon={Lightbulb}>
-            Research Focus
-          </SectionTitleAnimated>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SectionTitle icon={Layers}>Research Focus</SectionTitle>
+          <div className="grid md:grid-cols-3 gap-4">
             {[
               {
                 title: "Core Decomposition" as const,
                 desc: "Scalable algorithms for k-core and nucleus decomposition in billion-scale graphs.",
                 icon: Layers,
-                color: "from-blue-500 to-cyan-500",
               },
               {
                 title: "Hypergraph Analytics" as const,
                 desc: "Efficient computation on high-order relational structures.",
                 icon: Cpu,
-                color: "from-purple-500 to-pink-500",
               },
               {
                 title: "Distributed Systems" as const,
                 desc: "Spark/Flink deployment, Kubernetes orchestration for graph workloads.",
                 icon: Rocket,
-                color: "from-amber-500 to-orange-500",
               },
             ].map((item, i) => (
-              <TiltCard key={item.title}>
-                <motion.div
-                  variants={itemVariants}
-                  onClick={() => setModalTopic(item.title)}
-                  className="group p-6 h-full rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer"
-                >
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-4`}
-                  >
-                    <item.icon className="text-white" size={24} />
-                  </div>
-                  <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 flex items-center justify-between">
-                    {item.title}
-                    <ChevronRight size={20} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h3>
-                  <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-                    {item.desc}
-                  </p>
-                  <p className="mt-3 text-xs text-blue-500 dark:text-blue-400 font-medium">
-                    Click to learn more →
-                  </p>
-                </motion.div>
-              </TiltCard>
+              <motion.div
+                key={item.title}
+                variants={itemVariants}
+                onClick={() => setModalTopic(item.title)}
+                whileHover={{
+                  scale: 1.02,
+                  borderColor: "#00ff88",
+                  boxShadow: "0 0 20px rgba(0,255,136,0.2)",
+                }}
+                className="p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b] cursor-pointer group"
+              >
+                <div className="w-10 h-10 border-2 border-[#00ff88] flex items-center justify-center mb-4">
+                  <item.icon className="text-[#00ff88]" size={20} />
+                </div>
+                <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88] mb-2 flex items-center justify-between">
+                  {item.title}
+                  <ChevronRight size={20} className="text-[#00ff88] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h3>
+                <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)]">
+                  {item.desc}
+                </p>
+                <p className="mt-2 text-[10px] text-[#00d4ff] font-mono">Click to learn more →</p>
+              </motion.div>
             ))}
           </div>
         </motion.section>
@@ -282,28 +253,24 @@ export default function ExtraSections() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={containerVariants}
-          className="mb-32"
+          className="mb-24"
         >
-          <SectionTitleAnimated icon={Sparkles}>
-            Beyond Academia
-          </SectionTitleAnimated>
+          <SectionTitle icon={Target}>Beyond Academia</SectionTitle>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Coffee, text: "Coffee-powered debugging sessions", emoji: "☕" },
-              { icon: Music, text: "Lo-fi beats while writing papers", emoji: "🎵" },
-              { icon: Gamepad2, text: "Strategic games enthusiast", emoji: "🎮" },
-              { icon: Sparkles, text: "Open source contributor", emoji: "✨" },
+              { text: "Coffee-powered debugging", emoji: "☕" },
+              { text: "Lo-fi beats while writing", emoji: "🎵" },
+              { text: "Strategic games enthusiast", emoji: "🎮" },
+              { text: "Open source contributor", emoji: "✨" },
             ].map((fact, i) => (
               <motion.div
                 key={fact.text}
                 variants={itemVariants}
-                whileHover={{ scale: 1.03, rotate: 1 }}
-                className="group p-5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 cursor-default"
+                whileHover={{ scale: 1.03, borderColor: "#00ff88" }}
+                className="p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b] font-[family-name:var(--font-jetbrains)]"
               >
-                <span className="text-2xl mb-2 block">{fact.emoji}</span>
-                <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {fact.text}
-                </p>
+                <span className="text-xl block mb-2">{fact.emoji}</span>
+                <p className="text-sm text-[#6b7b6f] font-medium">{fact.text}</p>
               </motion.div>
             ))}
           </div>
@@ -312,46 +279,36 @@ export default function ExtraSections() {
         {/* Parallax Divider */}
         <motion.div
           style={{ y: parallaxY }}
-          className="mb-32 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"
+          className="mb-24 h-px bg-gradient-to-r from-transparent via-[#00ff88]/50 to-transparent"
         />
 
-        {/* Contact / Get in Touch */}
+        {/* Contact */}
         <motion.section
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center"
         >
-          <SectionTitleAnimated icon={Mail}>Get in Touch</SectionTitleAnimated>
-          <p className="text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto mb-10">
+          <SectionTitle icon={Mail}>Get in Touch</SectionTitle>
+          <p className="text-[#6b7b6f] max-w-xl mx-auto mb-8 font-[family-name:var(--font-jetbrains)] text-sm">
             Interested in collaboration, research discussions, or just saying hi?
-            I&apos;d love to hear from you.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <MagneticButton
-              href="mailto:wenqian@example.com"
-              className="px-6 py-3 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold flex items-center gap-2"
-            >
-              <Mail size={18} /> Email Me
-            </MagneticButton>
-            <MagneticButton
-              href="#"
-              className="px-6 py-3 rounded-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-zinc-900 dark:text-white font-semibold flex items-center gap-2"
-            >
-              <Github size={18} /> GitHub
-            </MagneticButton>
-            <MagneticButton
-              href="#"
-              className="px-6 py-3 rounded-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-zinc-900 dark:text-white font-semibold flex items-center gap-2"
-            >
-              <Linkedin size={18} /> LinkedIn
-            </MagneticButton>
-            <MagneticButton
-              href="#"
-              className="px-6 py-3 rounded-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 text-zinc-900 dark:text-white font-semibold flex items-center gap-2"
-            >
-              <Twitter size={18} /> Twitter
-            </MagneticButton>
+          <div className="flex flex-wrap justify-center gap-3">
+            {[
+              { href: "mailto:wenqian@example.com", icon: Mail, label: "Email" },
+              { href: "#", icon: Github, label: "GitHub" },
+              { href: "#", icon: Linkedin, label: "LinkedIn" },
+            ].map(({ href, icon: Icon, label }) => (
+              <motion.a
+                key={label}
+                href={href}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(0,255,136,0.3)" }}
+                whileTap={{ scale: 0.98 }}
+                className="px-5 py-2.5 border-2 border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] flex items-center gap-2 hover:bg-[#00ff88]/20 transition-colors"
+              >
+                <Icon size={16} /> [ {label} ]
+              </motion.a>
+            ))}
           </div>
         </motion.section>
       </div>
