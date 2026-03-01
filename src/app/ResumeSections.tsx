@@ -39,14 +39,26 @@ const SectionTitle = ({
   children: React.ReactNode;
   icon: React.ElementType;
 }) => (
-  <div className="flex items-center gap-4 mb-14">
-    <div className="p-3.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl text-blue-500 dark:text-blue-400 shadow-lg">
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.6 }}
+    className="flex items-center gap-4 mb-14"
+  >
+    <motion.div
+      initial={{ scale: 0 }}
+      whileInView={{ scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+      className="p-3.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl text-blue-500 dark:text-blue-400 shadow-lg"
+    >
       <Icon size={28} />
-    </div>
+    </motion.div>
     <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
       {children}
     </h2>
-  </div>
+  </motion.div>
 );
 
 const TimelineItem = ({

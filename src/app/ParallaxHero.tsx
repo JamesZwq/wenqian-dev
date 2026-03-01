@@ -332,15 +332,27 @@ export default function ParallaxHero() {
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl lg:text-2xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-10 font-medium">
-            Ph.D. Candidate @ UNSW | Accelerating Large-Scale Graph Computations
+          <p className="text-lg md:text-xl lg:text-2xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-10 font-medium flex flex-wrap justify-center gap-x-1">
+            {"Ph.D. Candidate @ UNSW | Accelerating Large-Scale Graph Computations"
+              .split(" ")
+              .map((word, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + i * 0.05, duration: 0.4 }}
+                  className="inline-block"
+                >
+                  {word}{" "}
+                </motion.span>
+              ))}
           </p>
 
           <motion.div
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2, duration: 0.6, type: "spring", stiffness: 100 }}
           >
             <motion.a
               href="#publications"
