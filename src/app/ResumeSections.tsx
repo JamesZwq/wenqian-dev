@@ -157,7 +157,10 @@ const SkillBar = ({
   <div className="mb-5">
     <div className="flex justify-between mb-2">
       <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)]">
-        <Icon size={16} className="text-[var(--pixel-accent)]" /> {name}
+        <span className="inline-flex transition-transform duration-300 ease-out group-hover:scale-110 group-hover:rotate-6">
+          <Icon size={16} className="text-[var(--pixel-accent)]" />
+        </span>{" "}
+        {name}
         {highlight && (
           <span className="text-[10px] px-2 py-0.5 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[var(--pixel-accent)]">
             LOW_LEVEL
@@ -260,7 +263,7 @@ export default function ResumeSections() {
           <p className="text-[var(--pixel-muted)] text-sm mb-4 sm:mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
             Languages & Systems — C++/Rust for low-level performance.
           </p>
-          <DraggableFloat className="p-4 sm:p-6 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)]">
+          <DraggableFloat className="group p-4 sm:p-6 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)]">
             <h4 className="text-[10px] font-mono text-[var(--pixel-muted)] uppercase tracking-wider mb-5">
               Languages
             </h4>
@@ -302,9 +305,9 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
               >
-                <div className="mt-1 w-2 h-2 bg-[var(--pixel-accent-2)] flex-shrink-0" />
+                <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-accent-2)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-accent-2)]" />
                 <div>
                   <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                     Database Systems (COMP3311/9311)
@@ -318,9 +321,9 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
               >
-                <div className="mt-1 w-2 h-2 bg-[var(--pixel-warn)] flex-shrink-0" />
+                <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-warn)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-warn)]" />
                 <div>
                   <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                     Data Analytics for Graphs (COMP9312)

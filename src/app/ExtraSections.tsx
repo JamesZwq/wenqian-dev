@@ -120,11 +120,11 @@ export default function ExtraSections() {
         >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
-              { value: 7, suffix: "x", label: "Efficiency", icon: Rocket },
-              { value: 36, suffix: "x", label: "Memory ↓", icon: Layers },
-              { value: 500, suffix: "+", label: "Students", icon: Target },
-              { value: 3, suffix: "", label: "Papers", icon: Award },
-            ].map(({ value, suffix, label, icon: Icon }, i) => (
+              { value: 7, suffix: "x", label: "Efficiency", icon: Rocket, iconHover: "group-hover:-translate-y-2 group-hover:-rotate-12" },
+              { value: 36, suffix: "x", label: "Memory ↓", icon: Layers, iconHover: "group-hover:scale-110 group-hover:rotate-6" },
+              { value: 500, suffix: "+", label: "Students", icon: Target, iconHover: "group-hover:scale-110 group-hover:translate-y-[-2px]" },
+              { value: 3, suffix: "", label: "Papers", icon: Award, iconHover: "group-hover:scale-110 group-hover:rotate-6" },
+            ].map(({ value, suffix, label, icon: Icon, iconHover }, i) => (
               <DraggableFloat
                 key={label}
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -136,9 +136,11 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-center font-[family-name:var(--font-jetbrains)]"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-center font-[family-name:var(--font-jetbrains)]"
               >
-                <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
+                <span className={`inline-block transition-transform duration-300 ease-out ${iconHover}`}>
+                  <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
+                </span>
                 <div className="text-2xl md:text-3xl font-bold text-[var(--pixel-accent)]">
                   <AnimatedCounter value={value} suffix={suffix} />
                 </div>
@@ -188,7 +190,7 @@ export default function ExtraSections() {
                     {project.tech}
                   </span>
                 </div>
-                <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)]">
                   {project.desc}
                 </p>
               </DraggableFloat>
@@ -232,10 +234,20 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] cursor-pointer group touch-manipulation"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] cursor-pointer touch-manipulation"
               >
                 <div className="w-10 h-10 border-2 border-[var(--pixel-border)] flex items-center justify-center mb-4">
-                  <item.icon className="text-[var(--pixel-accent)]" size={20} />
+                  <span
+                    className={`inline-flex items-center justify-center transition-transform duration-300 ease-out ${
+                      item.title === "Core Decomposition"
+                        ? "group-hover:scale-110 group-hover:rotate-6"
+                        : item.title === "Hypergraph Analytics"
+                          ? "group-hover:scale-110 group-hover:-rotate-6"
+                          : "group-hover:-translate-y-1 group-hover:-rotate-12"
+                    }`}
+                  >
+                    <item.icon className="text-[var(--pixel-accent)]" size={20} />
+                  </span>
                 </div>
                 <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)] mb-2 flex items-center justify-between">
                   {item.title}
@@ -270,9 +282,9 @@ export default function ExtraSections() {
                 key={fact.text}
                 variants={itemVariants}
                 whileHover={{ scale: 1.03, borderColor: "var(--pixel-border)" }}
-                className="p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)] font-[family-name:var(--font-jetbrains)] touch-manipulation"
+                className="group p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)] font-[family-name:var(--font-jetbrains)] touch-manipulation"
               >
-                <span className="text-xl block mb-2">{fact.emoji}</span>
+                <span className="text-xl block mb-2 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:rotate-12">{fact.emoji}</span>
                 <p className="text-sm text-[var(--pixel-muted)] font-medium">{fact.text}</p>
               </DraggableFloat>
             ))}

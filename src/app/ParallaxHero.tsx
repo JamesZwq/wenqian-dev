@@ -94,30 +94,17 @@ export default function ParallaxHero() {
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
-      {/* Pixel grid background - mouse reactive */}
-      <motion.div
-        style={{
-          x: isMobile ? 0 : bgX,
-          y: isMobile ? 0 : bgY,
-          backgroundImage: "linear-gradient(var(--pixel-accent) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-accent) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-        className="absolute inset-0 opacity-[0.03]"
-      />
-      <motion.div
-        style={{
-          x: isMobile ? 0 : bgX,
-          y: isMobile ? 0 : bgY,
-          backgroundImage: "linear-gradient(var(--pixel-accent) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-accent) 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
-        }}
-        className="absolute inset-0 opacity-[0.02]"
-      />
-
       {/* Main terminal window - parallax + draggable card */}
       <motion.div
         style={{ x: isMobile ? 0 : windowX, y: isMobile ? 0 : windowY }}
-        className="relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4"
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          delay: 0.1,
+          duration: 0.5,
+          ease: [0.22, 0.61, 0.36, 1],
+        }}
+        className="relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4 will-change-transform"
       >
         <DraggableFloat className="w-full">
           {/* Terminal frame - ASCII style border */}
@@ -137,7 +124,7 @@ export default function ParallaxHero() {
             </div>
 
             {/* Terminal content */}
-            <div className="p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[400px] font-[family-name:var(--font-jetbrains)]">
+            <div className="p-4 sm:p-6 md:p-8 h-[340px] sm:h-[420px] md:h-[480px] font-[family-name:var(--font-jetbrains)]">
               {/* ASCII Art header */}
               <motion.pre
                 initial={{ opacity: 0 }}
@@ -178,7 +165,6 @@ export default function ParallaxHero() {
               </div>
             </div>
           </div>
-
           {/* Glitch overlay on hover */}
           {glitch && (
             <motion.div
@@ -197,23 +183,30 @@ export default function ParallaxHero() {
 
       {/* CTA Buttons - Pixel style */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 4, duration: 0.5 }}
+        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        // 轻微“弹簧”感的进场，而不是简单淡入
+        transition={{
+          delay: 0.4,
+          type: "spring",
+          stiffness: 420,
+          damping: 26,
+          mass: 0.7,
+        }}
         className="absolute bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-3 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2"
       >
         <motion.a
           href="#publications"
-          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,255,136,0.5)" }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.04, boxShadow: "0 0 16px rgba(0,255,136,0.45)" }}
+          whileTap={{ scale: 0.97 }}
           className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
         >
           [ VIEW_PUBS ]
         </motion.a>
         <motion.a
           href="#"
-          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,212,255,0.5)" }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.04, boxShadow: "0 0 16px rgba(0,212,255,0.45)" }}
+          whileTap={{ scale: 0.97 }}
           className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-colors touch-manipulation"
         >
           [ DOWNLOAD_CV ]
@@ -222,9 +215,16 @@ export default function ParallaxHero() {
 
       {/* Scroll hint */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 4.5 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        // Scroll 提示稍微比按钮晚一点，“浮”上来
+        transition={{
+          delay: 0.75,
+          type: "spring",
+          stiffness: 380,
+          damping: 28,
+          mass: 0.7,
+        }}
         className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30"
       >
         <motion.span
