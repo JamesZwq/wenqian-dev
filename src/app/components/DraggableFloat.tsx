@@ -35,7 +35,6 @@ export default function DraggableFloat({
       drag={!isMobile}
       dragSnapToOrigin={!isMobile}
       dragElastic={0.2}
-      dragMomentum={0.1}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 25 }}
       whileHover={whileHover ?? { scale: 1.02 }}
       whileTap={whileTap ?? { scale: 0.98 }}
