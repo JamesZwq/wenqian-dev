@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, useTransform } from "framer-motion";
 import { useMouse } from "./components/MouseProvider";
+import DraggableFloat from "./components/DraggableFloat";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 const ASCII_ART = `
   ██╗    ██╗███████╗███╗   ██╗ ██████╗ ██╗ █████╗ ███╗   ██╗
@@ -21,7 +23,7 @@ const TYPED_LINES = [
   "Ph.D. Candidate @ UNSW",
   "",
   "> research",
-  "Large-Scale Graph Analysis | SIGMOD 2025",
+  "Large-Scale Graph Analysis | SIGMOD 2025 | SIGMOD 2026",
   "",
   "> status",
   "READY",
@@ -57,9 +59,9 @@ function TypewriterLine({ text, delay = 0, onComplete }: { text: string; delay?:
   const isReady = text === "READY";
 
   return (
-    <div className="font-[family-name:var(--font-jetbrains)] text-[#00ff88] text-sm md:text-base">
+    <div className="font-[family-name:var(--font-jetbrains)] text-[var(--pixel-text)] text-sm md:text-base">
       {display}
-      {!done && <span className="animate-blink inline-block w-2 h-4 ml-0.5 bg-[#00ff88] align-middle" />}
+      {!done && <span className="animate-blink inline-block w-2 h-4 ml-0.5 bg-[var(--pixel-accent)] align-middle" />}
       {done && isCommand && <br />}
       {done && isReady && (
         <span className="inline-block ml-2 text-[#ff6b35] font-bold animate-pulse">_</span>
@@ -69,6 +71,7 @@ function TypewriterLine({ text, delay = 0, onComplete }: { text: string; delay?:
 }
 
 export default function ParallaxHero() {
+  const isMobile = useIsMobile();
   const { smoothX, smoothY } = useMouse();
   const [lineIndex, setLineIndex] = useState(0);
   const [glitch, setGlitch] = useState(false);
@@ -94,103 +97,102 @@ export default function ParallaxHero() {
       {/* Pixel grid background - mouse reactive */}
       <motion.div
         style={{
-          x: bgX,
-          y: bgY,
-          backgroundImage: "linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)",
+          x: isMobile ? 0 : bgX,
+          y: isMobile ? 0 : bgY,
+          backgroundImage: "linear-gradient(var(--pixel-accent) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-accent) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }}
         className="absolute inset-0 opacity-[0.03]"
       />
       <motion.div
         style={{
-          x: bgX,
-          y: bgY,
-          backgroundImage: "linear-gradient(#00ff88 1px, transparent 1px), linear-gradient(90deg, #00ff88 1px, transparent 1px)",
+          x: isMobile ? 0 : bgX,
+          y: isMobile ? 0 : bgY,
+          backgroundImage: "linear-gradient(var(--pixel-accent) 1px, transparent 1px), linear-gradient(90deg, var(--pixel-accent) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
         }}
         className="absolute inset-0 opacity-[0.02]"
       />
 
-      {/* Main terminal window */}
+      {/* Main terminal window - parallax + draggable card */}
       <motion.div
-        style={{ x: windowX, y: windowY }}
-        className="relative z-20 w-[95vw] max-w-3xl mx-4"
+        style={{ x: isMobile ? 0 : windowX, y: isMobile ? 0 : windowY }}
+        className="relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4"
       >
-        {/* Terminal frame - ASCII style border */}
-        <div
-          className="border-2 border-[#00ff88] bg-[#0a0a0b]/95 shadow-[0_0_30px_rgba(0,255,136,0.2)]"
-          style={{
-            boxShadow: "0 0 0 1px #00ff88, 0 0 30px rgba(0,255,136,0.15)",
-          }}
-        >
-          {/* Title bar */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b-2 border-[#00ff88] bg-[#121214]">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-[#ff5f56]" />
-              <div className="w-3 h-3 rounded-sm bg-[#ffbd2e]" />
-              <div className="w-3 h-3 rounded-sm bg-[#27c93f]" />
+        <DraggableFloat className="w-full">
+          {/* Terminal frame - ASCII style border */}
+          <div
+            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)]"
+          >
+            {/* Title bar */}
+            <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)]">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ff5f56]" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ffbd2e]" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#27c93f]" />
+              </div>
+              <span className="font-[family-name:var(--font-press-start)] text-[8px] sm:text-[10px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-widest truncate">
+                WENQIAN.ZHANG — BASH — 80x24
+              </span>
             </div>
-            <span className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88] ml-4 tracking-widest">
-              WENQIAN.ZHANG — BASH — 80x24
-            </span>
+
+            {/* Terminal content */}
+            <div className="p-4 sm:p-6 md:p-8 min-h-[280px] sm:min-h-[400px] font-[family-name:var(--font-jetbrains)]">
+              {/* ASCII Art header */}
+              <motion.pre
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="text-[var(--pixel-accent)] text-[6px] sm:text-[8px] md:text-[10px] leading-tight mb-4 sm:mb-6 overflow-x-auto whitespace-pre"
+              >
+                {ASCII_ART}
+              </motion.pre>
+
+              {/* Typewriter output */}
+              <div className="space-y-1 font-[family-name:var(--font-jetbrains)] text-xs sm:text-sm md:text-base">
+                {TYPED_LINES.slice(0, lineIndex).map((line, i) => (
+                  <div key={i} className="text-[var(--pixel-accent)]">
+                    {line.startsWith(">") ? (
+                      <>
+                        <span className="text-[var(--pixel-accent-2)]">{line}</span>
+                        <br />
+                      </>
+                    ) : line === "READY" ? (
+                      <span>
+                        {line}
+                        <span className="text-[var(--pixel-warn)] font-bold ml-1">_</span>
+                      </span>
+                    ) : (
+                      line || <br />
+                    )}
+                  </div>
+                ))}
+                {lineIndex < TYPED_LINES.length && (
+                  <TypewriterLine
+                    key={lineIndex}
+                    text={TYPED_LINES[lineIndex]}
+                    delay={0}
+                    onComplete={handleLineComplete}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Terminal content */}
-          <div className="p-6 md:p-8 min-h-[400px] font-[family-name:var(--font-jetbrains)]">
-            {/* ASCII Art header */}
-            <motion.pre
+          {/* Glitch overlay on hover */}
+          {glitch && (
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="text-[#00ff88] text-[8px] md:text-[10px] leading-tight mb-6 overflow-x-auto whitespace-pre"
-            >
-              {ASCII_ART}
-            </motion.pre>
-
-            {/* Typewriter output */}
-            <div className="space-y-1 font-[family-name:var(--font-jetbrains)] text-sm md:text-base">
-              {TYPED_LINES.slice(0, lineIndex).map((line, i) => (
-                <div key={i} className="text-[#00ff88]">
-                  {line.startsWith(">") ? (
-                    <>
-                      <span className="text-[#00d4ff]">{line}</span>
-                      <br />
-                    </>
-                  ) : line === "READY" ? (
-                    <span>
-                      {line}
-                      <span className="text-[#ff6b35] font-bold ml-1">_</span>
-                    </span>
-                  ) : (
-                    line || <br />
-                  )}
-                </div>
-              ))}
-              {lineIndex < TYPED_LINES.length && (
-                <TypewriterLine
-                  key={lineIndex}
-                  text={TYPED_LINES[lineIndex]}
-                  delay={0}
-                  onComplete={handleLineComplete}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Glitch overlay on hover */}
-        {glitch && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 pointer-events-none mix-blend-difference"
-            style={{
-              background: "linear-gradient(90deg, transparent 48%, #ff00ff 50%, transparent 52%)",
-              opacity: 0.03,
-            }}
-          />
-        )}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 pointer-events-none mix-blend-difference"
+              style={{
+                background: "linear-gradient(90deg, transparent 48%, #ff00ff 50%, transparent 52%)",
+                opacity: 0.03,
+              }}
+            />
+          )}
+        </DraggableFloat>
       </motion.div>
 
       {/* CTA Buttons - Pixel style */}
@@ -198,13 +200,13 @@ export default function ParallaxHero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 4, duration: 0.5 }}
-        className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-wrap justify-center gap-4"
+        className="absolute bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-3 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2"
       >
         <motion.a
           href="#publications"
           whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,255,136,0.5)" }}
           whileTap={{ scale: 0.98 }}
-          className="px-6 py-3 border-2 border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[#00ff88]/20 transition-colors"
+          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
         >
           [ VIEW_PUBS ]
         </motion.a>
@@ -212,7 +214,7 @@ export default function ParallaxHero() {
           href="#"
           whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,212,255,0.5)" }}
           whileTap={{ scale: 0.98 }}
-          className="px-6 py-3 border-2 border-[#00d4ff] bg-[#00d4ff]/10 text-[#00d4ff] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[#00d4ff]/20 transition-colors"
+          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-colors touch-manipulation"
         >
           [ DOWNLOAD_CV ]
         </motion.a>
@@ -223,12 +225,12 @@ export default function ParallaxHero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 4.5 }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30"
+        className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30"
       >
         <motion.span
           animate={{ y: [0, 6, 0] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
-          className="text-[#00ff88]/60 font-[family-name:var(--font-press-start)] text-[10px]"
+          className="text-[color-mix(in_oklab,var(--pixel-accent)_60%,transparent)] font-[family-name:var(--font-press-start)] text-[9px] sm:text-[10px]"
         >
           [ SCROLL ]
         </motion.span>

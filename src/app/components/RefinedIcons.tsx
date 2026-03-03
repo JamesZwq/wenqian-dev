@@ -2,7 +2,7 @@
 
 import React from "react";
 
-const iconBaseClass = "w-7 h-7 text-[#00ff88]";
+const iconBaseClass = "w-7 h-7 text-[var(--pixel-accent)]";
 
 // Graduation Cap - Education
 export const IconGraduation = () => (
@@ -41,7 +41,7 @@ export const IconUsers = () => (
 
 // Zap - Highlight
 export const IconZap = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#00d4ff]">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[var(--pixel-accent-2)]">
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
   </svg>
 );

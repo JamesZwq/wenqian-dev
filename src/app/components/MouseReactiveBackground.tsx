@@ -3,6 +3,7 @@
 import React from "react";
 import { motion, useTransform } from "framer-motion";
 import { useMouse } from "./MouseProvider";
+import { useTheme } from "./ThemeProvider";
 
 function PixelDot({
   x,
@@ -33,7 +34,7 @@ function PixelDot({
         x: moveX,
         y: moveY,
       }}
-      className="bg-[#00ff88] opacity-20 pointer-events-none"
+      className="bg-[var(--pixel-accent)] opacity-20 pointer-events-none"
     />
   );
 }
@@ -52,8 +53,8 @@ function PixelGrid({ depth }: { depth: number }) {
         className="w-full h-full opacity-[0.04]"
         style={{
           backgroundImage: `
-            linear-gradient(#00ff88 1px, transparent 1px),
-            linear-gradient(90deg, #00ff88 1px, transparent 1px)
+            linear-gradient(var(--pixel-grid-primary) 1px, transparent 1px),
+            linear-gradient(90deg, var(--pixel-grid-primary) 1px, transparent 1px)
           `,
           backgroundSize: "32px 32px",
         }}
@@ -76,8 +77,8 @@ function SecondaryGrid() {
         className="w-full h-full opacity-[0.02]"
         style={{
           backgroundImage: `
-            linear-gradient(#00d4ff 1px, transparent 1px),
-            linear-gradient(90deg, #00d4ff 1px, transparent 1px)
+            linear-gradient(var(--pixel-grid-secondary) 1px, transparent 1px),
+            linear-gradient(90deg, var(--pixel-grid-secondary) 1px, transparent 1px)
           `,
           backgroundSize: "64px 64px",
         }}
@@ -113,7 +114,7 @@ function CornerBracket({
         x: moveX,
         y: moveY,
       }}
-      className="text-[#00ff88] opacity-20 font-[family-name:var(--font-press-start)] text-lg pointer-events-none"
+      className="text-[var(--pixel-accent)] opacity-20 font-[family-name:var(--font-press-start)] text-lg pointer-events-none"
     >
       {char}
     </motion.span>
@@ -121,6 +122,23 @@ function CornerBracket({
 }
 
 export default function MouseReactiveBackground() {
+  const { theme } = useTheme();
+
+  // 浅色主题：去掉像素网格，只保留非常柔和的纸张质感
+  if (theme === "light") {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div
+          className="w-full h-full"
+          style={{
+            background:
+              "radial-gradient(circle at 20% 0%, rgba(148,163,184,0.18), transparent 55%), radial-gradient(circle at 80% 100%, rgba(148,163,184,0.12), transparent 55%)",
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
       {/* Primary pixel grid */}

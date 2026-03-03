@@ -5,6 +5,22 @@
 
 /* ========== PIXEL GEEK DESIGN SYSTEM ========== */
 :root {
+  /* Light theme (day) */
+  --pixel-bg: #f3f4f6;        /* slate-100 */
+  --pixel-bg-alt: #ffffff;    /* pure white cards */
+  --pixel-border: #10b981;    /* emerald-500 */
+  --pixel-text: #0f172a;      /* slate-900 - main text */
+  --pixel-muted: #6b7280;     /* gray-500 - secondary text */
+  --pixel-accent: #059669;    /* emerald-600 - stronger green for contrast */
+  --pixel-accent-2: #0ea5e9;  /* sky-500 - blue accent */
+  --pixel-warn: #f97316;      /* orange-500 */
+  --pixel-glow: rgba(15, 118, 110, 0.22); /* 更轻的阴影，避免浅色太花 */
+  --pixel-grid-primary: rgba(148, 163, 184, 0.45);   /* slate-400 */
+  --pixel-grid-secondary: rgba(148, 163, 184, 0.25); /* slate-400 */
+}
+
+.dark {
+  /* Dark theme (night) */
   --pixel-bg: #0a0a0b;
   --pixel-bg-alt: #121214;
   --pixel-border: #00ff88;
@@ -14,14 +30,8 @@
   --pixel-accent-2: #00d4ff;
   --pixel-warn: #ff6b35;
   --pixel-glow: rgba(0, 255, 136, 0.3);
-}
-
-.dark {
-  --pixel-bg: #0a0a0b;
-  --pixel-bg-alt: #0f0f11;
-  --pixel-border: #00ff88;
-  --pixel-text: #e0ffe8;
-  --pixel-accent: #00ff88;
+  --pixel-grid-primary: rgba(0, 255, 136, 0.4);
+  --pixel-grid-secondary: rgba(0, 212, 255, 0.25);
 }
 
 @theme inline {
@@ -36,10 +46,11 @@ body {
   font-family: var(--font-vt323), monospace;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  transition: background-color 0.6s ease, color 0.6s ease;
 }
 
 /* CRT Scanline overlay - subtle */
-.pixel-scanlines::after {
+.dark .pixel-scanlines::after {
   content: "";
   position: fixed;
   inset: 0;

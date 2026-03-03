@@ -333,18 +333,18 @@ export default function ResearchDetailModal({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-lg z-[201] bg-[#0a0a0b] border-l-2 border-[#00ff88] overflow-y-auto"
+            className="fixed top-0 right-0 bottom-0 w-full max-w-lg z-[201] bg-[var(--pixel-bg)] border-l-2 border-[var(--pixel-border)] overflow-y-auto"
             style={{ boxShadow: "-10px 0 40px rgba(0,255,136,0.1)" }}
           >
-            <div className="sticky top-0 z-10 flex justify-between items-center p-4 bg-[#0a0a0b] border-b-2 border-[#00ff88]">
-              <h2 className="font-[family-name:var(--font-press-start)] text-xs text-[#00ff88]">
+            <div className="sticky top-0 z-10 flex justify之间 items-center p-4 bg-[var(--pixel-bg)] border-b-2 border-[var(--pixel-border)]">
+              <h2 className="font-[family-name:var(--font-press-start)] text-xs text-[var(--pixel-accent)]">
                 [ {topic} ]
               </h2>
               <motion.button
                 onClick={onClose}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 border-2 border-[#00ff88] text-[#00ff88] hover:bg-[#00ff88]/20"
+                className="p-2 border-2 border-[var(--pixel-border)] text-[var(--pixel-accent)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)]"
               >
                 <X size={20} />
               </motion.button>
@@ -356,7 +356,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="p-4 border-2 border-[#00ff88]/50 bg-[#121214] text-[#6b7b6f]"
+                className="p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-[var(--pixel-muted)]"
               >
                 {content.model}
               </motion.div>
@@ -380,7 +380,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="p-4 border-l-2 border-[#00ff88] bg-[#121214] font-mono text-sm text-[#00ff88]"
+                className="p-4 border-l-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] font-mono text-sm text-[var(--pixel-accent)]"
               >
                 {content.formula}
               </motion.div>
@@ -400,7 +400,7 @@ export default function ResearchDetailModal({
                     transition={{ delay: 0.6 + i * 0.1 }}
                     className="flex items-start gap-3"
                   >
-                    <span className="mt-1.5 w-2 h-2 bg-[#00ff88] flex-shrink-0" />
+                    <span className="mt-1.5 w-2 h-2 bg-[var(--pixel-accent)] flex-shrink-0" />
                     <span className="text-[#6b7b6f] text-sm">
                       {bullet}
                     </span>

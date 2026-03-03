@@ -10,11 +10,11 @@ export default function Home() {
   return (
     <MouseProvider>
       <PixelKeyboardHandler />
-      <main className="relative min-h-screen bg-[#0a0a0b] text-[#e0ffe8] selection:bg-[#00ff88]/30 selection:text-[#0a0a0b]">
+      <main className="relative min-h-screen bg-[var(--pixel-bg)] text-[var(--pixel-text)] selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
         <MouseReactiveBackground />
 
         {/* Theme toggle - pixel style */}
-        <div className="fixed top-4 right-4 z-[100]">
+        <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[100]">
           <ThemeToggle />
         </div>
 

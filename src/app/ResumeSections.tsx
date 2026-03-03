@@ -10,6 +10,7 @@ import {
   IconUsers,
   IconZap,
 } from "./components/RefinedIcons";
+import DraggableFloat from "./components/DraggableFloat";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -41,10 +42,10 @@ const SectionTitle = ({
     viewport={{ once: true }}
     className="flex items-center gap-4 mb-10"
   >
-    <div className="p-2 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88]">
+    <div className="p-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
       <Icon />
     </div>
-    <h2 className="font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[#00ff88] tracking-widest uppercase">
+    <h2 className="font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[var(--pixel-accent)] tracking-widest uppercase">
       [ {children} ]
     </h2>
   </motion.div>
@@ -67,17 +68,17 @@ const TimelineItem = ({
     variants={itemVariants}
     className="relative pl-8 md:pl-0 md:grid md:grid-cols-12 gap-6 mb-12"
   >
-    <div className="absolute left-0 top-2 bottom-[-48px] w-px bg-[#00ff88]/30 md:left-auto md:right-1/2 md:mr-[-1px]" />
-    <div className="absolute left-[-4px] top-2 w-3 h-3 bg-[#00ff88] md:left-auto md:right-1/2 md:mr-[-6px] z-10" />
+    <div className="absolute left-0 top-2 bottom-[-48px] w-px bg-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] md:left-auto md:right-1/2 md:mr-[-1px]" />
+    <div className="absolute left-[-4px] top-2 w-3 h-3 bg-[var(--pixel-border)] md:left-auto md:right-1/2 md:mr-[-6px] z-10" />
 
     <div className="md:col-span-5 md:text-right md:pr-8">
-      <span className="inline-block px-3 py-1 border border-[#00ff88]/50 text-[10px] font-mono text-[#6b7b6f] mb-2">
+      <span className="inline-block px-3 py-1 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[10px] font-mono text-[var(--pixel-muted)] mb-2">
         {year}
       </span>
-      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88]">
+      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
         {title}
       </h3>
-      <p className="text-sm text-[#6b7b6f]">{place}</p>
+      <p className="text-sm text-[var(--pixel-muted)]">{place}</p>
     </div>
     <div className="md:col-span-2" />
     <div className="md:col-span-5 md:pl-8 mt-2 md:mt-0">
@@ -105,21 +106,24 @@ const PublicationCard = ({
   desc: string;
 }) => {
   const statusColors: Record<string, string> = {
-    Accepted: "border-[#00ff88] text-[#00ff88] bg-[#00ff88]/10",
-    Published: "border-[#00d4ff] text-[#00d4ff] bg-[#00d4ff]/10",
-    "Under Review": "border-[#ff6b35] text-[#ff6b35] bg-[#ff6b35]/10",
+    Accepted:
+      "border-[var(--pixel-border)] text-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)]",
+    Published:
+      "border-[color-mix(in_oklab,var(--pixel-accent-2)_80%,transparent)] text-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)]",
+    'Under Review':
+      "border-[color-mix(in_oklab,var(--pixel-warn)_80%,transparent)] text-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)]",
   };
   const statusKey = status.split(" - ")[0];
 
   return (
-    <motion.div
+    <DraggableFloat
       variants={itemVariants}
       whileHover={{
         scale: 1.02,
-        borderColor: "#00ff88",
-        boxShadow: "0 0 20px rgba(0,255,136,0.15)",
+        borderColor: "var(--pixel-border)",
+        boxShadow: "0 0 20px var(--pixel-glow)",
       }}
-      className="p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b]"
+      className="p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg)]"
     >
       <div className="flex justify-between items-start mb-3">
         <span
@@ -128,14 +132,14 @@ const PublicationCard = ({
           {status}
         </span>
       </div>
-      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88] mb-2 leading-tight">
+      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)] mb-2 leading-tight">
         {title}
       </h3>
-      <p className="text-xs text-[#6b7b6f] font-mono mb-3">{meta}</p>
-      <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)] border-l-2 border-[#00ff88]/50 pl-4">
+      <p className="text-xs text-[var(--pixel-muted)] font-mono mb-3">{meta}</p>
+      <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)] border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">
         {desc}
       </p>
-    </motion.div>
+    </DraggableFloat>
   );
 };
 
@@ -152,23 +156,23 @@ const SkillBar = ({
 }) => (
   <div className="mb-5">
     <div className="flex justify-between mb-2">
-      <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm text-[#e0ffe8]">
-        <Icon size={16} className="text-[#00ff88]" /> {name}
+      <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)]">
+        <Icon size={16} className="text-[var(--pixel-accent)]" /> {name}
         {highlight && (
-          <span className="text-[10px] px-2 py-0.5 border border-[#00ff88]/50 text-[#00ff88]">
+          <span className="text-[10px] px-2 py-0.5 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[var(--pixel-accent)]">
             LOW_LEVEL
           </span>
         )}
       </div>
-      <span className="text-[10px] font-mono text-[#6b7b6f]">{level}%</span>
+      <span className="text-[10px] font-mono text-[var(--pixel-muted)]">{level}%</span>
     </div>
-    <div className="h-2 w-full bg-[#121214] border border-[#00ff88]/30 overflow-hidden">
+    <div className="h-2 w-full bg-[var(--pixel-bg-alt)] border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         whileInView={{ width: `${level}%` }}
         viewport={{ once: true }}
         transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] as const }}
-        className="h-full bg-[#00ff88]"
+        className="h-full bg-[var(--pixel-accent)]"
       />
     </div>
   </div>
@@ -176,7 +180,7 @@ const SkillBar = ({
 
 export default function ResumeSections() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-20 md:py-28 space-y-24 md:space-y-32">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20 md:py-28 space-y-16 sm:space-y-24 md:space-y-32">
       {/* Education */}
       <motion.section
         id="education"
@@ -220,7 +224,7 @@ export default function ResumeSections() {
         variants={containerVariants}
       >
         <SectionTitle icon={IconBook}>Publications</SectionTitle>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <PublicationCard
             status="Accepted - SIGMOD 2025"
             title="Accelerating Core Decomposition in Billion-Scale Hypergraphs"
@@ -249,15 +253,15 @@ export default function ResumeSections() {
         whileInView="visible"
         viewport={{ once: true, margin: "-60px" }}
         variants={containerVariants}
-        className="grid md:grid-cols-2 gap-16 lg:gap-20"
+        className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-16 lg:gap-20"
       >
         <div>
           <SectionTitle icon={IconTerminal}>Technical Arsenal</SectionTitle>
-          <p className="text-[#6b7b6f] text-sm mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
+          <p className="text-[var(--pixel-muted)] text-sm mb-4 sm:mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
             Languages & Systems — C++/Rust for low-level performance.
           </p>
-          <div className="p-6 border-2 border-[#00ff88]/40 bg-[#0a0a0b]">
-            <h4 className="text-[10px] font-mono text-[#6b7b6f] uppercase tracking-wider mb-5">
+          <DraggableFloat className="p-4 sm:p-6 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)]">
+            <h4 className="text-[10px] font-mono text-[var(--pixel-muted)] uppercase tracking-wider mb-5">
               Languages
             </h4>
             <SkillBar name="C++" level={95} icon={Cpu} highlight />
@@ -265,13 +269,13 @@ export default function ResumeSections() {
             <SkillBar name="Java" level={85} icon={Database} />
             <SkillBar name="Python" level={82} icon={Database} />
             <SkillBar name="SQL" level={88} icon={Database} />
-          </div>
+          </DraggableFloat>
         </div>
         <div>
-          <h4 className="text-[10px] font-mono text-[#6b7b6f] uppercase tracking-wider mb-5 mt-12 md:mt-0">
+          <h4 className="text-[10px] font-mono text-[var(--pixel-muted)] uppercase tracking-wider mb-5 mt-10 sm:mt-12 md:mt-0">
             Systems & Tools
           </h4>
-          <div className="flex flex-wrap gap-2 mb-12">
+          <div className="flex flex-wrap gap-2 mb-8 sm:mb-12">
             {[
               "Apache Spark",
               "Apache Flink",
@@ -283,10 +287,10 @@ export default function ResumeSections() {
                 key={tech}
                 variants={itemVariants}
                 whileHover={{
-                  borderColor: "#00ff88",
-                  color: "#00ff88",
+                  borderColor: "var(--pixel-border)",
+                  color: "var(--pixel-accent)",
                 }}
-                className="px-3 py-2 border border-[#00ff88]/40 text-[#6b7b6f] text-sm font-[family-name:var(--font-jetbrains)] hover:bg-[#00ff88]/5 transition-colors"
+                className="px-3 py-2 border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] text-[var(--pixel-muted)] text-sm font-[family-name:var(--font-jetbrains)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_5%,transparent)] transition-colors"
               >
                 {tech}
               </motion.span>
@@ -295,41 +299,43 @@ export default function ResumeSections() {
 
           <SectionTitle icon={IconUsers}>Teaching Experience</SectionTitle>
           <ul className="space-y-4">
-            <motion.li
+            <DraggableFloat
+              as="li"
               variants={itemVariants}
-              className="flex items-start gap-4 p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b]"
+              className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
             >
-              <div className="mt-1 w-2 h-2 bg-[#00d4ff] flex-shrink-0" />
+              <div className="mt-1 w-2 h-2 bg-[var(--pixel-accent-2)] flex-shrink-0" />
               <div>
-                <strong className="block text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
+                <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                   Database Systems (COMP3311/9311)
                 </strong>
-                <span className="text-[#6b7b6f] text-sm">
+                <span className="text-[var(--pixel-muted)] text-sm">
                   Instructed 500+ students on SQL and Relational Algebra.
                 </span>
               </div>
-            </motion.li>
-            <motion.li
+            </DraggableFloat>
+            <DraggableFloat
+              as="li"
               variants={itemVariants}
-              className="flex items-start gap-4 p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b]"
+              className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
             >
-              <div className="mt-1 w-2 h-2 bg-[#ff6b35] flex-shrink-0" />
+              <div className="mt-1 w-2 h-2 bg-[var(--pixel-warn)] flex-shrink-0" />
               <div>
-                <strong className="block text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
+                <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                   Data Analytics for Graphs (COMP9312)
                 </strong>
-                <span className="text-[#6b7b6f] text-sm">
+                <span className="text-[var(--pixel-muted)] text-sm">
                   Taught advanced graph theory and algorithms.
                 </span>
               </div>
-            </motion.li>
+            </DraggableFloat>
           </ul>
         </div>
       </motion.section>
 
       {/* Footer */}
-      <footer className="text-center py-12 border-t-2 border-[#00ff88]/20">
-        <p className="text-[#6b7b6f] text-xs font-[family-name:var(--font-jetbrains)]">
+      <footer className="text-center py-8 sm:py-12 border-t-2 border-[color-mix(in_oklab,var(--pixel-border)_20%,transparent)]">
+        <p className="text-[var(--pixel-muted)] text-xs font-[family-name:var(--font-jetbrains)]">
           © 2026 Wenqian Zhang. Built with Next.js, Tailwind & Framer Motion.
         </p>
       </footer>

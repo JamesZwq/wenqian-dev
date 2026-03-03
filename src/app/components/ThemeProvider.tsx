@@ -23,12 +23,6 @@ export function useTheme() {
   return ctx;
 }
 
-// 遮罩使用「旧主题」颜色，收缩时露出下方已切换的「新主题」内容
-const THEME_BG = {
-  light: "#f5f3f0",
-  dark: "#0f1216",
-};
-
 export default function ThemeProvider({
   children,
 }: {
@@ -86,28 +80,24 @@ export default function ThemeProvider({
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
 
-      {/* 遮罩：旧主题色从左下角收缩，露出下方已切换的新主题内容 */}
+      {/* 柔和淡入淡出遮罩，减轻亮度跳变带来的刺眼感 */}
       <AnimatePresence>
         {isTransitioning && leavingTheme !== null && (
           <motion.div
             key="theme-transition"
-            initial={{
-              clipPath: "circle(150% at 0% 100%)",
-            }}
+            initial={{ opacity: 0.5 }}
             animate={{
-              clipPath: "circle(0% at 0% 100%)",
+              opacity: 0,
               transition: {
-                duration: 0.7,
+                duration: 0.6,
                 ease: [0.25, 0.46, 0.45, 0.94],
               },
             }}
-            exit={{
-              clipPath: "circle(0% at 0% 100%)",
-            }}
+            exit={{ opacity: 0 }}
             onAnimationComplete={handleTransitionEnd}
             className="fixed inset-0 z-[9999] pointer-events-none"
             style={{
-              backgroundColor: THEME_BG[leavingTheme],
+              backgroundColor: theme === "light" ? "#f5f3f0" : "#050608",
             }}
           />
         )}

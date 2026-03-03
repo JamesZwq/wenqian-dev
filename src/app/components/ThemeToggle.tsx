@@ -13,8 +13,8 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className="font-[family-name:var(--font-press-start)] text-[10px] px-3 py-2 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88] hover:bg-[#00ff88]/20 transition-colors"
-      style={{ boxShadow: "0 0 10px rgba(0,255,136,0.2)" }}
+      className="min-h-[44px] min-w-[44px] flex items-center justify-center font-[family-name:var(--font-press-start)] text-[10px] px-3 py-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] text-[var(--pixel-accent)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_12%,var(--pixel-bg-alt))] transition-colors touch-manipulation"
+      style={{ boxShadow: "0 0 10px var(--pixel-glow)" }}
     >
       [ {isDark ? "DARK" : "LITE"} ]
     </motion.button>

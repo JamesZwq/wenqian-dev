@@ -16,6 +16,7 @@ import {
 import ScrollProgress from "./components/ScrollProgress";
 import BackToTop from "./components/BackToTop";
 import ResearchDetailModal from "./components/ResearchDetailModal";
+import DraggableFloat from "./components/DraggableFloat";
 
 function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -53,7 +54,8 @@ function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: strin
   );
 }
 
-const sectionTitleClass = "font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[#00ff88] tracking-widest uppercase";
+const sectionTitleClass =
+  "font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[var(--pixel-accent)] tracking-widest uppercase";
 
 const SectionTitle = ({
   children,
@@ -68,7 +70,7 @@ const SectionTitle = ({
     viewport={{ once: true }}
     className="flex items-center gap-4 mb-10"
   >
-    <div className="p-2 border-2 border-[#00ff88] bg-[#0a0a0b] text-[#00ff88]">
+    <div className="p-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
       <Icon size={20} />
     </div>
     <h2 className={`${sectionTitleClass}`}>
@@ -108,22 +110,22 @@ export default function ExtraSections() {
         topic={modalTopic}
       />
 
-      <div ref={ref} className="max-w-5xl mx-auto px-6 py-20 md:py-28">
+      <div ref={ref} className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20 md:py-28">
         {/* Stats - Pixel blocks */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mb-24"
+          className="mb-16 sm:mb-24"
         >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
               { value: 7, suffix: "x", label: "Efficiency", icon: Rocket },
               { value: 36, suffix: "x", label: "Memory ↓", icon: Layers },
               { value: 500, suffix: "+", label: "Students", icon: Target },
               { value: 3, suffix: "", label: "Papers", icon: Award },
             ].map(({ value, suffix, label, icon: Icon }, i) => (
-              <motion.div
+              <DraggableFloat
                 key={label}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -131,16 +133,17 @@ export default function ExtraSections() {
                 transition={{ delay: i * 0.1 }}
                 whileHover={{
                   scale: 1.05,
-                  borderColor: "#00ff88",
-                  boxShadow: "0 0 20px rgba(0,255,136,0.2)",
+                  borderColor: "var(--pixel-border)",
+                  boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="p-5 border-2 border-[#00ff88]/50 bg-[#0a0a0b] text-center font-[family-name:var(--font-jetbrains)]">
-                <Icon className="mx-auto mb-2 text-[#00ff88]" size={24} />
-                <div className="text-2xl md:text-3xl font-bold text-[#00ff88]">
+                className="p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-center font-[family-name:var(--font-jetbrains)]"
+              >
+                <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
+                <div className="text-2xl md:text-3xl font-bold text-[var(--pixel-accent)]">
                   <AnimatedCounter value={value} suffix={suffix} />
                 </div>
-                <p className="text-xs text-[#6b7b6f] mt-1">{label}</p>
-              </motion.div>
+                <p className="text-xs text-[var(--pixel-muted)] mt-1">{label}</p>
+              </DraggableFloat>
             ))}
           </div>
         </motion.section>
@@ -151,10 +154,10 @@ export default function ExtraSections() {
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
           variants={containerVariants}
-          className="mb-24"
+          className="mb-16 sm:mb-24"
         >
           <SectionTitle icon={Rocket}>Projects</SectionTitle>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {[
               {
                 title: "Billion-Scale Hypergraph Engine",
@@ -167,28 +170,28 @@ export default function ExtraSections() {
                 desc: "Cloud-native deployment of graph algorithms with auto-scaling and fault tolerance.",
               },
             ].map((project, i) => (
-              <motion.div
+              <DraggableFloat
                 key={project.title}
                 variants={itemVariants}
                 whileHover={{
                   x: 4,
-                  borderColor: "#00ff88",
-                  boxShadow: "0 0 15px rgba(0,255,136,0.15)",
+                  borderColor: "var(--pixel-border)",
+                  boxShadow: "0 0 15px var(--pixel-glow)",
                 }}
-                className="group p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b] hover:border-[#00ff88] transition-colors"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] hover:border-[var(--pixel-border)] transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88]">
+                  <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
                     {project.title}
                   </h3>
-                  <span className="text-[10px] font-mono text-[#00d4ff]">
+                  <span className="text-[10px] font-mono text-[var(--pixel-accent-2)]">
                     {project.tech}
                   </span>
                 </div>
                 <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)]">
                   {project.desc}
                 </p>
-              </motion.div>
+              </DraggableFloat>
             ))}
           </div>
         </motion.section>
@@ -199,10 +202,10 @@ export default function ExtraSections() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={containerVariants}
-          className="mb-24"
+          className="mb-16 sm:mb-24"
         >
           <SectionTitle icon={Layers}>Research Focus</SectionTitle>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[
               {
                 title: "Core Decomposition" as const,
@@ -220,29 +223,29 @@ export default function ExtraSections() {
                 icon: Rocket,
               },
             ].map((item, i) => (
-              <motion.div
+              <DraggableFloat
                 key={item.title}
                 variants={itemVariants}
                 onClick={() => setModalTopic(item.title)}
                 whileHover={{
                   scale: 1.02,
-                  borderColor: "#00ff88",
-                  boxShadow: "0 0 20px rgba(0,255,136,0.2)",
+                  borderColor: "var(--pixel-border)",
+                  boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="p-5 border-2 border-[#00ff88]/40 bg-[#0a0a0b] cursor-pointer group"
+                className="p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] cursor-pointer group touch-manipulation"
               >
-                <div className="w-10 h-10 border-2 border-[#00ff88] flex items-center justify-center mb-4">
-                  <item.icon className="text-[#00ff88]" size={20} />
+                <div className="w-10 h-10 border-2 border-[var(--pixel-border)] flex items-center justify-center mb-4">
+                  <item.icon className="text-[var(--pixel-accent)]" size={20} />
                 </div>
-                <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[#00ff88] mb-2 flex items-center justify-between">
+                <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)] mb-2 flex items-center justify-between">
                   {item.title}
-                  <ChevronRight size={20} className="text-[#00ff88] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ChevronRight size={20} className="text-[var(--pixel-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </h3>
-                <p className="text-sm text-[#6b7b6f] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)]">
                   {item.desc}
                 </p>
-                <p className="mt-2 text-[10px] text-[#00d4ff] font-mono">Click to learn more →</p>
-              </motion.div>
+                <p className="mt-2 text-[10px] text-[var(--pixel-accent-2)] font-mono">Click to learn more →</p>
+              </DraggableFloat>
             ))}
           </div>
         </motion.section>
@@ -253,25 +256,25 @@ export default function ExtraSections() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={containerVariants}
-          className="mb-24"
+          className="mb-16 sm:mb-24"
         >
           <SectionTitle icon={Target}>Beyond Academia</SectionTitle>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
               { text: "Coffee-powered debugging", emoji: "☕" },
               { text: "Lo-fi beats while writing", emoji: "🎵" },
               { text: "Strategic games enthusiast", emoji: "🎮" },
-              { text: "Open source contributor", emoji: "✨" },
+              { text: "Piano performance — just nailed my last piece", emoji: "🎹" },
             ].map((fact, i) => (
-              <motion.div
+              <DraggableFloat
                 key={fact.text}
                 variants={itemVariants}
-                whileHover={{ scale: 1.03, borderColor: "#00ff88" }}
-                className="p-4 border-2 border-[#00ff88]/30 bg-[#0a0a0b] font-[family-name:var(--font-jetbrains)]"
+                whileHover={{ scale: 1.03, borderColor: "var(--pixel-border)" }}
+                className="p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)] font-[family-name:var(--font-jetbrains)] touch-manipulation"
               >
                 <span className="text-xl block mb-2">{fact.emoji}</span>
-                <p className="text-sm text-[#6b7b6f] font-medium">{fact.text}</p>
-              </motion.div>
+                <p className="text-sm text-[var(--pixel-muted)] font-medium">{fact.text}</p>
+              </DraggableFloat>
             ))}
           </div>
         </motion.section>
@@ -279,7 +282,7 @@ export default function ExtraSections() {
         {/* Parallax Divider */}
         <motion.div
           style={{ y: parallaxY }}
-          className="mb-24 h-px bg-gradient-to-r from-transparent via-[#00ff88]/50 to-transparent"
+          className="mb-16 sm:mb-24 h-px bg-gradient-to-r from-transparent via-[color-mix(in_oklab,var(--pixel-accent)_50%,transparent)] to-transparent"
         />
 
         {/* Contact */}
@@ -290,7 +293,7 @@ export default function ExtraSections() {
           className="text-center"
         >
           <SectionTitle icon={Mail}>Get in Touch</SectionTitle>
-          <p className="text-[#6b7b6f] max-w-xl mx-auto mb-8 font-[family-name:var(--font-jetbrains)] text-sm">
+          <p className="text-[var(--pixel-muted)] max-w-xl mx-auto mb-6 sm:mb-8 font-[family-name:var(--font-jetbrains)] text-sm px-1">
             Interested in collaboration, research discussions, or just saying hi?
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -302,9 +305,9 @@ export default function ExtraSections() {
               <motion.a
                 key={label}
                 href={href}
-                whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(0,255,136,0.3)" }}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 15px var(--pixel-glow)" }}
                 whileTap={{ scale: 0.98 }}
-                className="px-5 py-2.5 border-2 border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88] font-[family-name:var(--font-press-start)] text-[10px] flex items-center gap-2 hover:bg-[#00ff88]/20 transition-colors"
+                className="min-h-[44px] px-5 py-2.5 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] flex items-center justify-center gap-2 hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
               >
                 <Icon size={16} /> [ {label} ]
               </motion.a>
