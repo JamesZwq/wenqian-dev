@@ -299,36 +299,38 @@ export default function ResumeSections() {
 
           <SectionTitle icon={IconUsers}>Teaching Experience</SectionTitle>
           <ul className="space-y-4">
-            <DraggableFloat
-              as="li"
-              variants={itemVariants}
-              className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
-            >
-              <div className="mt-1 w-2 h-2 bg-[var(--pixel-accent-2)] flex-shrink-0" />
-              <div>
-                <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
-                  Database Systems (COMP3311/9311)
-                </strong>
-                <span className="text-[var(--pixel-muted)] text-sm">
-                  Instructed 500+ students on SQL and Relational Algebra.
-                </span>
-              </div>
-            </DraggableFloat>
-            <DraggableFloat
-              as="li"
-              variants={itemVariants}
-              className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
-            >
-              <div className="mt-1 w-2 h-2 bg-[var(--pixel-warn)] flex-shrink-0" />
-              <div>
-                <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
-                  Data Analytics for Graphs (COMP9312)
-                </strong>
-                <span className="text-[var(--pixel-muted)] text-sm">
-                  Taught advanced graph theory and algorithms.
-                </span>
-              </div>
-            </DraggableFloat>
+            <li>
+              <DraggableFloat
+                variants={itemVariants}
+                className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+              >
+                <div className="mt-1 w-2 h-2 bg-[var(--pixel-accent-2)] flex-shrink-0" />
+                <div>
+                  <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
+                    Database Systems (COMP3311/9311)
+                  </strong>
+                  <span className="text-[var(--pixel-muted)] text-sm">
+                    Instructed 500+ students on SQL and Relational Algebra.
+                  </span>
+                </div>
+              </DraggableFloat>
+            </li>
+            <li>
+              <DraggableFloat
+                variants={itemVariants}
+                className="flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+              >
+                <div className="mt-1 w-2 h-2 bg-[var(--pixel-warn)] flex-shrink-0" />
+                <div>
+                  <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
+                    Data Analytics for Graphs (COMP9312)
+                  </strong>
+                  <span className="text-[var(--pixel-muted)] text-sm">
+                    Taught advanced graph theory and algorithms.
+                  </span>
+                </div>
+              </DraggableFloat>
+            </li>
           </ul>
         </div>
       </motion.section>
