@@ -10,6 +10,11 @@ const VIEW_SIZE = 50;
 const BOX_SIZE = 1;
 const BOX_GAP = 0.0;
 
+// 随机单块旋转动效的默认参数
+const RANDOM_BLOCK_DURATION = 6; // 每个方块完整“起落+旋转”时间（秒），控制单个方块起落速度
+const RANDOM_BLOCK_HEIGHT = 4; // 单块起落的高度
+const RANDOM_SPAWN_INTERVAL = 0.3; // 每隔多少秒启动一个新的方块动画（可并发）
+
 export function Scene({ isFullscreen, theme }) {
   const containerRef = useRef(null);
   const meshRef = useRef(null);
@@ -20,11 +25,31 @@ export function Scene({ isFullscreen, theme }) {
   const overlayRef = useRef(null);
   const animationFrameRef = useRef(null);
   const themeAnimationFrameRef = useRef(null);
+  const [mode, setMode] = useState("wave"); // "wave" | "random"
+  const modeRef = useRef("wave");
   const [waveProgress, setWaveProgress] = useState(0);
   const waveProgressRef = useRef(0);
   const lastWaveProgressUpdateRef = useRef(0);
   const waveOriginRef = useRef({ x: GRID_SIZE / 2, y: GRID_SIZE / 2 });
   const lastLocalTRef = useRef(0);
+  const randomActiveBlocksRef = useRef([]); // { index, startTime }[]
+  const lastSpawnTimeRef = useRef(0);
+
+  // 外部按钮通过 window 事件切换模式
+  useEffect(() => {
+    const handleToggle = () => {
+      setMode((prev) => (prev === "wave" ? "random" : "wave"));
+    };
+    window.addEventListener("bg-mode-toggle", handleToggle);
+    return () => {
+      window.removeEventListener("bg-mode-toggle", handleToggle);
+    };
+  }, []);
+
+  // 保证动画循环中拿到的是最新的模式
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const basePositions = useMemo(() => {
     const positions = [];
@@ -84,6 +109,8 @@ export function Scene({ isFullscreen, theme }) {
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
+    // 让 WebGL 画布本身不拦截鼠标事件，方便上层 UI（按钮等）可点击
+    renderer.domElement.style.pointerEvents = "none";
     rendererRef.current = renderer;
 
     const scene = new THREE.Scene();
@@ -205,69 +232,136 @@ export function Scene({ isFullscreen, theme }) {
           overlay.position.x = drift;
         }
 
-        // 呼吸式“涟漪”：以网格中心为起点，沿半径做一圈圈缓慢扩散，
-        // 每个方块在波前经过时都会慢慢升起、再慢慢落下。
+        // 背景动效：根据当前模式在“涟漪扩散”和“随机单块旋转”之间切换
         if (meshRef.current) {
           const mesh = meshRef.current;
           const t = clock.getElapsedTime();
+          const currentMode = modeRef.current;
 
-          const maxRadius = Math.sqrt((GRID_SIZE * GRID_SIZE) * 2);
-          const waveSpeed = maxRadius / 50; // 单位/秒，控制整圈波纹走完的大致时间
-          const pulseDuration = 5; // 单位：秒，单个方块完整“起落”时间
+          if (currentMode === "wave") {
+            // 呼吸式“涟漪”：以随机起点为中心，沿半径做一圈圈缓慢扩散，
+            // 每个方块在波前经过时都会慢慢升起、再慢慢落下。
+            const maxRadius = Math.sqrt((GRID_SIZE * GRID_SIZE) * 2);
+            const waveSpeed = maxRadius / 50; // 单位/秒，控制整圈波纹走完的大致时间
+            const pulseDuration = 5; // 单位：秒，单个方块完整“起落”时间
+            const amp = 3; // 最大前后位移（世界单位），更明显但仍然克制
 
-          const amp = 3; // 最大前后位移（世界单位），更明显但仍然克制
+            // 一次完整涟漪的总时长：波前到达最远距离 + 单个方块的起落时间
+            const totalCycle = maxRadius / waveSpeed + pulseDuration;
+            const localT = t % totalCycle;
 
-          // 一次完整涟漪的总时长：波前到达最远距离 + 单个方块的起落时间
-          const totalCycle = maxRadius / waveSpeed + pulseDuration;
-          const localT = t % totalCycle;
+            // 每次新的循环开始时，随机选择一个新的起点方块作为涟漪中心
+            if (localT < lastLocalTRef.current) {
+              const randRow = Math.random() * GRID_SIZE;
+              const randCol = Math.random() * GRID_SIZE;
+              waveOriginRef.current = { x: randCol, y: randRow };
+            }
+            lastLocalTRef.current = localT;
 
-          // 每次新的循环开始时，随机选择一个新的起点方块作为涟漪中心
-          if (localT < lastLocalTRef.current) {
-            const randRow = Math.random() * GRID_SIZE;
-            const randCol = Math.random() * GRID_SIZE;
-            waveOriginRef.current = { x: randCol, y: randRow };
-          }
-          lastLocalTRef.current = localT;
+            const centerX = waveOriginRef.current.x;
+            const centerY = waveOriginRef.current.y;
 
-          const centerX = waveOriginRef.current.x;
-          const centerY = waveOriginRef.current.y;
-
-          // 记录当前循环进度，用于在 UI 上显示进度条
-          const frac = localT / totalCycle;
-          waveProgressRef.current = frac;
-          const nowMs = performance.now();
-          if (nowMs - lastWaveProgressUpdateRef.current > 120) {
-            lastWaveProgressUpdateRef.current = nowMs;
-            setWaveProgress(frac);
-          }
-
-          const localDummy = dummy;
-
-          for (let i = 0; i < instanceCount; i++) {
-            const p = basePositions[i];
-
-            const dx = p.x - centerX;
-            const dy = p.y - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // 对于每个方块，波前到达它的时间大约为 dist / waveSpeed
-            const reachTime = dist / waveSpeed;
-            const phase = localT - reachTime; // >0 表示波前已经到达
-
-            let offsetZ = 0;
-            if (phase > 0 && phase < pulseDuration) {
-              const u = phase / pulseDuration; // 0 → 1
-              // 使用平滑的“起落”曲线：缓慢升起，再缓慢落下
-              const s = Math.sin(Math.PI * u); // 0 → 1 → 0
-              offsetZ = amp * s * s; // 保持非负，顶点更圆润
+            // 记录当前循环进度，用于在 UI 上显示进度条
+            const frac = localT / totalCycle;
+            waveProgressRef.current = frac;
+            const nowMs = performance.now();
+            if (nowMs - lastWaveProgressUpdateRef.current > 120) {
+              lastWaveProgressUpdateRef.current = nowMs;
+              setWaveProgress(frac);
             }
 
-            localDummy.position.set(p.x, p.y, offsetZ);
-            localDummy.rotation.set(0, 0, 0);
-            localDummy.updateMatrix();
-            mesh.setMatrixAt(i, localDummy.matrix);
+            const localDummy = dummy;
+
+            for (let i = 0; i < instanceCount; i++) {
+              const p = basePositions[i];
+
+              const dx = p.x - centerX;
+              const dy = p.y - centerY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              // 对于每个方块，波前到达它的时间大约为 dist / waveSpeed
+              const reachTime = dist / waveSpeed;
+              const phase = localT - reachTime; // >0 表示波前已经到达
+
+              let offsetZ = 0;
+              if (phase > 0 && phase < pulseDuration) {
+                const u = phase / pulseDuration; // 0 → 1
+                // 使用平滑的“起落”曲线：缓慢升起，再缓慢落下
+                const s = Math.sin(Math.PI * u); // 0 → 1 → 0
+                offsetZ = amp * s * s; // 保持非负，顶点更圆润
+              }
+
+              localDummy.position.set(p.x, p.y, offsetZ);
+              localDummy.rotation.set(0, 0, 0);
+              localDummy.updateMatrix();
+              mesh.setMatrixAt(i, localDummy.matrix);
+            }
+
+            mesh.instanceMatrix.needsUpdate = true;
+          } else {
+            // 随机单块起落 + 旋转动效（可并发，多块同时动画）
+            const localDummy = dummy;
+
+            // 每隔固定时间启动一个新的方块动画
+            if (t - lastSpawnTimeRef.current >= RANDOM_SPAWN_INTERVAL) {
+              lastSpawnTimeRef.current = t;
+              const newIndex = Math.floor(Math.random() * instanceCount);
+              randomActiveBlocksRef.current.push({
+                index: newIndex,
+                startTime: t,
+              });
+            }
+
+            const active = randomActiveBlocksRef.current;
+            const nextActive = [];
+
+            // 为每个实例准备默认的变换（z 位移 + y 旋转）
+            const offsetsZ = new Array(instanceCount).fill(0);
+            const rotationsY = new Array(instanceCount).fill(0);
+
+            // 计算当前所有活动方块的动画状态
+            for (let k = 0; k < active.length; k++) {
+              const item = active[k];
+              const elapsed = t - item.startTime;
+              if (elapsed >= 0 && elapsed < RANDOM_BLOCK_DURATION) {
+                // 这一块仍然在动画中，保留到下一帧
+                nextActive.push(item);
+
+                const u = Math.min(
+                  Math.max(elapsed / RANDOM_BLOCK_DURATION, 0),
+                  1
+                ); // 0 → 1
+                const s = Math.sin(Math.PI * u); // 0 → 1 → 0
+                const z = RANDOM_BLOCK_HEIGHT * s * s;
+                const ry = 2 * Math.PI * u; // 一整圈旋转
+
+                // 如果同一个 index 被多次触发，取 z 更大的那一个，保证形状自然
+                if (z > offsetsZ[item.index]) {
+                  offsetsZ[item.index] = z;
+                  rotationsY[item.index] = ry;
+                }
+              }
+            }
+
+            // 更新活动列表
+            randomActiveBlocksRef.current = nextActive;
+
+            // 随机模式下不再显示进度条，这里不用更新 waveProgress
+
+            // 应用到每一个实例
+            for (let i = 0; i < instanceCount; i++) {
+              const p = basePositions[i];
+              const z = offsetsZ[i];
+              const ry = rotationsY[i];
+
+              localDummy.position.set(p.x, p.y, z);
+              localDummy.rotation.set(0, ry, 0);
+              localDummy.updateMatrix();
+              mesh.setMatrixAt(i, localDummy.matrix);
+            }
+
+            mesh.instanceMatrix.needsUpdate = true;
           }
-          mesh.instanceMatrix.needsUpdate = true;
         }
 
         renderer.render(scene, currentCamera);
@@ -371,17 +465,19 @@ export function Scene({ isFullscreen, theme }) {
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
-      {/* 涟漪进度条（下一次循环进度），固定在右下角 */}
-      <div className="pointer-events-none absolute right-2 bottom-2 z-20 flex items-center gap-2 text-[9px] font-[family-name:var(--font-press-start)] tracking-[0.15em] text-[color-mix(in_oklab,var(--pixel-text)_80%,transparent)]">
-        <span className="hidden sm:inline-block">WAVE</span>
-        <div className="w-20 h-[3px] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)] border border-[color-mix(in_oklab,var(--pixel-border)_80%,black)] overflow-hidden">
-          <div
-            className="h-full bg-[var(--pixel-accent)]"
-            style={{ width: `${Math.round(waveProgress * 100)}%` }}
-          />
+      {/* 右下角进度条：仅在涟漪模式下展示当前循环进度，并稍微往上移，避免和外部按钮重叠 */}
+      {mode === "wave" && (
+        <div className="pointer-events-none absolute right-2 bottom-10 z-10 flex items-center gap-2 text-[9px] font-[family-name:var(--font-press-start)] tracking-[0.15em] text-[color-mix(in_oklab,var(--pixel-text)_80%,transparent)]">
+          <span className="hidden sm:inline-block">WAVE</span>
+          <div className="w-20 h-[3px] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)] border border-[color-mix(in_oklab,var(--pixel-border)_80%,black)] overflow-hidden">
+            <div
+              className="h-full bg-[var(--pixel-accent)]"
+              style={{ width: `${Math.round(waveProgress * 100)}%` }}
+            />
+          </div>
+          <span>{Math.round(waveProgress * 100)}%</span>
         </div>
-        <span>{Math.round(waveProgress * 100)}%</span>
-      </div>
+      )}
     </div>
   );
 }

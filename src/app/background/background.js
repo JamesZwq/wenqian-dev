@@ -23,7 +23,7 @@ export default function Background() {
   return (
     <MotionConfig transition={transition}>
       <div
-        className="fixed inset-0 z-0 pointer-events-none"
+        className="fixed inset-0 z-0"
         data-is-fullscreen={isFullscreen}
       >
         <motion.div className="w-screen h-screen" layout>

@@ -6,6 +6,7 @@ import PixelKeyboardHandler from "./components/PixelKeyboardHandler";
 import Background from "./background/background";
 import CursorPet from "./components/CursorPet";
 import PetJailToggle from "./components/PetJailToggle";
+import BackgroundModeToggle from "./components/BackgroundModeToggle";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         <Background />
         <CursorPet />
         <PetJailToggle />
+        <BackgroundModeToggle />
 
         <div className="relative z-10">
           <ParallaxHero />
