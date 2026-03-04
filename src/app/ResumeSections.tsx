@@ -12,6 +12,84 @@ import {
 } from "./components/RefinedIcons";
 import DraggableFloat from "./components/DraggableFloat";
 
+function MiniBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center justify-center h-5 px-2 border border-[color-mix(in_oklab,var(--pixel-border)_45%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm text-[10px] font-mono text-[var(--pixel-text)]">
+      {children}
+    </span>
+  );
+}
+
+function ToolLogo({ id }: { id: "spark" | "flink" | "k8s" | "docker" | "linux" | "unsw" }) {
+  // 极简单色“logo”，用 currentColor 保持主题一致
+  const common = "w-4 h-4 sm:w-[18px] sm:h-[18px] flex-shrink-0";
+
+  if (id === "unsw") {
+    return (
+      <span
+        className="inline-flex items-center justify-center w-8 h-5 border border-[color-mix(in_oklab,var(--pixel-border)_45%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm font-[family-name:var(--font-press-start)] text-[9px] text-[var(--pixel-text)]"
+        aria-label="UNSW"
+      >
+        UNSW
+      </span>
+    );
+  }
+
+  // 这些图形不追求 1:1 品牌复刻，目标是“有辨识度 + 不花 + 统一质感”
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={common}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {id === "spark" && (
+        <>
+          <path d="M12 2l1.4 5.2L19 6l-3.8 3.2L17 14l-5-2.8L7 14l1.8-4.8L5 6l5.6 1.2L12 2z" />
+        </>
+      )}
+      {id === "flink" && (
+        <>
+          <path d="M13 2L6 13h6l-1 9 7-11h-6l1-9z" />
+        </>
+      )}
+      {id === "k8s" && (
+        <>
+          <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" />
+          <path d="M12 7v10" />
+          <path d="M8 9l8 6" />
+          <path d="M16 9l-8 6" />
+        </>
+      )}
+      {id === "docker" && (
+        <>
+          <path d="M4 14h16" />
+          <path d="M6 14v-3h3v3" />
+          <path d="M9 14v-3h3v3" />
+          <path d="M12 14v-3h3v3" />
+          <path d="M15 14v-3h3v3" />
+          <path d="M7 11V8h3v3" />
+          <path d="M10 11V8h3v3" />
+          <path d="M13 11V8h3v3" />
+          <path d="M5 14c0 4 3 6 7 6s7-2 7-6" />
+        </>
+      )}
+      {id === "linux" && (
+        <>
+          <path d="M12 3c2.2 0 4 1.8 4 4v4c0 2-1.2 3.8-4 3.8S8 13 8 11V7c0-2.2 1.8-4 4-4z" />
+          <path d="M9.5 18.5c.5 1.2 1.4 2 2.5 2s2-.8 2.5-2" />
+          <path d="M10 8h.01" />
+          <path d="M14 8h.01" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -45,7 +123,7 @@ const SectionTitle = ({
     <div className="p-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
       <Icon />
     </div>
-    <h2 className="font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[var(--pixel-accent)] tracking-widest uppercase">
+    <h2 className="font-[family-name:var(--font-press-start)] text-sm md:text-base text-[var(--pixel-accent)] tracking-widest uppercase">
       [ {children} ]
     </h2>
   </motion.div>
@@ -55,12 +133,14 @@ const TimelineItem = ({
   year,
   title,
   place,
+  logo,
   desc,
   highlight,
 }: {
   year: string;
   title: string;
   place: string;
+  logo?: React.ReactNode;
   desc: string;
   highlight?: string;
 }) => (
@@ -72,21 +152,24 @@ const TimelineItem = ({
     <div className="absolute left-[-4px] top-2 w-3 h-3 bg-[var(--pixel-border)] md:left-auto md:right-1/2 md:mr-[-6px] z-10" />
 
     <div className="md:col-span-5 md:text-right md:pr-8">
-      <span className="inline-block px-3 py-1 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[10px] font-mono text-[var(--pixel-text)] mb-2">
+      <span className="inline-block px-3 py-1 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-xs sm:text-sm font-mono text-[var(--pixel-text)] mb-2">
         {year}
       </span>
-      <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
+      <h3 className="font-[family-name:var(--font-press-start)] text-xs sm:text-sm text-[var(--pixel-accent)]">
         {title}
       </h3>
-      <p className="text-sm text-[var(--pixel-text)]">{place}</p>
+      <p className="text-sm sm:text-base text-[var(--pixel-text)] inline-flex items-center gap-2">
+        {logo}
+        <span>{place}</span>
+      </p>
     </div>
     <div className="md:col-span-2" />
     <div className="md:col-span-5 md:pl-8 mt-2 md:mt-0">
-      <p className="text-sm text-[#e0ffe8] font-[family-name:var(--font-jetbrains)] leading-relaxed">
+      <p className="text-sm sm:text-base text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)] leading-relaxed">
         {desc}
       </p>
       {highlight && (
-        <div className="mt-2 flex items-center gap-2 text-xs text-[#00d4ff] font-mono">
+        <div className="mt-2 flex items-center gap-2 text-sm text-[var(--pixel-text)] font-mono">
           <IconZap /> {highlight}
         </div>
       )}
@@ -156,18 +239,18 @@ const SkillBar = ({
 }) => (
   <div className="mb-5">
     <div className="flex justify-between mb-2">
-      <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)]">
+      <div className="flex items-center gap-2 font-[family-name:var(--font-jetbrains)] text-sm sm:text-base text-[var(--pixel-text)]">
         <span className="inline-flex transition-transform duration-300 ease-out group-hover:scale-110 group-hover:rotate-6">
           <Icon size={16} className="text-[var(--pixel-accent)]" />
         </span>{" "}
         {name}
         {highlight && (
-          <span className="text-[10px] px-2 py-0.5 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[var(--pixel-accent)]">
+          <span className="text-xs px-2 py-0.5 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[var(--pixel-accent)]">
             LOW_LEVEL
           </span>
         )}
       </div>
-      <span className="text-[10px] font-mono text-[var(--pixel-text)]">{level}%</span>
+      <span className="text-xs sm:text-sm font-mono text-[var(--pixel-text)]">{level}%</span>
     </div>
     <div className="h-2 w-full bg-[var(--pixel-card-bg)] backdrop-blur-sm border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
       <motion.div
@@ -198,6 +281,7 @@ export default function ResumeSections() {
             year="Sep 2025 - Present"
             title="Ph.D. in Computer Science"
             place="UNSW (University of New South Wales)"
+            logo={<ToolLogo id="unsw" />}
             desc="Topic: Efficient Algorithms for Large-scale Graph Analysis."
             highlight="Faculty Scholarship, Top 2 Most Welcoming Demonstration"
           />
@@ -205,6 +289,7 @@ export default function ResumeSections() {
             year="Sep 2023 - Aug 2025"
             title="MPhil in Computer Science"
             place="UNSW"
+            logo={<ToolLogo id="unsw" />}
             desc="Thesis: Scalable Core Decomposition in Large Networks."
             highlight="Postdoctoral Writing Fellowship"
           />
@@ -212,6 +297,7 @@ export default function ResumeSections() {
             year="Sep 2020 - Aug 2023"
             title="B.Sc. in Computer Science"
             place="UNSW"
+            logo={<ToolLogo id="unsw" />}
             desc="Graduated with Distinction."
             highlight="Dean's List 2022"
           />
@@ -280,25 +366,30 @@ export default function ResumeSections() {
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 sm:mb-12">
             {[
-              "Apache Spark",
-              "Apache Flink",
-              "Kubernetes",
-              "Docker",
-              "Linux",
-            ].map((tech, i) => (
+              { id: "spark" as const, label: "Apache Spark" },
+              { id: "flink" as const, label: "Apache Flink" },
+              { id: "k8s" as const, label: "Kubernetes" },
+              { id: "docker" as const, label: "Docker" },
+              { id: "linux" as const, label: "Linux" },
+            ].map((tech) => (
               <DraggableFloat
-                key={tech}
+                key={tech.id}
                 variants={itemVariants}
                 whileHover={{
                   scale: 1.03,
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 16px var(--pixel-glow)",
                 }}
-                className="group px-3 py-3 border-2 border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] text-xs sm:text-sm text-[var(--pixel-text)]"
+                className="group px-3 py-3 border-2 border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] text-base sm:text-lg text-[var(--pixel-text)]"
               >
-                <span className="inline-block transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5">
-                  {tech}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[color-mix(in_oklab,var(--pixel-text)_85%,transparent)]">
+                    <ToolLogo id={tech.id} />
+                  </span>
+                  <span className="inline-block transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5">
+                    {tech.label}
+                  </span>
+                </div>
               </DraggableFloat>
             ))}
           </div>

@@ -7,7 +7,6 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 
 type Theme = "light" | "dark";
 
@@ -28,10 +27,8 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [leavingTheme, setLeavingTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -40,7 +37,7 @@ export default function ThemeProvider({
       "(prefers-color-scheme: dark)"
     ).matches;
     const initial = stored ?? (prefersDark ? "dark" : "light");
-    setThemeState(initial);
+    setTheme(initial);
   }, []);
 
   useEffect(() => {
@@ -54,54 +51,21 @@ export default function ThemeProvider({
     localStorage.setItem("theme", theme);
   }, [theme, mounted]);
 
-  const setTheme = useCallback(
+  const setThemeWithGuard = useCallback(
     (t: Theme) => {
       if (t === theme) return;
-      setLeavingTheme(theme); // 记录要离开的主题（遮罩颜色）
-      setThemeState(t); // 立即应用新主题
-      setIsTransitioning(true);
+      setTheme(t);
     },
     [theme]
   );
 
   const toggleTheme = useCallback(() => {
-    const target = theme === "light" ? "dark" : "light";
-    setLeavingTheme(theme);
-    setThemeState(target);
-    setIsTransitioning(true);
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   }, [theme]);
 
-  const handleTransitionEnd = useCallback(() => {
-    setLeavingTheme(null);
-    setIsTransitioning(false);
-  }, []);
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme: setThemeWithGuard, toggleTheme }}>
       {children}
-
-      {/* 柔和淡入淡出遮罩，减轻亮度跳变带来的刺眼感 */}
-      <AnimatePresence>
-        {isTransitioning && leavingTheme !== null && (
-          <motion.div
-            key="theme-transition"
-            initial={{ opacity: 0.5 }}
-            animate={{
-              opacity: 0,
-              transition: {
-                duration: 0.6,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              },
-            }}
-            exit={{ opacity: 0 }}
-            onAnimationComplete={handleTransitionEnd}
-            className="fixed inset-0 z-[9999] pointer-events-none"
-            style={{
-              backgroundColor: theme === "light" ? "#f5f3f0" : "#050608",
-            }}
-          />
-        )}
-      </AnimatePresence>
     </ThemeContext.Provider>
   );
 }
