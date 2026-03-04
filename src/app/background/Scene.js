@@ -13,8 +13,15 @@ const BOX_GAP = 0.0;
 // 随机单块旋转动效的默认参数
 const RANDOM_BLOCK_DURATION = 6; // 每个方块完整“起落+旋转”时间（秒），控制单个方块起落速度
 const RANDOM_BLOCK_HEIGHT = 2; // 单块起落的高度
-const RANDOM_SPAWN_INTERVAL = 0.3; // 每隔多少秒启动一个新的方块动画（可并发）
+const RANDOM_SPAWN_INTERVAL = 1; // 每隔多少秒启动一个新的方块动画（可并发）
 const MODE_SWITCH_SETTLE_DURATION = 1.2; // 模式切换时的“沉降收尾”时长（秒）
+
+// 入场动画：方块从空中落下拼成背景
+const INTRO_DURATION = 3.2; // 入场总时长（秒）
+const INTRO_FALL_DURATION = 0.6; // 单个方块下落时长
+const INTRO_MAX_DELAY = 2.4; // 最晚落地方块的延迟（秒）
+const INTRO_START_Z_MIN = 14; // 起始高度范围
+const INTRO_START_Z_MAX = 28;
 
 export function Scene({ isFullscreen, theme }) {
   const containerRef = useRef(null);
@@ -91,6 +98,21 @@ export function Scene({ isFullscreen, theme }) {
 
     return { lightColors: lc, darkColors: dc };
   }, []);
+
+  // 入场“落下拼成”动画：每个方块的延迟、起始高度、下落时轻微旋转
+  const introDropData = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < instanceCount; i++) {
+      arr.push({
+        delay: Math.random() * INTRO_MAX_DELAY,
+        startZ:
+          INTRO_START_Z_MIN +
+          Math.random() * (INTRO_START_Z_MAX - INTRO_START_Z_MIN),
+        tumbleRy: (Math.random() - 0.5) * Math.PI * 0.4,
+      });
+    }
+    return arr;
+  }, [instanceCount]);
 
   // 外部按钮通过 window 事件切换模式
   useEffect(() => {
@@ -237,9 +259,9 @@ export function Scene({ isFullscreen, theme }) {
 
     applyThemeColors(theme);
 
-    // 进入时做一次整体“翻转”小动画：左下后退，右上前倾
+    // 进入时：整体倾斜 + 方块从空中落下拼成背景
     const clock = new THREE.Clock();
-    const duration = 3; // 入场翻转动画时长（秒）
+    const duration = INTRO_DURATION; // 入场总时长，与落下动画同步
     const targetRotation = {
       x: THREE.MathUtils.degToRad(-40),
       y: THREE.MathUtils.degToRad(40),
@@ -285,6 +307,34 @@ export function Scene({ isFullscreen, theme }) {
             lastFrameRyRef.current = new Float32Array(instanceCount);
           }
 
+          // 入场阶段：方块从空中逐个落下、拼成背景（带轻微旋转）
+          if (tNow < INTRO_DURATION) {
+            const localDummy = dummy;
+            for (let i = 0; i < instanceCount; i++) {
+              const p = basePositions[i];
+              const d = introDropData[i];
+              const phase = (tNow - d.delay) / INTRO_FALL_DURATION;
+              let z, ry;
+              if (phase <= 0) {
+                z = d.startZ;
+                ry = d.tumbleRy;
+              } else if (phase >= 1) {
+                z = 0;
+                ry = 0;
+              } else {
+                const eased = 1 - Math.pow(1 - phase, 3); // easeOutCubic 落地更自然
+                z = d.startZ * (1 - eased);
+                ry = d.tumbleRy * (1 - eased);
+              }
+              localDummy.position.set(p.x, p.y, z);
+              localDummy.rotation.set(0, ry, 0);
+              localDummy.updateMatrix();
+              mesh.setMatrixAt(i, localDummy.matrix);
+              lastFrameZRef.current[i] = z;
+              lastFrameRyRef.current[i] = ry;
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+          } else {
           const settle = settleRef.current;
           if (settle.active) {
             const uRaw = (t - settle.startTime) / MODE_SWITCH_SETTLE_DURATION;
@@ -460,6 +510,7 @@ export function Scene({ isFullscreen, theme }) {
 
             mesh.instanceMatrix.needsUpdate = true;
           }
+          }
         }
 
         renderer.render(scene, currentCamera);
@@ -503,7 +554,7 @@ export function Scene({ isFullscreen, theme }) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [basePositions, instanceCount, lightColors, darkColors]);
+  }, [basePositions, instanceCount, lightColors, darkColors, introDropData]);
 
   // 主题切换时，平滑地在浅色 / 深色调色板之间插值，而不是瞬间跳变
   useEffect(() => {
