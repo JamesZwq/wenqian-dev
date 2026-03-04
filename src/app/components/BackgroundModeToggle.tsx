@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export default function BackgroundModeToggle() {
-  const [mode, setMode] = useState<"wave" | "random">("wave");
+  const [mode, setMode] = useState<"wave" | "random">("random");
 
   const handleClick = () => {
     const next = mode === "wave" ? "random" : "wave";

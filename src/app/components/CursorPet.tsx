@@ -46,7 +46,7 @@ function CursorPetInner() {
     const handleToggle = () => {
       try {
         const stored = window.localStorage.getItem("cursorPetEnabled");
-        const next = stored === "false";
+        const next = stored === "true";
         setEnabled(next);
       } catch {
         setEnabled((prev) => !prev);
@@ -61,8 +61,11 @@ function CursorPetInner() {
     };
   }, []);
 
-  const x = useMotionValue(typeof window !== "undefined" ? window.innerWidth / 2 : 0);
-  const y = useMotionValue(typeof window !== "undefined" ? window.innerHeight / 2 : 0);
+  // 初始位置直接放在左下角“监狱”中心，而不是屏幕中央
+  const initialH =
+    typeof window !== "undefined" ? window.innerHeight || 600 : 600;
+  const x = useMotionValue(50);
+  const y = useMotionValue(initialH - 32);
   const bob = useMotionValue(0);
 
   useAnimationFrame((t, delta) => {

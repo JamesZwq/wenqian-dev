@@ -50,9 +50,9 @@ export default function PetJailToggle() {
         {isOn ? "PET FREE" : "PET JAIL"}
       </span>
 
-      {/* 像素风小监狱 */}
+      {/* 像素风小监狱（重新设计） */}
       <motion.div
-        className="relative w-10 h-8 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-bg)_60%,transparent)] shadow-[0_0_10px_color-mix(in_oklab,var(--pixel-bg)_80%,transparent)]"
+        className="relative w-11 h-9 rounded-[6px] border-2 border-[color-mix(in_oklab,var(--pixel-border)_95%,black)] bg-[color-mix(in_oklab,var(--pixel-bg)_70%,transparent)] shadow-[0_0_10px_color-mix(in_oklab,var(--pixel-bg)_85%,transparent)] overflow-hidden"
         animate={{
           y: isOn ? [0, -2, 0] : 0,
         }}
@@ -62,30 +62,65 @@ export default function PetJailToggle() {
             : { duration: 0.2 }
         }
       >
-        {/* 笼子的栅栏：顶部横梁 + 多条竖栏，营造笼子网格的感觉 */}
-        <div className="absolute inset-1">
-          {/* 顶部横梁 */}
-          <div className="w-full h-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_95%,black)] opacity-80" />
-          {/* 多条竖栏 */}
-          <div className="absolute inset-0 flex justify-between px-[2px] pt-[1px]">
-            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_90%,black)] opacity-75" />
-            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_90%,black)] opacity-75" />
-            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_90%,black)] opacity-75" />
-            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_90%,black)] opacity-75" />
+        {/* 顶部拱形 & 链条 */}
+        <div className="absolute top-0 inset-x-1 h-2 rounded-t-[6px] bg-[color-mix(in_oklab,var(--pixel-bg)_85%,transparent)] border-b border-[color-mix(in_oklab,var(--pixel-border)_80%,black)]">
+          <div className="mx-auto mt-[2px] flex gap-[2px] justify-center">
+            <div className="w-[2px] h-[3px] bg-[color-mix(in_oklab,var(--pixel-border)_80%,black)] opacity-80" />
+            <div className="w-[2px] h-[3px] bg-[color-mix(in_oklab,var(--pixel-border)_80%,black)] opacity-80" />
+            <div className="w-[2px] h-[3px] bg-[color-mix(in_oklab,var(--pixel-border)_80%,black)] opacity-80" />
           </div>
         </div>
 
-        {/* 牢门（可开合） */}
+        {/* 底部石台 */}
+        <div className="absolute bottom-0 inset-x-0 h-2 bg-[color-mix(in_oklab,var(--pixel-bg)_90%,black)] opacity-60" />
+
+        {/* 笼子内部栅栏 + 小宠物的剪影 */}
+        <div className="absolute inset-x-1 top-2 bottom-2 flex items-center justify-center">
+          {/* 栅栏 */}
+          <div className="absolute inset-y-0 inset-x-0 flex justify-between px-[3px]">
+            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_85%,black)] opacity-75" />
+            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_85%,black)] opacity-75" />
+            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_85%,black)] opacity-75" />
+            <div className="w-[1px] bg-[color-mix(in_oklab,var(--pixel-border)_85%,black)] opacity-75" />
+          </div>
+
+          {/* 小宠物的剪影：关着时更亮，放出时变淡 */}
+          <div
+            className="relative w-4 h-3 rounded-[999px] mx-auto"
+            style={{
+              backgroundColor: isOn
+                ? "color-mix(in_oklab,var(--pixel-accent)_30%,transparent)"
+                : "color-mix(in_oklab,var(--pixel-accent)_80%,transparent)",
+            }}
+          >
+            {/* 耳朵 */}
+            <div className="absolute -top-[3px] left-[3px] w-[5px] h-[4px] rounded-t-[6px] bg-[color-mix(in_oklab,var(--pixel-accent)_90%,transparent)]" />
+            <div className="absolute -top-[3px] right-[3px] w-[5px] h-[4px] rounded-t-[6px] bg-[color-mix(in_oklab,var(--pixel-accent)_90%,transparent)]" />
+            {/* 眼睛 */}
+            <div className="absolute inset-0 flex items-center justify-center gap-[3px]">
+              <div className="w-[2px] h-[2px] rounded-full bg-[var(--pixel-bg)] opacity-90" />
+              <div className="w-[2px] h-[2px] rounded-full bg-[var(--pixel-bg)] opacity-90" />
+            </div>
+          </div>
+        </div>
+
+        {/* 牢门（可开合）：PET JAIL 时门关(rotateY:-80)，PET FREE 时门开(rotateY:0) */}
         <motion.div
           className="absolute inset-y-1 right-0 w-4 border-l-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)] origin-right"
           animate={{
-            rotateY: isOn ? -75 : 0,
+            rotateY: isOn ? 0 : -80,
+            x: isOn ? 1 : 0,
+            opacity: isOn ? 0.9 : 1,
           }}
-          transition={{ type: "spring", stiffness: 500, damping: 32 }}
+          transition={{ type: "spring", stiffness: 520, damping: 32 }}
         >
           {/* 门把手 */}
           <div className="absolute inset-y-0 left-0 flex items-center">
             <div className="w-[2px] h-3 bg-[color-mix(in_oklab,var(--pixel-border)_80%,black)] ml-[1px]" />
+          </div>
+          {/* 小锁头 */}
+          <div className="absolute bottom-[3px] right-[3px] w-[5px] h-[4px] rounded-[2px] bg-[color-mix(in_oklab,var(--pixel-border)_90%,black)]">
+            <div className="absolute -top-[3px] inset-x-[1px] h-[3px] rounded-t-[4px] border border-[color-mix(in_oklab,var(--pixel-border)_90%,black)] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)]" />
           </div>
         </motion.div>
       </motion.div>

@@ -12,8 +12,9 @@ const BOX_GAP = 0.0;
 
 // 随机单块旋转动效的默认参数
 const RANDOM_BLOCK_DURATION = 6; // 每个方块完整“起落+旋转”时间（秒），控制单个方块起落速度
-const RANDOM_BLOCK_HEIGHT = 4; // 单块起落的高度
+const RANDOM_BLOCK_HEIGHT = 2; // 单块起落的高度
 const RANDOM_SPAWN_INTERVAL = 0.3; // 每隔多少秒启动一个新的方块动画（可并发）
+const MODE_SWITCH_SETTLE_DURATION = 1.2; // 模式切换时的“沉降收尾”时长（秒）
 
 export function Scene({ isFullscreen, theme }) {
   const containerRef = useRef(null);
@@ -25,8 +26,9 @@ export function Scene({ isFullscreen, theme }) {
   const overlayRef = useRef(null);
   const animationFrameRef = useRef(null);
   const themeAnimationFrameRef = useRef(null);
-  const [mode, setMode] = useState("wave"); // "wave" | "random"
-  const modeRef = useRef("wave");
+  const [mode, setMode] = useState("random"); // "wave" | "random"
+  const modeRef = useRef("random");
+  const lastTimeRef = useRef(0);
   const [waveProgress, setWaveProgress] = useState(0);
   const waveProgressRef = useRef(0);
   const lastWaveProgressUpdateRef = useRef(0);
@@ -34,22 +36,15 @@ export function Scene({ isFullscreen, theme }) {
   const lastLocalTRef = useRef(0);
   const randomActiveBlocksRef = useRef([]); // { index, startTime }[]
   const lastSpawnTimeRef = useRef(0);
-
-  // 外部按钮通过 window 事件切换模式
-  useEffect(() => {
-    const handleToggle = () => {
-      setMode((prev) => (prev === "wave" ? "random" : "wave"));
-    };
-    window.addEventListener("bg-mode-toggle", handleToggle);
-    return () => {
-      window.removeEventListener("bg-mode-toggle", handleToggle);
-    };
-  }, []);
-
-  // 保证动画循环中拿到的是最新的模式
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
+  const lastFrameZRef = useRef(null); // Float32Array
+  const lastFrameRyRef = useRef(null); // Float32Array
+  const settleRef = useRef({
+    active: false,
+    startTime: 0,
+    fromZ: null, // Float32Array
+    fromRy: null, // Float32Array
+    toMode: "wave",
+  });
 
   const basePositions = useMemo(() => {
     const positions = [];
@@ -96,6 +91,47 @@ export function Scene({ isFullscreen, theme }) {
 
     return { lightColors: lc, darkColors: dc };
   }, []);
+
+  // 外部按钮通过 window 事件切换模式
+  useEffect(() => {
+    const handleToggle = () => {
+      setMode((prev) => (prev === "wave" ? "random" : "wave"));
+    };
+    window.addEventListener("bg-mode-toggle", handleToggle);
+    return () => {
+      window.removeEventListener("bg-mode-toggle", handleToggle);
+    };
+  }, []);
+
+  // 保证动画循环中拿到的是最新的模式
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  // 模式切换时：不要硬切到新模式，先把当前还在动的方块“慢慢沉下去”
+  useEffect(() => {
+    // 切换时立刻清空 wave 的进度，避免 UI 残留
+    waveProgressRef.current = 0;
+    lastWaveProgressUpdateRef.current = 0;
+    setWaveProgress(0);
+
+    const z = lastFrameZRef.current;
+    const ry = lastFrameRyRef.current;
+    const fromZ =
+      z && z.length === instanceCount ? new Float32Array(z) : new Float32Array(instanceCount);
+    const fromRy =
+      ry && ry.length === instanceCount
+        ? new Float32Array(ry)
+        : new Float32Array(instanceCount);
+
+    settleRef.current = {
+      active: true,
+      startTime: lastTimeRef.current,
+      fromZ,
+      fromRy,
+      toMode: mode,
+    };
+  }, [mode, instanceCount]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -214,6 +250,9 @@ export function Scene({ isFullscreen, theme }) {
       const currentRoot = rootRef.current;
 
       if (currentCamera && currentRoot) {
+        const tNow = clock.getElapsedTime();
+        lastTimeRef.current = tNow;
+
         const tIntro = Math.min(clock.getElapsedTime() / duration, 1);
         const easeOut = 1 - Math.pow(1 - tIntro, 3); // easeOutCubic
 
@@ -232,13 +271,63 @@ export function Scene({ isFullscreen, theme }) {
           overlay.position.x = drift;
         }
 
-        // 背景动效：根据当前模式在“涟漪扩散”和“随机单块旋转”之间切换
+        // 背景动效：模式切换时先“沉降收尾”，避免硬切
         if (meshRef.current) {
           const mesh = meshRef.current;
-          const t = clock.getElapsedTime();
+          const t = tNow;
           const currentMode = modeRef.current;
 
-          if (currentMode === "wave") {
+          // 确保有“上一帧状态”容器（用于切换时平滑沉降）
+          if (!lastFrameZRef.current || lastFrameZRef.current.length !== instanceCount) {
+            lastFrameZRef.current = new Float32Array(instanceCount);
+          }
+          if (!lastFrameRyRef.current || lastFrameRyRef.current.length !== instanceCount) {
+            lastFrameRyRef.current = new Float32Array(instanceCount);
+          }
+
+          const settle = settleRef.current;
+          if (settle.active) {
+            const uRaw = (t - settle.startTime) / MODE_SWITCH_SETTLE_DURATION;
+            const u = Math.min(Math.max(uRaw, 0), 1);
+            // easeOutCubic：更自然的“慢慢沉下去”
+            const eased = 1 - Math.pow(1 - u, 3);
+
+            const fromZ = settle.fromZ ?? lastFrameZRef.current;
+            const fromRy = settle.fromRy ?? lastFrameRyRef.current;
+
+            const localDummy = dummy;
+            for (let i = 0; i < instanceCount; i++) {
+              const p = basePositions[i];
+              const z0 = fromZ[i] ?? 0;
+              const ry0 = fromRy[i] ?? 0;
+
+              const z = z0 * (1 - eased);
+              const ry = ry0 * (1 - eased);
+
+              localDummy.position.set(p.x, p.y, z);
+              localDummy.rotation.set(0, ry, 0);
+              localDummy.updateMatrix();
+              mesh.setMatrixAt(i, localDummy.matrix);
+
+              lastFrameZRef.current[i] = z;
+              lastFrameRyRef.current[i] = ry;
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+
+            if (u >= 1) {
+              // 收尾完成：清理旧模式的“触发器”，让新模式从静止态开始
+              settleRef.current.active = false;
+              lastLocalTRef.current = 0;
+              randomActiveBlocksRef.current = [];
+              lastSpawnTimeRef.current = t;
+              // 波纹中心重新随机一下，避免切回 wave 时跳变
+              waveOriginRef.current = {
+                x: Math.random() * GRID_SIZE,
+                y: Math.random() * GRID_SIZE,
+              };
+            }
+          } else if (currentMode === "wave") {
+            const localDummy = dummy;
             // 呼吸式“涟漪”：以随机起点为中心，沿半径做一圈圈缓慢扩散，
             // 每个方块在波前经过时都会慢慢升起、再慢慢落下。
             const maxRadius = Math.sqrt((GRID_SIZE * GRID_SIZE) * 2);
@@ -270,8 +359,6 @@ export function Scene({ isFullscreen, theme }) {
               setWaveProgress(frac);
             }
 
-            const localDummy = dummy;
-
             for (let i = 0; i < instanceCount; i++) {
               const p = basePositions[i];
 
@@ -295,6 +382,9 @@ export function Scene({ isFullscreen, theme }) {
               localDummy.rotation.set(0, 0, 0);
               localDummy.updateMatrix();
               mesh.setMatrixAt(i, localDummy.matrix);
+
+              lastFrameZRef.current[i] = offsetZ;
+              lastFrameRyRef.current[i] = 0;
             }
 
             mesh.instanceMatrix.needsUpdate = true;
@@ -331,9 +421,14 @@ export function Scene({ isFullscreen, theme }) {
                   Math.max(elapsed / RANDOM_BLOCK_DURATION, 0),
                   1
                 ); // 0 → 1
-                const s = Math.sin(Math.PI * u); // 0 → 1 → 0
+                // easeInOutCubic：先慢后快再慢，让起落/旋转更顺滑
+                const ue =
+                  u < 0.5
+                    ? 4 * u * u * u
+                    : 1 - Math.pow(-2 * u + 2, 3) / 2;
+                const s = Math.sin(Math.PI * ue); // 0 → 1 → 0
                 const z = RANDOM_BLOCK_HEIGHT * s * s;
-                const ry = 2 * Math.PI * u; // 一整圈旋转
+                const ry = 2 * Math.PI * ue; // 一整圈旋转（同样做 ease）
 
                 // 如果同一个 index 被多次触发，取 z 更大的那一个，保证形状自然
                 if (z > offsetsZ[item.index]) {
@@ -358,6 +453,9 @@ export function Scene({ isFullscreen, theme }) {
               localDummy.rotation.set(0, ry, 0);
               localDummy.updateMatrix();
               mesh.setMatrixAt(i, localDummy.matrix);
+
+              lastFrameZRef.current[i] = z;
+              lastFrameRyRef.current[i] = ry;
             }
 
             mesh.instanceMatrix.needsUpdate = true;
