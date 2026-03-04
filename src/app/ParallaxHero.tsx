@@ -74,7 +74,6 @@ export default function ParallaxHero() {
   const isMobile = useIsMobile();
   const { smoothX, smoothY } = useMouse();
   const [lineIndex, setLineIndex] = useState(0);
-  const [glitch, setGlitch] = useState(false);
 
   const bgX = useTransform(smoothX, [-1, 1], [15, -15]);
   const bgY = useTransform(smoothY, [-1, 1], [15, -15]);
@@ -86,11 +85,6 @@ export default function ParallaxHero() {
       setTimeout(() => setLineIndex((i) => i + 1), lineIndex === 0 ? 200 : 80);
     }
   };
-
-  useEffect(() => {
-    const t = setInterval(() => setGlitch((g) => !g), 3000);
-    return () => clearInterval(t);
-  }, []);
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
@@ -109,10 +103,10 @@ export default function ParallaxHero() {
         <DraggableFloat className="w-full">
           {/* Terminal frame - ASCII style border */}
           <div
-            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)]"
+            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl shadow-[0_0_30px_var(--pixel-glow)]"
           >
             {/* Title bar */}
-            <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)]">
+            <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl">
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ff5f56]" />
                 <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ffbd2e]" />
@@ -165,19 +159,24 @@ export default function ParallaxHero() {
               </div>
             </div>
           </div>
-          {/* Glitch overlay on hover */}
-          {glitch && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 pointer-events-none mix-blend-difference"
-              style={{
-                background: "linear-gradient(90deg, transparent 48%, #ff00ff 50%, transparent 52%)",
-                opacity: 0.03,
-              }}
-            />
-          )}
+          {/* Glitch overlay - subtle, continuous scanline */}
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 48%, rgba(168,85,247,0.6) 50%, transparent 52%)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: [0.08, 0.22, 0.08],
+              y: [-3, 3, -3],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 2.6,
+              ease: "easeInOut",
+            }}
+          />
         </DraggableFloat>
       </motion.div>
 

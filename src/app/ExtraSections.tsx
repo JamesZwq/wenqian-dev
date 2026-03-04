@@ -136,7 +136,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-center font-[family-name:var(--font-jetbrains)]"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-center font-[family-name:var(--font-jetbrains)]"
               >
                 <span className={`inline-block transition-transform duration-300 ease-out ${iconHover}`}>
                   <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
@@ -144,7 +144,7 @@ export default function ExtraSections() {
                 <div className="text-2xl md:text-3xl font-bold text-[var(--pixel-accent)]">
                   <AnimatedCounter value={value} suffix={suffix} />
                 </div>
-                <p className="text-xs text-[var(--pixel-muted)] mt-1">{label}</p>
+                <p className="text-xs text-[var(--pixel-text)] mt-1">{label}</p>
               </DraggableFloat>
             ))}
           </div>
@@ -180,7 +180,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 15px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] hover:border-[var(--pixel-border)] transition-colors"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl hover:border-[var(--pixel-border)] transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
@@ -190,7 +190,7 @@ export default function ExtraSections() {
                     {project.tech}
                   </span>
                 </div>
-                <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)]">
                   {project.desc}
                 </p>
               </DraggableFloat>
@@ -234,7 +234,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 20px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)] cursor-pointer touch-manipulation"
+                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl cursor-pointer touch-manipulation"
               >
                 <div className="w-10 h-10 border-2 border-[var(--pixel-border)] flex items-center justify-center mb-4">
                   <span
@@ -253,7 +253,7 @@ export default function ExtraSections() {
                   {item.title}
                   <ChevronRight size={20} className="text-[var(--pixel-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </h3>
-                <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)]">
                   {item.desc}
                 </p>
                 <p className="mt-2 text-[10px] text-[var(--pixel-accent-2)] font-mono">Click to learn more →</p>
@@ -282,10 +282,10 @@ export default function ExtraSections() {
                 key={fact.text}
                 variants={itemVariants}
                 whileHover={{ scale: 1.03, borderColor: "var(--pixel-border)" }}
-                className="group p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)] font-[family-name:var(--font-jetbrains)] touch-manipulation"
+                className="group p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] touch-manipulation"
               >
                 <span className="text-xl block mb-2 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:rotate-12">{fact.emoji}</span>
-                <p className="text-sm text-[var(--pixel-muted)] font-medium">{fact.text}</p>
+                <p className="text-sm text-[var(--pixel-text)] font-medium">{fact.text}</p>
               </DraggableFloat>
             ))}
           </div>
@@ -305,7 +305,7 @@ export default function ExtraSections() {
           className="text-center"
         >
           <SectionTitle icon={Mail}>Get in Touch</SectionTitle>
-          <p className="text-[var(--pixel-muted)] max-w-xl mx-auto mb-6 sm:mb-8 font-[family-name:var(--font-jetbrains)] text-sm px-1">
+          <p className="text-[var(--pixel-text)] max-w-xl mx-auto mb-6 sm:mb-8 font-[family-name:var(--font-jetbrains)] text-sm px-1">
             Interested in collaboration, research discussions, or just saying hi?
           </p>
           <div className="flex flex-wrap justify-center gap-3">

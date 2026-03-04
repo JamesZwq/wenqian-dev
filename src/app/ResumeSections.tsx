@@ -72,13 +72,13 @@ const TimelineItem = ({
     <div className="absolute left-[-4px] top-2 w-3 h-3 bg-[var(--pixel-border)] md:left-auto md:right-1/2 md:mr-[-6px] z-10" />
 
     <div className="md:col-span-5 md:text-right md:pr-8">
-      <span className="inline-block px-3 py-1 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[10px] font-mono text-[var(--pixel-muted)] mb-2">
+      <span className="inline-block px-3 py-1 border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] text-[10px] font-mono text-[var(--pixel-text)] mb-2">
         {year}
       </span>
       <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
         {title}
       </h3>
-      <p className="text-sm text-[var(--pixel-muted)]">{place}</p>
+      <p className="text-sm text-[var(--pixel-text)]">{place}</p>
     </div>
     <div className="md:col-span-2" />
     <div className="md:col-span-5 md:pl-8 mt-2 md:mt-0">
@@ -123,11 +123,11 @@ const PublicationCard = ({
         borderColor: "var(--pixel-border)",
         boxShadow: "0 0 20px var(--pixel-glow)",
       }}
-      className="p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg)]"
+      className="p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
     >
       <div className="flex justify-between items-start mb-3">
         <span
-          className={`px-2 py-1 border text-[10px] font-mono ${statusColors[statusKey] || "border-[#6b7b6f]"}`}
+          className={`px-2 py-1 border text-[10px] font-mono ${statusColors[statusKey] || "border-[var(--pixel-border)] text-[var(--pixel-text)]"}`}
         >
           {status}
         </span>
@@ -135,8 +135,8 @@ const PublicationCard = ({
       <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)] mb-2 leading-tight">
         {title}
       </h3>
-      <p className="text-xs text-[var(--pixel-muted)] font-mono mb-3">{meta}</p>
-      <p className="text-sm text-[var(--pixel-muted)] font-[family-name:var(--font-jetbrains)] border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">
+      <p className="text-xs text-[var(--pixel-text)] font-mono mb-3">{meta}</p>
+      <p className="text-sm text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)] border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">
         {desc}
       </p>
     </DraggableFloat>
@@ -167,9 +167,9 @@ const SkillBar = ({
           </span>
         )}
       </div>
-      <span className="text-[10px] font-mono text-[var(--pixel-muted)]">{level}%</span>
+      <span className="text-[10px] font-mono text-[var(--pixel-text)]">{level}%</span>
     </div>
-    <div className="h-2 w-full bg-[var(--pixel-bg-alt)] border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
+    <div className="h-2 w-full bg-[var(--pixel-card-bg)] backdrop-blur-sm border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         whileInView={{ width: `${level}%` }}
@@ -260,11 +260,11 @@ export default function ResumeSections() {
       >
         <div>
           <SectionTitle icon={IconTerminal}>Technical Arsenal</SectionTitle>
-          <p className="text-[var(--pixel-muted)] text-sm mb-4 sm:mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
+          <p className="text-[var(--pixel-text)] text-sm mb-4 sm:mb-6 -mt-4 font-[family-name:var(--font-jetbrains)]">
             Languages & Systems — C++/Rust for low-level performance.
           </p>
-          <DraggableFloat className="group p-4 sm:p-6 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-bg-alt)]">
-            <h4 className="text-[10px] font-mono text-[var(--pixel-muted)] uppercase tracking-wider mb-5">
+          <DraggableFloat className="group p-4 sm:p-6 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl">
+            <h4 className="text-[10px] font-mono text-[var(--pixel-text)] uppercase tracking-wider mb-5">
               Languages
             </h4>
             <SkillBar name="C++" level={95} icon={Cpu} highlight />
@@ -275,10 +275,10 @@ export default function ResumeSections() {
           </DraggableFloat>
         </div>
         <div>
-          <h4 className="text-[10px] font-mono text-[var(--pixel-muted)] uppercase tracking-wider mb-5 mt-10 sm:mt-12 md:mt-0">
+          <h4 className="text-[10px] font-mono text-[var(--pixel-text)] uppercase tracking-wider mb-5 mt-10 sm:mt-12 md:mt-0">
             Systems & Tools
           </h4>
-          <div className="flex flex-wrap gap-2 mb-8 sm:mb-12">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 sm:mb-12">
             {[
               "Apache Spark",
               "Apache Flink",
@@ -286,17 +286,20 @@ export default function ResumeSections() {
               "Docker",
               "Linux",
             ].map((tech, i) => (
-              <motion.span
+              <DraggableFloat
                 key={tech}
                 variants={itemVariants}
                 whileHover={{
+                  scale: 1.03,
                   borderColor: "var(--pixel-border)",
-                  color: "var(--pixel-accent)",
+                  boxShadow: "0 0 16px var(--pixel-glow)",
                 }}
-                className="px-3 py-2 border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] text-[var(--pixel-muted)] text-sm font-[family-name:var(--font-jetbrains)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_5%,transparent)] transition-colors"
+                className="group px-3 py-3 border-2 border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] text-xs sm:text-sm text-[var(--pixel-text)]"
               >
-                {tech}
-              </motion.span>
+                <span className="inline-block transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5">
+                  {tech}
+                </span>
+              </DraggableFloat>
             ))}
           </div>
 
@@ -305,14 +308,14 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
               >
                 <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-accent-2)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-accent-2)]" />
                 <div>
                   <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                     Database Systems (COMP3311/9311)
                   </strong>
-                  <span className="text-[var(--pixel-muted)] text-sm">
+                  <span className="text-[var(--pixel-text)] text-sm">
                     Instructed 500+ students on SQL and Relational Algebra.
                   </span>
                 </div>
@@ -321,14 +324,14 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-bg-alt)]"
+                className="group flex items-start gap-4 p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
               >
                 <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-warn)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-warn)]" />
                 <div>
                   <strong className="block text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] mb-1">
                     Data Analytics for Graphs (COMP9312)
                   </strong>
-                  <span className="text-[var(--pixel-muted)] text-sm">
+                  <span className="text-[var(--pixel-text)] text-sm">
                     Taught advanced graph theory and algorithms.
                   </span>
                 </div>
@@ -340,7 +343,7 @@ export default function ResumeSections() {
 
       {/* Footer */}
       <footer className="text-center py-8 sm:py-12 border-t-2 border-[color-mix(in_oklab,var(--pixel-border)_20%,transparent)]">
-        <p className="text-[var(--pixel-muted)] text-xs font-[family-name:var(--font-jetbrains)]">
+        <p className="text-[var(--pixel-text)] text-xs font-[family-name:var(--font-jetbrains)]">
           © 2026 Wenqian Zhang. Built with Next.js, Tailwind & Framer Motion.
         </p>
       </footer>

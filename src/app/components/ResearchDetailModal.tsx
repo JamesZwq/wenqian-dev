@@ -356,7 +356,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-bg-alt)] text-[var(--pixel-muted)]"
+                className="p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-[var(--pixel-text)]"
               >
                 {content.model}
               </motion.div>
@@ -370,7 +370,7 @@ export default function ResearchDetailModal({
                 <h3 className="text-base font-bold text-[#00d4ff] mb-2">
                   {content.title}
                 </h3>
-                <p className="text-[#6b7b6f] text-sm leading-relaxed">
+                <p className="text-[var(--pixel-text)] text-sm leading-relaxed">
                   {content.description}
                 </p>
               </motion.div>
@@ -380,7 +380,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="p-4 border-l-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] font-mono text-sm text-[var(--pixel-accent)]"
+                className="p-4 border-l-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-mono text-sm text-[var(--pixel-accent)]"
               >
                 {content.formula}
               </motion.div>

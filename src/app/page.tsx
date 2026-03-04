@@ -7,6 +7,7 @@ import Background from "./background/background";
 import CursorPet from "./components/CursorPet";
 import PetJailToggle from "./components/PetJailToggle";
 import BackgroundModeToggle from "./components/BackgroundModeToggle";
+import ThemeToggle from "./components/ThemeToggle";
 
 export default function Home() {
   return (
@@ -17,6 +18,7 @@ export default function Home() {
         <CursorPet />
         <PetJailToggle />
         <BackgroundModeToggle />
+        <ThemeToggle />
 
         <div className="relative z-10">
           <ParallaxHero />

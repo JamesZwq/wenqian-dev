@@ -23,7 +23,7 @@ export default function BackToTop() {
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       whileHover={{ scale: 1.1, boxShadow: "0 0 20px rgba(0,255,136,0.4)" }}
       whileTap={{ scale: 0.95 }}
-      className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50 min-h-[44px] min-w-[44px] flex items-center justify-center p-3 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] touch-manipulation"
+      className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50 min-h-[44px] min-w-[44px] flex items-center justify-center p-3 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] touch-manipulation"
     >
       <ArrowUp size={20} />
     </motion.button>
