@@ -74,6 +74,7 @@ export default function ParallaxHero() {
   const isMobile = useIsMobile();
   const { smoothX, smoothY } = useMouse();
   const [lineIndex, setLineIndex] = useState(0);
+  const [glitch, setGlitch] = useState(false);
 
   const bgX = useTransform(smoothX, [-1, 1], [15, -15]);
   const bgY = useTransform(smoothY, [-1, 1], [15, -15]);
@@ -85,6 +86,11 @@ export default function ParallaxHero() {
       setTimeout(() => setLineIndex((i) => i + 1), lineIndex === 0 ? 200 : 80);
     }
   };
+
+  useEffect(() => {
+    const t = setInterval(() => setGlitch((g) => !g), 3000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
@@ -103,10 +109,10 @@ export default function ParallaxHero() {
         <DraggableFloat className="w-full">
           {/* Terminal frame - ASCII style border */}
           <div
-            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl shadow-[0_0_30px_var(--pixel-glow)]"
+            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)]"
           >
             {/* Title bar */}
-            <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl">
+            <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)]">
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ff5f56]" />
                 <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ffbd2e]" />
@@ -159,24 +165,19 @@ export default function ParallaxHero() {
               </div>
             </div>
           </div>
-          {/* Glitch overlay - subtle, continuous scanline */}
-          <motion.div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent 48%, rgba(168,85,247,0.6) 50%, transparent 52%)",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.08, 0.22, 0.08],
-              y: [-3, 3, -3],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 2.6,
-              ease: "easeInOut",
-            }}
-          />
+          {/* Glitch overlay on hover */}
+          {glitch && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 pointer-events-none mix-blend-difference"
+              style={{
+                background: "linear-gradient(90deg, transparent 48%, #ff00ff 50%, transparent 52%)",
+                opacity: 0.03,
+              }}
+            />
+          )}
         </DraggableFloat>
       </motion.div>
 
@@ -196,7 +197,16 @@ export default function ParallaxHero() {
       >
         <motion.a
           href="#publications"
-          whileHover={{ scale: 1.04, boxShadow: "0 0 16px rgba(0,255,136,0.45)" }}
+          initial={{ opacity: 0, y: 10, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{
+            delay: 0.45,
+            type: "spring",
+            stiffness: 500,
+            damping: 30,
+            mass: 0.7,
+          }}
+          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,255,136,0.5)" }}
           whileTap={{ scale: 0.97 }}
           className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
         >
@@ -204,7 +214,16 @@ export default function ParallaxHero() {
         </motion.a>
         <motion.a
           href="#"
-          whileHover={{ scale: 1.04, boxShadow: "0 0 16px rgba(0,212,255,0.45)" }}
+          initial={{ opacity: 0, y: 12, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{
+            delay: 0.52,
+            type: "spring",
+            stiffness: 520,
+            damping: 30,
+            mass: 0.7,
+          }}
+          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(0,212,255,0.5)" }}
           whileTap={{ scale: 0.97 }}
           className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-colors touch-manipulation"
         >
