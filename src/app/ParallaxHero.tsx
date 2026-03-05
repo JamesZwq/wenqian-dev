@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, useTransform } from "framer-motion";
 import { useMouse } from "./components/MouseProvider";
 import DraggableFloat from "./components/DraggableFloat";
-import { useIsMobile } from "./hooks/useIsMobile";
+import { useIsMobileContext } from "./components/IsMobileContext";
 
 const ASCII_ART = `
   ██╗    ██╗███████╗███╗   ██╗ ██████╗ ██╗ █████╗ ███╗   ██╗
@@ -71,7 +71,7 @@ function TypewriterLine({ text, delay = 0, onComplete }: { text: string; delay?:
 }
 
 export default function ParallaxHero() {
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobileContext();
   const { smoothX, smoothY } = useMouse();
   const [lineIndex, setLineIndex] = useState(0);
   const [glitch, setGlitch] = useState(false);

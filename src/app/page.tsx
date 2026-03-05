@@ -1,19 +1,38 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import ResumeSections from "./ResumeSections";
 import ExtraSections from "./ExtraSections";
 import MouseProvider from "./components/MouseProvider";
+import { ScrollLagProvider } from "./components/ScrollLagContext";
+import { IsMobileProvider } from "./components/IsMobileContext";
 import PixelKeyboardHandler from "./components/PixelKeyboardHandler";
-import Background from "./background/background";
-import CursorPet from "./components/CursorPet";
 import PetJailToggle from "./components/PetJailToggle";
 import BackgroundModeToggle from "./components/BackgroundModeToggle";
 import ThemeToggle from "./components/ThemeToggle";
-import PhysicsTerminal from "./components/PhysicsTerminal";
+
+const Background = dynamic(() => import("./background/background"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 z-0 bg-[var(--pixel-bg)]" />,
+});
+
+const PhysicsTerminal = dynamic(
+  () => import("./components/PhysicsTerminal"),
+  { ssr: false }
+);
+
+const CursorPet = dynamic(
+  () => import("./components/CursorPet"),
+  { ssr: false }
+);
 
 export default function Home() {
   return (
     <MouseProvider>
-      <PixelKeyboardHandler />
-      <main className="relative min-h-screen bg-[var(--pixel-bg)] text-[var(--pixel-text)] selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
+      <IsMobileProvider>
+        <ScrollLagProvider>
+          <PixelKeyboardHandler />
+        <main className="relative min-h-screen bg-[var(--pixel-bg)] text-[var(--pixel-text)] selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
         <Background />
         <CursorPet />
         <PetJailToggle />
@@ -52,6 +71,8 @@ export default function Home() {
           <ResumeSections />
         </div>
       </main>
+        </ScrollLagProvider>
+      </IsMobileProvider>
     </MouseProvider>
   );
 }

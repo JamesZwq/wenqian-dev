@@ -26,7 +26,7 @@ export default function Background() {
         className="fixed inset-0 z-0"
         data-is-fullscreen={isFullscreen}
       >
-        <motion.div className="w-screen h-screen" layout>
+        <motion.div className="w-screen h-screen">
           <Suspense fallback={null}>
             <Scene theme={theme} isFullscreen={isFullscreen} />
           </Suspense>

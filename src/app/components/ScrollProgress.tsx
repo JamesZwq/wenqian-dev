@@ -1,9 +1,12 @@
 "use client";
 
-import { motion, useScroll, useSpring } from "framer-motion";
+import { motion, useSpring, useMotionValue } from "framer-motion";
+import { useScrollLag } from "./ScrollLagContext";
 
 export default function ScrollProgress() {
-  const { scrollYProgress } = useScroll();
+  const scrollLag = useScrollLag();
+  const zeroProgress = useMotionValue(0);
+  const scrollYProgress = scrollLag?.scrollYProgress ?? zeroProgress;
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,

@@ -42,9 +42,7 @@ export function Scene({ isFullscreen, theme }) {
   const [mode, setMode] = useState("random");
   const modeRef = useRef("random");
   const lastTimeRef = useRef(0);
-  const [waveProgress, setWaveProgress] = useState(0);
   const waveProgressRef = useRef(0);
-  const lastWaveProgressUpdateRef = useRef(0);
   const waveOriginRef = useRef({ x: GRID_SIZE / 2, y: GRID_SIZE / 2 });
   const lastLocalTRef = useRef(0);
   const randomActiveBlocksRef = useRef([]); 
@@ -74,6 +72,7 @@ export function Scene({ isFullscreen, theme }) {
   
   const rippleDistancesRef = useRef(null);
   const rippleMaxDistRef = useRef(0);
+  const resizeRafRef = useRef(null);
 
   const basePositions = useMemo(() => {
     const positions = [];
@@ -167,8 +166,6 @@ export function Scene({ isFullscreen, theme }) {
 
   useEffect(() => {
     waveProgressRef.current = 0;
-    lastWaveProgressUpdateRef.current = 0;
-    setWaveProgress(0);
 
     const z = lastFrameZRef.current;
     const ry = lastFrameRyRef.current;
@@ -395,7 +392,6 @@ export function Scene({ isFullscreen, theme }) {
               const globalEase = globalProgress < 0.5 ? 4 * Math.pow(globalProgress, 3) : 1 - Math.pow(-2 * globalProgress + 2, 3) / 2;
 
               mesh.material.color.copy(ripple.fromColor).lerp(ripple.toColor, globalEase);
-              mesh.material.needsUpdate = true;
 
               const tempBg = new THREE.Color().copy(ripple.fromBg).lerp(ripple.toBg, globalEase);
               renderer.setClearColor(tempBg, 1);
@@ -459,11 +455,6 @@ export function Scene({ isFullscreen, theme }) {
 
               const frac = localT / totalCycle;
               waveProgressRef.current = frac;
-              const nowMs = performance.now();
-              if (nowMs - lastWaveProgressUpdateRef.current > 120) {
-                lastWaveProgressUpdateRef.current = nowMs;
-                setWaveProgress(frac);
-              }
 
               for (let i = 0; i < instanceCount; i++) {
                 const p = basePositions[i];
@@ -553,21 +544,23 @@ export function Scene({ isFullscreen, theme }) {
     animate();
 
     const handleResize = () => {
-      if (!container || !cameraRef.current || !rendererRef.current) return;
-      const aspectNew = container.clientWidth / container.clientHeight || 1;
-      const cam = cameraRef.current;
-      const frustum = frustumSize;
-      cam.left = (-frustum * aspectNew) / 2;
-      cam.right = (frustum * aspectNew) / 2;
-      cam.top = frustum / 2;
-      cam.bottom = -frustum / 2;
-      cam.updateProjectionMatrix();
-      
-      rendererRef.current.setSize(container.clientWidth, container.clientHeight);
-      // 同步更新后期处理的大小，避免拉伸模糊
-      if (composerRef.current) {
-        composerRef.current.setSize(container.clientWidth, container.clientHeight);
-      }
+      if (resizeRafRef.current !== null) return;
+      resizeRafRef.current = requestAnimationFrame(() => {
+        resizeRafRef.current = null;
+        if (!container || !cameraRef.current || !rendererRef.current) return;
+        const aspectNew = container.clientWidth / container.clientHeight || 1;
+        const cam = cameraRef.current;
+        const frustum = frustumSize;
+        cam.left = (-frustum * aspectNew) / 2;
+        cam.right = (frustum * aspectNew) / 2;
+        cam.top = frustum / 2;
+        cam.bottom = -frustum / 2;
+        cam.updateProjectionMatrix();
+        rendererRef.current.setSize(container.clientWidth, container.clientHeight);
+        if (composerRef.current) {
+          composerRef.current.setSize(container.clientWidth, container.clientHeight);
+        }
+      });
     };
 
     window.addEventListener("resize", handleResize);
@@ -576,6 +569,7 @@ export function Scene({ isFullscreen, theme }) {
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
       window.removeEventListener("resize", handleResize);
       if (rendererRef.current) rendererRef.current.dispose();
       if (meshRef.current) {

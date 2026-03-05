@@ -103,6 +103,15 @@ body {
   50% { box-shadow: 0 0 20px var(--pixel-glow); }
 }
 
+/* Terminal glitch overlay: visible 3s, hidden 3s (no React setState) */
+@keyframes terminal-glitch-overlay {
+  0%, 50% { opacity: 0.03; }
+  50.01%, 100% { opacity: 0; }
+}
+.animate-terminal-glitch-overlay {
+  animation: terminal-glitch-overlay 6s ease-in-out infinite;
+}
+
 .animate-glitch {
   animation: glitch 0.3s ease-in-out;
 }

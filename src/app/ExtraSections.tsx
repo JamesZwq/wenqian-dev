@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import React, { useRef, useCallback } from "react";
+import { motion, useTransform, useMotionValue } from "framer-motion";
 import {
   Rocket,
   Mail,
@@ -17,24 +17,30 @@ import ScrollProgress from "./components/ScrollProgress";
 import BackToTop from "./components/BackToTop";
 import ResearchDetailModal from "./components/ResearchDetailModal";
 import DraggableFloat from "./components/DraggableFloat";
+import { useScrollLag } from "./components/ScrollLagContext";
 
 function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [count, setCount] = React.useState(0);
+  const lastDisplayRef = useRef(-1);
 
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
-          let start = 0;
           const end = value;
           const duration = 1200;
           const startTime = performance.now();
+          lastDisplayRef.current = -1;
           const animate = (currentTime: number) => {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
             const easeOut = 1 - Math.pow(1 - progress, 3);
-            setCount(Math.floor(easeOut * end));
+            const display = Math.floor(easeOut * end);
+            if (display !== lastDisplayRef.current) {
+              lastDisplayRef.current = display;
+              setCount(display);
+            }
             if (progress < 1) requestAnimationFrame(animate);
           };
           requestAnimationFrame(animate);
@@ -96,9 +102,12 @@ type ResearchTopic = "Core Decomposition" | "Hypergraph Analytics" | "Distribute
 
 export default function ExtraSections() {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll();
+  const scrollLag = useScrollLag();
+  const zeroProgress = useMotionValue(0);
+  const scrollYProgress = scrollLag?.scrollYProgress ?? zeroProgress;
   const parallaxY = useTransform(scrollYProgress, [0, 0.3], [0, 80]);
   const [modalTopic, setModalTopic] = React.useState<ResearchTopic>(null);
+  const handleCloseModal = useCallback(() => setModalTopic(null), []);
 
   return (
     <>
@@ -106,7 +115,7 @@ export default function ExtraSections() {
       <BackToTop />
       <ResearchDetailModal
         isOpen={!!modalTopic}
-        onClose={() => setModalTopic(null)}
+        onClose={handleCloseModal}
         topic={modalTopic}
       />
 

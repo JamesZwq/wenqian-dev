@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
-import { useIsMobile } from "../hooks/useIsMobile";
+import { motion } from "framer-motion";
+import { useIsMobileContext } from "./IsMobileContext";
+import { useScrollLag } from "./ScrollLagContext";
 
 type DraggableFloatProps = React.ComponentProps<typeof motion.div>;
-
-const SCROLL_SPRING = { stiffness: 280, damping: 32 };
-const LAG_STRENGTH = 0.12;
 
 export default function DraggableFloat({
   children,
@@ -17,18 +15,8 @@ export default function DraggableFloat({
   whileTap,
   ...rest
 }: DraggableFloatProps) {
-  const isMobile = useIsMobile();
-  const { scrollY, scrollX } = useScroll();
-  const smoothY = useSpring(scrollY, SCROLL_SPRING);
-  const smoothX = useSpring(scrollX, SCROLL_SPRING);
-  const lagY = useTransform(
-    [scrollY, smoothY],
-    ([sy, ssy]) => ((sy as number) - (ssy as number)) * LAG_STRENGTH
-  );
-  const lagX = useTransform(
-    [scrollX, smoothX],
-    ([sx, ssx]) => ((sx as number) - (ssx as number)) * LAG_STRENGTH
-  );
+  const isMobile = useIsMobileContext();
+  const scrollLag = useScrollLag();
 
   const inner = (
     <motion.div
@@ -54,10 +42,17 @@ export default function DraggableFloat({
     return inner;
   }
 
-  return (
-    <motion.div style={{ x: lagX, y: lagY }} className="will-change-transform">
-      {inner}
-    </motion.div>
-  );
+  if (scrollLag) {
+    return (
+      <motion.div
+        style={{ x: scrollLag.lagX, y: scrollLag.lagY }}
+        className="will-change-transform"
+      >
+        {inner}
+      </motion.div>
+    );
+  }
+
+  return inner;
 }
 

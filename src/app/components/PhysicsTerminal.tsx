@@ -458,6 +458,89 @@ function readPalette(el: HTMLElement): Palette {
 const FALLBACK_FONT_FAMILY =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
 
+
+function hash01(n: number) {
+  // deterministic pseudo-random in [0,1)
+  const s = Math.sin(n * 999.123 + 0.12345) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function smoothstep01(u: number) {
+  const x = clamp(u, 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+function initBootExplosion(world: World) {
+  const cx = world.w * 0.5;
+  const cy = world.h * 0.5;
+
+  for (let i = 0; i < world.bodies.length; i++) {
+    const b = world.bodies[i];
+
+    // Start in a tight cluster around the center (avoid exact same point).
+    const r0 = 10 * Math.sqrt(hash01(b.id + 17));
+    const a0 = hash01(b.id + 91) * Math.PI * 2;
+    b.x = cx + Math.cos(a0) * r0;
+    b.y = cy + Math.sin(a0) * r0;
+
+    // Velocity biased toward the body's home position, with some angular spread.
+    const dx = b.hx - cx;
+    const dy = b.hy - cy;
+    const d = Math.hypot(dx, dy) || 1;
+
+    let nx = dx / d;
+    let ny = dy / d;
+
+    // ±~25° jitter so the blast looks organic.
+    const jitter = (hash01(b.id + 203) * 2 - 1) * 0.44;
+    const cs = Math.cos(jitter);
+    const sn = Math.sin(jitter);
+    const rx = nx * cs - ny * sn;
+    const ry = nx * sn + ny * cs;
+    nx = rx;
+    ny = ry;
+
+    // Speed scales with distance-to-home (farther glyphs fly faster).
+    const base = clamp(d * 2.2 + 260, 420, 1750);
+    const sp = base * (0.8 + 0.6 * hash01(b.id + 777));
+
+    b.vx = nx * sp;
+    b.vy = ny * sp;
+  }
+}
+
+function drawBootShockwave(ctx: CanvasRenderingContext2D, w: number, h: number, elapsedMs: number, pal: Palette) {
+  // A subtle expanding ring + center flash during boot.
+  const DUR = 700;
+  const u = clamp(elapsedMs / DUR, 0, 1);
+  if (u <= 0 || u >= 1) return;
+
+  const eased = 1 - Math.pow(1 - u, 3); // easeOutCubic
+  const r = eased * Math.min(w, h) * 0.72;
+
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+
+  ctx.save();
+  ctx.globalAlpha = 0.14 * (1 - u);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = pal.accent2;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center flash
+  ctx.globalAlpha = 0.08 * (1 - u);
+  ctx.fillStyle = pal.accent;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18 * (1 - 0.4 * u), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+
 export default function PhysicsTerminal({ className, title }: PhysicsTerminalProps) {
   const outerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -475,6 +558,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
   const rootClass = ["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ");
 
   const [glitch, setGlitch] = useState(false);
+  const [uiDragging, setUiDragging] = useState(false);
   useEffect(() => {
     const t = window.setInterval(() => setGlitch((g) => !g), 3000);
     return () => window.clearInterval(t);
@@ -502,6 +586,9 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
 
   // release return timing (glyph spring ramp)
   const returnStartRef = useRef<number | null>(null);
+
+  // Boot animation (initial load): glyphs start from center and explode to home.
+  const bootStartRef = useRef<number | null>(null);
 
   // Resize + rebuild bodies when content box size changes
   useEffect(() => {
@@ -534,6 +621,12 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
         returnAlpha: 1,
       };
 
+      // Boot: start glyphs in the center cluster, then blast them toward home.
+      if (worldRef.current) {
+        initBootExplosion(worldRef.current);
+      }
+      bootStartRef.current = nowMs();
+
       // reset return animation
       returnStartRef.current = null;
     });
@@ -548,6 +641,8 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
     let last = nowMs();
     let acc = 0;
     const FIXED_DT = 1 / 120; // seconds
+    const SPRING_MAX_STEP = 1 / 240; // seconds (stabilizes Safari/low-FPS)
+    const MAX_BOX_V = 6000; // px/s safety clamp
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
@@ -557,7 +652,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
       last = t;
 
       // avoid huge steps when tab was inactive
-      dt = clamp(dt, 0, 0.05);
+      dt = clamp(dt, 0, 0.033);
 
       const world = worldRef.current;
       const cvs = canvasRef.current;
@@ -578,14 +673,30 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
       const pos = boxPosRef.current;
       const vel = boxVelRef.current;
 
-      const ax = -k * (pos.x - target.x) - c * vel.x;
-      const ay = -k * (pos.y - target.y) - c * vel.y;
+      // Safari can produce larger frame deltas; sub-step the spring to avoid "teleporting".
+      let remain = dt;
+      let axBox = 0;
+      let ayBox = 0;
 
-      vel.x += ax * dt;
-      vel.y += ay * dt;
+      while (remain > 0) {
+        const h = Math.min(remain, SPRING_MAX_STEP);
 
-      pos.x += vel.x * dt;
-      pos.y += vel.y * dt;
+        axBox = -k * (pos.x - target.x) - c * vel.x;
+        ayBox = -k * (pos.y - target.y) - c * vel.y;
+
+        vel.x += axBox * h;
+        vel.y += ayBox * h;
+
+        // safety clamp for rare spikes
+        vel.x = clamp(vel.x, -MAX_BOX_V, MAX_BOX_V);
+        vel.y = clamp(vel.y, -MAX_BOX_V, MAX_BOX_V);
+
+        pos.x += vel.x * h;
+        pos.y += vel.y * h;
+
+        remain -= h;
+      }
+
 
       // apply transform directly (avoid React re-render per frame)
       if (outerRef.current) {
@@ -593,20 +704,37 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
       }
 
       // --- drive glyph world from box acceleration (pseudo-force) ---
-      world.axExt = dragging ? -ax : 0;
-      world.ayExt = dragging ? -ay : 0;
+      world.axExt = dragging ? -axBox : 0;
+      world.ayExt = dragging ? -ayBox : 0;
       world.gravityOn = dragging;
-      world.collisionsOn = dragging;
 
-      // Return spring ramps in after release (glyphs snap back neatly)
+      // Boot (initial load) timing
+      const bootStart = bootStartRef.current;
+      const bootElapsed = bootStart !== null ? t - bootStart : 1e9;
+      const bootActive = bootStart !== null && bootElapsed < 1400;
+      if (bootStart !== null && !bootActive) bootStartRef.current = null;
+
+      // Collisions only while dragging, or briefly during the boot blast.
+      // (We disable them before the final settle so glyphs can reach exact home positions.)
+      const bootCollisions = bootActive && bootElapsed > 120 && bootElapsed < 900;
+      world.collisionsOn = dragging || bootCollisions;
+
+      // Return-to-home spring:
+      // - while dragging: off
+      // - while booting: ramp in after the initial blast
+      // - otherwise: ramp in after release (as before)
       if (dragging) {
         world.returnAlpha = 0;
+        returnStartRef.current = null;
+      } else if (bootActive) {
+        // start pulling them home after the initial "explosion"
+        const u = (bootElapsed - 220) / 880;
+        world.returnAlpha = smoothstep01(u);
         returnStartRef.current = null;
       } else {
         if (returnStartRef.current === null) returnStartRef.current = t;
         const u = clamp((t - returnStartRef.current) / 320, 0, 1); // ms
-        const eased = u * u * (3 - 2 * u); // smoothstep
-        world.returnAlpha = eased;
+        world.returnAlpha = u * u * (3 - 2 * u); // smoothstep
       }
 
       // fixed-step physics
@@ -636,12 +764,20 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
       const pal = paletteRef.current;
       const ff = fontFamilyRef.current || FALLBACK_FONT_FAMILY;
 
+      // Boot visuals: slight fade-in + shockwave ring
+      if (bootActive) {
+        drawBootShockwave(ctx, world.w, world.h, bootElapsed, pal);
+      }
+      const fadeIn = bootActive ? clamp(bootElapsed / 180, 0, 1) : 1;
+      ctx.globalAlpha = fadeIn;
+
       for (let i = 0; i < world.bodies.length; i++) {
         const b = world.bodies[i];
         ctx.fillStyle = pal[b.ck] ?? pal.accent;
         ctx.font = `${b.fs}px ${ff}`;
         ctx.fillText(b.ch, b.x, b.y);
       }
+      ctx.globalAlpha = 1;
     };
 
     raf = requestAnimationFrame(loop);
@@ -660,6 +796,8 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
     const pos = boxPosRef.current;
     boxTargetRef.current = { x: pos.x, y: pos.y };
 
+    setUiDragging(true);
+
     dragRef.current = {
       active: true,
       pid,
@@ -672,6 +810,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
 
   const onTerminalPointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (!dragRef.current.active || dragRef.current.pid !== e.pointerId) return;
+    e.preventDefault();
 
     const dx = e.clientX - dragRef.current.sx;
     const dy = e.clientY - dragRef.current.sy;
@@ -685,6 +824,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
   const endDrag: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (!dragRef.current.active || dragRef.current.pid !== e.pointerId) return;
     dragRef.current.active = false;
+    setUiDragging(false);
     dragRef.current.pid = -1;
     boxTargetRef.current = { x: 0, y: 0 };
   };
@@ -692,7 +832,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
   return (
     <div ref={outerRef} className={rootClass} style={{ willChange: "transform" }}>
       {/* Scale-on-hover wrapper (matches DraggableFloat hover/tap feel without interfering with translate transform) */}
-      <div className="relative w-full transition-transform duration-150 ease-out hover:scale-[1.02] active:scale-[0.98]">
+      <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
             className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"
             style={{ touchAction: "none" }}

@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Database, Cpu } from "lucide-react";
+import unswLogo from "../Images/image.png";
 import {
   IconGraduation,
   IconBook,
@@ -26,12 +28,13 @@ function ToolLogo({ id }: { id: "spark" | "flink" | "k8s" | "docker" | "linux" |
 
   if (id === "unsw") {
     return (
-      <span
-        className="inline-flex items-center justify-center w-8 h-5 border border-[color-mix(in_oklab,var(--pixel-border)_45%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm font-[family-name:var(--font-press-start)] text-[9px] text-[var(--pixel-text)]"
-        aria-label="UNSW"
-      >
-        UNSW
-      </span>
+      <Image
+        src={unswLogo}
+        alt="UNSW Sydney"
+        width={80}
+        height={40}
+        className="h-8 w-auto object-contain flex-shrink-0"
+      />
     );
   }
 
@@ -361,7 +364,7 @@ export default function ResumeSections() {
           </DraggableFloat>
         </div>
         <div>
-          <h4 className="text-[10px] font-mono text-[var(--pixel-text)] uppercase tracking-wider mb-5 mt-10 sm:mt-12 md:mt-0">
+          <h4 className="text-xs sm:text-sm font-mono text-[var(--pixel-text)] uppercase tracking-wider mb-5 mt-10 sm:mt-12 md:mt-0">
             Systems & Tools
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 sm:mb-12">
@@ -380,13 +383,13 @@ export default function ResumeSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 0 16px var(--pixel-glow)",
                 }}
-                className="group px-3 py-3 border-2 border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] text-base sm:text-lg text-[var(--pixel-text)]"
+                className="group px-3 py-3 border-2 border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] text-sm sm:text-base text-[var(--pixel-text)] min-w-0"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-[color-mix(in_oklab,var(--pixel-text)_85%,transparent)]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[color-mix(in_oklab,var(--pixel-text)_85%,transparent)] flex-shrink-0">
                     <ToolLogo id={tech.id} />
                   </span>
-                  <span className="inline-block transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5">
+                  <span className="inline-block min-w-0 break-words transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-0.5">
                     {tech.label}
                   </span>
                 </div>

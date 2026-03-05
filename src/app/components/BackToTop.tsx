@@ -1,18 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   motion,
-  useScroll,
   useTransform,
   useMotionValueEvent,
+  useMotionValue,
 } from "framer-motion";
 import { ArrowUp } from "lucide-react";
+import { useScrollLag } from "./ScrollLagContext";
 
 export default function BackToTop() {
-  const { scrollYProgress } = useScroll();
+  const scrollLag = useScrollLag();
+  const zeroProgress = useMotionValue(0);
+  const scrollYProgress = scrollLag?.scrollYProgress ?? zeroProgress;
   const [show, setShow] = useState(false);
-  useMotionValueEvent(scrollYProgress, "change", (v) => setShow(v > 0.2));
+  const showRef = useRef(false);
+
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    const next = v > 0.2;
+    if (next !== showRef.current) {
+      showRef.current = next;
+      setShow(next);
+    }
+  });
 
   const opacity = useTransform(scrollYProgress, [0.15, 0.25], [0, 1]);
   const scale = useTransform(scrollYProgress, [0.15, 0.25], [0.8, 1]);

@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 
 type Theme = "light" | "dark";
@@ -53,18 +54,22 @@ export default function ThemeProvider({
 
   const setThemeWithGuard = useCallback(
     (t: Theme) => {
-      if (t === theme) return;
-      setTheme(t);
+      setTheme((prev) => (t === prev ? prev : t));
     },
-    [theme]
+    []
   );
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  }, [theme]);
+  }, []);
+
+  const value = useMemo(
+    () => ({ theme, setTheme: setThemeWithGuard, toggleTheme }),
+    [theme, setThemeWithGuard, toggleTheme]
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: setThemeWithGuard, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
