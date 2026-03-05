@@ -238,6 +238,8 @@ export default async function Page() {
     day: "2-digit",
   });
 
+  const hasData = data.rows.length > 0;
+
   return (
     <main className="container viewport">
       <div className="pageHeader">
@@ -265,6 +267,30 @@ export default async function Page() {
             </div>
           </div>
         </div>
+
+        {!hasData && (
+          <div className="card" style={{ borderColor: "rgba(255,107,107,0.35)", background: "color-mix(in srgb, var(--gm-card-veil) 80%, #ff6b6b 8%)" }}>
+            <h2>⚠️ 数据为空</h2>
+            <div className="small" style={{ marginBottom: 6 }}>
+              未能从 Google Sheet 读取到任何行。请确认：
+            </div>
+            <ul className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.5 }}>
+              <li>Sheet 需要对“拥有链接的任何人”开放只读，或使用 “发布到网络” 导出。</li>
+              <li>无需登录即可访问 <a href={data.source.url} target="_blank" rel="noreferrer">CSV 导出链接</a>。</li>
+              <li>如仍为空，检查环境变量 SHEET_ID / SHEET_GID 是否与当前 Sheet 对应。</li>
+            </ul>
+            {data.notes?.length ? (
+              <div className="small" style={{ marginTop: 8 }}>
+                调试信息：
+                <ul style={{ margin: 6, paddingLeft: 18 }}>
+                  {data.notes.map((n, i) => (
+                    <li key={i}>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <div className="row">
           <section className="colScroll" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
