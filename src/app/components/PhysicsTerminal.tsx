@@ -278,6 +278,12 @@ function stepWorld(world: World, dt: number) {
       }
     }
   }
+
+  // Collisions can push bodies slightly outside the content box (especially near the floor).
+  // Re-apply wall constraints after collision resolution to keep everything strictly in-bounds.
+  for (let i = 0; i < bodies.length; i++) {
+    resolveWalls(bodies[i], world.w, world.h, restitution, wallFriction);
+  }
 }
 
 // ------------------------------------------------------------
@@ -293,9 +299,9 @@ const ASCII_ART = `
   ██╗    ██╗███████╗███╗   ██╗ ██████╗ ██╗ █████╗ ███╗   ██╗
   ██║    ██║██╔════╝████╗  ██║██╔═══██╗██║██╔══██╗████╗  ██║
   ██║ █╗ ██║█████╗  ██╔██╗ ██║██║   ██║██║███████║██╔██╗ ██║
-  ██║███╗██║██╔══╝  ██║╚██╗██║██║   ██║██║██╔══██║██║╚██╗██║
+  ██║███╗██║██╔══╝  ██║╚██╗██║██║▄▄ ██║██║██╔══██║██║╚██╗██║
   ╚███╔███╔╝███████╗██║ ╚████║╚██████╔╝██║██║  ██║██║ ╚████║
-   ╚══╝╚══╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
+   ╚══╝╚══╝ ╚══════╝╚═╝  ╚═══╝ ╚══▀▀═╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 `;
 
 const TYPED_LINES = [
@@ -613,11 +619,16 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
       // --- render ---
       const ctx = cvs.getContext("2d");
       if (!ctx) return;
-      const rect = el.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
 
+      // IMPORTANT:
+      // Clear in *device pixel* space to avoid bottom/right "ghost trails"
+      // caused by fractional CSS pixels + transforms while dragging.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+      // Draw in CSS pixel space (scaled by DPR).
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, rect.width, rect.height);
 
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
@@ -685,10 +696,10 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
         <div
             className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"
             style={{ touchAction: "none" }}
-            onPointerDown={onTerminalPointerDown}
-            onPointerMove={onTerminalPointerMove}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
+            onPointerDownCapture={onTerminalPointerDown}
+            onPointerMoveCapture={onTerminalPointerMove}
+            onPointerUpCapture={endDrag}
+            onPointerCancelCapture={endDrag}
           >
           {/* Title bar (drag handle) */}
           <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] select-none">
@@ -698,7 +709,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
               <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ffbd2e]" />
               <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#27c93f]" />
             </div>
-            <span className="font-[family-name:var(--font-press-start)] text-[9px] sm:text-[11px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-widest truncate">
+            <span className="font-[family-name:var(--font-press-start)] text-[10px] sm:text-[12px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-widest truncate" style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
               {title ?? "WENQIAN.ZHANG — BASH — 80x24"}
             </span>
           </div>
