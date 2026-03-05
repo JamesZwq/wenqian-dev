@@ -10,11 +10,14 @@ import React, {
 } from "react";
 
 type Theme = "light" | "dark";
+type ThemeSetting = "system" | Theme;
 
 const ThemeContext = createContext<{
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
+  theme: Theme; // effective theme being applied
+  setting: ThemeSetting; // user selection (system / light / dark)
+  setSetting: (setting: ThemeSetting) => void;
+  cycleSetting: () => void;
+  setTheme: (theme: Theme) => void; // convenience: sets explicit theme (exits system mode)
 } | null>(null);
 
 export function useTheme() {
@@ -28,44 +31,53 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [setting, setSetting] = useState<ThemeSetting>("system");
+  const [systemTheme, setSystemTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
+  // Read stored preference + current system preference
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    const initial = stored ?? (prefersDark ? "dark" : "light");
-    setTheme(initial);
+    const stored = (localStorage.getItem("theme-setting") as ThemeSetting | null) ?? "system";
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const initialSystem = media.matches ? "dark" : "light";
+    setSystemTheme(initialSystem);
+    setSetting(stored);
+
+    const handler = (event: MediaQueryListEvent) => {
+      setSystemTheme(event.matches ? "dark" : "light");
+    };
+    media.addEventListener("change", handler);
+    return () => media.removeEventListener("change", handler);
   }, []);
 
+  const effectiveTheme: Theme = setting === "system" ? systemTheme : setting;
+
+  // Apply theme to document
   useEffect(() => {
     if (!mounted) return;
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme, mounted]);
+    root.dataset.theme = effectiveTheme;
+    root.classList.toggle("dark", effectiveTheme === "dark");
+    root.style.colorScheme = effectiveTheme;
+    localStorage.setItem("theme-setting", setting);
+  }, [effectiveTheme, setting, mounted]);
 
-  const setThemeWithGuard = useCallback(
-    (t: Theme) => {
-      setTheme((prev) => (t === prev ? prev : t));
-    },
-    []
-  );
-
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const setTheme = useCallback((t: Theme) => {
+    setSetting(t);
   }, []);
 
+  const cycleSetting = useCallback(() => {
+    setSetting((prev) => {
+      if (prev === "system") return systemTheme === "dark" ? "light" : "dark";
+      if (prev === "light") return "dark";
+      return "system";
+    });
+  }, [systemTheme]);
+
   const value = useMemo(
-    () => ({ theme, setTheme: setThemeWithGuard, toggleTheme }),
-    [theme, setThemeWithGuard, toggleTheme]
+    () => ({ theme: effectiveTheme, setting, setSetting, cycleSetting, setTheme }),
+    [effectiveTheme, setting, setTheme, cycleSetting]
   );
 
   return (

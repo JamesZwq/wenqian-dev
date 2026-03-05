@@ -4,13 +4,14 @@ import { motion } from "framer-motion";
 import { useTheme } from "./ThemeProvider";
 
 export default function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setting, cycleSetting } = useTheme();
   const isDark = theme === "dark";
+  const label = setting === "system" ? "AUTO" : isDark ? "NIGHT" : "DAY";
 
   return (
     <motion.button
       type="button"
-      onClick={toggleTheme}
+      onClick={cycleSetting}
       whileHover={{
         scale: 1.04,
         boxShadow: "0 0 14px rgba(255,255,255,0.25)",
@@ -23,7 +24,7 @@ export default function ThemeToggle() {
         className="font-[family-name:var(--font-press-start)] text-[8px] tracking-[0.16em] text-[color-mix(in_oklab,var(--pixel-text)_85%,transparent)]"
         animate={{ opacity: isDark ? 0.9 : 0.9 }}
       >
-        {isDark ? "NIGHT" : "DAY"}
+        {label}
       </motion.span>
 
       {/* 开关主体：像素风小胶囊，内部有太阳/月亮 + 星星动画 */}

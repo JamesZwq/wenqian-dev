@@ -32,17 +32,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                var stored = localStorage.getItem('theme');
-                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                var theme = stored || (prefersDark ? 'dark' : 'dark');
-                if (theme === 'dark') document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
+                try {
+                  var setting = localStorage.getItem('theme-setting') || 'system';
+                  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  var effective = setting === 'system' ? (prefersDark ? 'dark' : 'light') : setting;
+                  var root = document.documentElement;
+                  root.dataset.theme = effective;
+                  root.classList.toggle('dark', effective === 'dark');
+                  root.style.colorScheme = effective;
+                } catch (e) {
+                  // ignore
+                }
               })();
             `,
           }}
