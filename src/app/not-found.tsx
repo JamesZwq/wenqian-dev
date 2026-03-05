@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, MoveLeft, Terminal, Share2, Binary, Cpu, Network } from 'lucide-react';
+import DraggableFloat from "./components/DraggableFloat";
 
 /**
  * 背景组件：动态图结构 (Dynamic Graph Structure)
@@ -107,6 +108,7 @@ export default function NotFound() {
   }, []);
 
   return (
+    
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-slate-100 font-mono flex flex-col items-center justify-center p-6 transition-colors duration-500 overflow-hidden relative selection:bg-blue-500/30">
       <GraphBackground />
 
@@ -124,12 +126,13 @@ export default function NotFound() {
           </h1>
 
           {/* 终端卡片 */}
-          <div className="relative bg-white/40 dark:bg-zinc-900/60 backdrop-blur-2xl border border-slate-200 dark:border-zinc-800 p-6 md:p-10 rounded-3xl shadow-2xl shadow-blue-500/5 overflow-hidden group">
-            <div className="flex gap-2 mb-6">
-              <div className="w-3 h-3 rounded-full bg-red-400/50" />
-              <div className="w-3 h-3 rounded-full bg-amber-400/50" />
-              <div className="w-3 h-3 rounded-full bg-emerald-400/50" />
-            </div>
+          <DraggableFloat>
+            <div className="relative bg-white/40 dark:bg-zinc-900/60 backdrop-blur-2xl border border-slate-200 dark:border-zinc-800 p-6 md:p-10 rounded-3xl shadow-2xl shadow-blue-500/5 overflow-hidden group">
+              <div className="flex gap-2 mb-6">
+                <div className="w-3 h-3 rounded-full bg-red-400/50" />
+                <div className="w-3 h-3 rounded-full bg-amber-400/50" />
+                <div className="w-3 h-3 rounded-full bg-emerald-400/50" />
+              </div>
 
             <div className="space-y-6">
               <div className="flex items-start gap-3">
@@ -143,7 +146,8 @@ export default function NotFound() {
 
               <div className="pl-8 py-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-3">
                 <p className="text-slate-500 dark:text-zinc-400 text-sm italic leading-relaxed">
-                  "抱歉，你正在访问的路径（节点）已从全局图中丢失。它可能在上一轮的 Core Decomposition 过程中被作为孤立分量剔除，或者从未存在于这个 Billion-Scale 图形中。"
+                  {/* "抱歉，你正在访问的路径（节点）已从全局图中丢失。它可能在上一轮的 Core Decomposition 过程中被作为孤立分量剔除，或者从未存在于这个 Billion-Scale 图形中。" */}
+                  "Sorry, the path (node) you are trying to access has been pruned from the global graph. It may have been removed as an isolated component during the last round of Core Decomposition, or it may have never existed in this billion-scale graph."
                 </p>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] rounded uppercase font-bold tracking-wider">Vertex_Missing</span>
@@ -152,6 +156,7 @@ export default function NotFound() {
               </div>
             </div>
           </div>
+          </DraggableFloat>
         </div>
 
         {/* 交互导航：在实际项目中建议把 <a> 换回 <Link> */}
@@ -161,7 +166,9 @@ export default function NotFound() {
             className="group flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all duration-300 shadow-xl shadow-blue-600/20 active:scale-95 w-full sm:w-auto justify-center"
           >
             <Home size={18} />
-            <span className="font-bold">重新连接主图 (Home)</span>
+            {/* <span className="font-bold">重新连接主图 (Home)</span> */}
+
+            <span className="font-bold">Back to Main Graph(Home)</span>
             <MoveLeft size={18} className="rotate-180 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
           </a>
           
@@ -170,7 +177,8 @@ export default function NotFound() {
             className="flex items-center gap-3 px-8 py-4 bg-transparent border border-slate-200 dark:border-zinc-800 hover:border-blue-500 text-slate-600 dark:text-zinc-300 rounded-2xl transition-all duration-300 active:scale-95 w-full sm:w-auto justify-center"
           >
             <Network size={18} className="text-blue-500" />
-            <span className="font-bold">回退上一跳 (Back)</span>
+            {/* <span className="font-bold">回退上一跳 (Back)</span> */}
+            <span className="font-bold">Go Back (Back)</span>
           </button>
         </div>
       </main>
