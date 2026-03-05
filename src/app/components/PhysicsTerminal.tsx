@@ -271,14 +271,14 @@ function buildAsciiBodies(world: World, pad: number, isSm: boolean, isMd: boolea
   return y + (isSm ? 24 : 16);
 }
 
-function syncTextBodies(world: World, history: string[], currentInput: string, promptStr: string, startY: number, pad: number, isSm: boolean, isMd: boolean) {
+function syncTextBodies(world: World, history: string[], currentInput: string, promptStr: string, startY: number, pad: number, isSm: boolean, isMd: boolean, readOnly?: boolean) {
   const font = isMd ? 16 : isSm ? 14 : 12;
   const cw = font * 0.62;
   const lh = isMd ? 24 : isSm ? 20 : 16;
   const typedR = Math.max(2.6, cw * 0.46);
 
   const maxChars = Math.max(10, Math.floor((world.w - pad * 2) / cw));
-  const rawLines = [...history, `${promptStr}${currentInput}`];
+  const rawLines = readOnly ? [...history] : [...history, `${promptStr}${currentInput}`];
   
   type RenderLine = { text: string; isCmd: boolean; originalIndex: number; subIndex: number };
   const wrappedLines: RenderLine[] = [];
@@ -540,7 +540,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       bootStartRef.current = nowMs();
       returnStartRef.current = null;
 
-      syncTextBodies(newWorld, history, currentInput, `wenqian@unsw:${cwd}$ `, asciiBottomYRef.current, pad, isSm, isMd);
+      syncTextBodies(newWorld, history, currentInput, `wenqian@unsw:${cwd}$ `, asciiBottomYRef.current, pad, isSm, isMd, isMobile);
     });
 
     ro.observe(el);
@@ -555,12 +555,12 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     const isMd = world.w >= 768;
     const pad = isMd ? 32 : isSm ? 24 : 16;
     
-    syncTextBodies(world, history, currentInput, `wenqian@unsw:${cwd}$ `, asciiBottomYRef.current, pad, isSm, isMd);
+    syncTextBodies(world, history, currentInput, `wenqian@unsw:${cwd}$ `, asciiBottomYRef.current, pad, isSm, isMd, isMobile);
     
     if (!dragRef.current.active && returnStartRef.current !== null && !isClearingRef.current) {
       returnStartRef.current = Math.max(returnStartRef.current, nowMs() - 250); 
     }
-  }, [history, currentInput, cwd]);
+  }, [history, currentInput, cwd, isMobile]);
 
   const resolvePath = useCallback((current: string, target: string) => {
     if (!target || target === "~" || target === "/") return "~";
@@ -664,7 +664,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   }, [history, cwd, resolvePath]);
 
   useEffect(() => {
-    if (isMobile) return; // 手机端仅展示，不响应键盘输入
+    if (isMobile) return; // 手机端只读，不监听键盘
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (!hasInteracted) setHasInteracted(true);
@@ -837,7 +837,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
           >
             <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
             
-            {/* 手机端不显示输入提示框，仅桌面端展示 */}
+            {/* 手机端不显示输入提示框 */}
             {!isMobile && (
               <div 
                 className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${

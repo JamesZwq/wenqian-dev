@@ -11,10 +11,15 @@ export default function PetJailToggle() {
       setEnabled(false);
       return;
     }
-    // 首次加载时强制设置为关在监狱里
+    // 与 CursorPet 一致：从 localStorage 读取，非触摸设备默认放出（true）
     try {
-      window.localStorage.setItem("cursorPetEnabled", "false");
-      setEnabled(false);
+      const stored = window.localStorage.getItem("cursorPetEnabled");
+      if (stored !== null) {
+        setEnabled(stored === "true");
+      } else {
+        const finePointer = !window.matchMedia("(pointer: coarse)").matches;
+        setEnabled(finePointer);
+      }
     } catch {
       setEnabled(false);
     }
@@ -22,28 +27,47 @@ export default function PetJailToggle() {
 
   const isOn = enabled;
 
-  const handleClick = () => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (typeof window === "undefined") return;
-    const next = !isOn;
-    setEnabled(next);
-    try {
-      window.localStorage.setItem("cursorPetEnabled", next ? "true" : "false");
-    } catch {
-      // ignore
-    }
-    window.dispatchEvent(new Event("cursor-pet-toggle"));
+
+    // Capture coords BEFORE state update (React events can be transient in some setups)
+    const x = e.clientX;
+    const y = e.clientY;
+    const pointerType = e.pointerType;
+
+    setEnabled((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("cursorPetEnabled", next ? "true" : "false");
+      } catch {
+        // ignore
+      }
+
+      // Prefer a CustomEvent with details so CursorPet can "wake up" immediately on Safari
+      try {
+        window.dispatchEvent(
+          new CustomEvent("cursor-pet-toggle", {
+            detail: { enabled: next, x, y, pointerType },
+          })
+        );
+      } catch {
+        window.dispatchEvent(new Event("cursor-pet-toggle"));
+      }
+
+      return next;
+    });
   };
 
   return (
     <motion.button
       type="button"
-      onClick={handleClick}
+      onPointerDown={handlePointerDown}
       whileHover={{
         scale: 1.03,
         boxShadow: "0 0 12px rgba(255,255,255,0.35)",
       }}
       whileTap={{ scale: 0.97 }}
-      className="pointer-events-auto fixed bottom-24 left-4 sm:bottom-4 z-[130] flex flex-col items-center gap-1"
+      className="pointer-events-auto fixed bottom-4 left-4 z-[130] flex flex-col items-center gap-1"
     >
       {/* 小小说明文字 */}
       <span className="font-[family-name:var(--font-press-start)] text-[8px] text-[color-mix(in_oklab,var(--pixel-text)_80%,transparent)] tracking-[0.15em]">

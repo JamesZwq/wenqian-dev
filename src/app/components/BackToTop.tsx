@@ -8,15 +8,15 @@ import {
   useScroll,
 } from "framer-motion";
 import { ArrowUp } from "lucide-react";
+import { useIsMobileContext } from "./IsMobileContext";
 
 export default function BackToTop() {
-  // 核心修改 1：直接获取页面的绝对滚动像素 (scrollY)，摒弃百分比
+  const isMobile = useIsMobileContext();
   const { scrollY } = useScroll();
   const [show, setShow] = useState(false);
   const showRef = useRef(false);
 
   useMotionValueEvent(scrollY, "change", (v) => {
-    // 向下滚动超过 300px 时，才允许鼠标点击交互
     const next = v > 300;
     if (next !== showRef.current) {
       showRef.current = next;
@@ -24,12 +24,11 @@ export default function BackToTop() {
     }
   });
 
-  // 核心修改 2：使用绝对像素映射区间
-  // 当滚动距离在 0 ~ 200px 之间时，opacity 为 0（完全消失/最浅）
-  // 当滚动距离在 200 ~ 400px 之间时，逐渐显现
-  // 当滚动距离 > 400px 后，opacity 永远锁定在 1（完全实心/最深）
   const opacity = useTransform(scrollY, [200, 400], [0, 1]);
   const scale = useTransform(scrollY, [200, 400], [0.8, 1]);
+
+  // 手机端不显示 Back to top
+  if (isMobile) return null;
 
   return (
     <motion.button

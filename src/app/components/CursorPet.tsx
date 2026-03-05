@@ -6,7 +6,6 @@ import { motion, useAnimationFrame, useMotionValue } from "framer-motion";
 export default function CursorPet() {
   const [mounted, setMounted] = useState(false);
 
-  // 只在客户端挂载完成后再渲染，避免 SSR 与客户端初始 transform 不一致导致的 hydration 报错
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -17,7 +16,6 @@ export default function CursorPet() {
 }
 
 function CursorPetInner() {
-  // 目标位置由 window mousemove 驱动
   const targetXRef = useRef(0);
   const targetYRef = useRef(0);
   const lastMoveTimeRef = useRef<number>(typeof performance !== "undefined" ? performance.now() : 0);
@@ -29,115 +27,168 @@ function CursorPetInner() {
       isTouchRef.current = window.matchMedia("(pointer: coarse)").matches;
     }
 
-    // 首次加载时强制关在监狱里
     try {
-      window.localStorage.setItem("cursorPetEnabled", "false");
-      setEnabled(false);
+      const stored = window.localStorage.getItem("cursorPetEnabled");
+      if (stored !== null) {
+        setEnabled(stored === "true");
+      } else {
+        const defaultEnabled = !isTouchRef.current;
+        window.localStorage.setItem("cursorPetEnabled", defaultEnabled ? "true" : "false");
+        setEnabled(defaultEnabled);
+      }
     } catch {
-      setEnabled(false);
+      setEnabled(!isTouchRef.current);
     }
 
-    const handle = (e: MouseEvent) => {
+    // 1. 使用 pointermove，并加入黑魔法 { capture: true } 强行拦截坐标
+    const handlePointer = (e: PointerEvent) => {
+      if (e.pointerType === "touch") {
+        isTouchRef.current = true;
+        return;
+      }
+      isTouchRef.current = false;
       targetXRef.current = e.clientX;
       targetYRef.current = e.clientY;
       lastMoveTimeRef.current = performance.now();
     };
 
-    const handleToggle = () => {
-      try {
-        const stored = window.localStorage.getItem("cursorPetEnabled");
-        const next = stored === "true";
-        setEnabled(next);
-      } catch {
+    // 2. 双重保险：兜底的 mousemove，同样在捕获阶段拦截
+    const handleMouse = (e: MouseEvent) => {
+      if (isTouchRef.current) return;
+      targetXRef.current = e.clientX;
+      targetYRef.current = e.clientY;
+      lastMoveTimeRef.current = performance.now();
+    };
+
+    const handleToggle = (ev: Event) => {
+      // If PetJailToggle sent details, use them; otherwise fall back to localStorage.
+      const anyEv = ev as any;
+      const detail = anyEv?.detail;
+      let next: boolean | null = null;
+
+      if (detail && typeof detail.enabled === "boolean") {
+        next = detail.enabled;
+
+        // If a mouse pointer triggered the toggle, seed the target coords immediately.
+        if (typeof detail.x === "number" && typeof detail.y === "number") {
+          targetXRef.current = detail.x;
+          targetYRef.current = detail.y;
+        }
+
+        // Touch toggle shouldn't immediately switch us into follow mode.
+        if (detail.pointerType === "touch") {
+          isTouchRef.current = true;
+        } else if (detail.pointerType) {
+          isTouchRef.current = false;
+        }
+      } else {
+        try {
+          const stored = window.localStorage.getItem("cursorPetEnabled");
+          if (stored !== null) next = stored === "true";
+        } catch {
+          // ignore
+        }
+      }
+
+      // Apply state (do NOT invert again — PetJailToggle already decided the next value)
+      if (next === null) {
         setEnabled((prev) => !prev);
+        lastMoveTimeRef.current = performance.now();
+        return;
+      }
+
+      setEnabled(next);
+
+      // Wake immediately on enable to avoid Safari "needs extra click" behavior
+      if (next) {
+        lastMoveTimeRef.current = performance.now();
       }
     };
 
-    window.addEventListener("mousemove", handle);
+    // { capture: true } 确保即使你点击的按钮阻止了事件冒泡或捕获了指针，
+    // window 也能在事件下发前，以上帝视角截获最新的鼠标位置！
+    window.addEventListener("pointermove", handlePointer, { capture: true });
+    window.addEventListener("mousemove", handleMouse, { capture: true });
+    window.addEventListener("pointerdown", handlePointer, { capture: true });
+    window.addEventListener("mousedown", handleMouse, { capture: true });
+    document.addEventListener("pointermove", handlePointer, { capture: true });
+    document.addEventListener("mousemove", handleMouse, { capture: true });
     window.addEventListener("cursor-pet-toggle", handleToggle as EventListener);
+    
     return () => {
-      window.removeEventListener("mousemove", handle);
+      window.removeEventListener("pointermove", handlePointer, { capture: true });
+      window.removeEventListener("mousemove", handleMouse, { capture: true });
+      window.removeEventListener("pointerdown", handlePointer, { capture: true });
+      window.removeEventListener("mousedown", handleMouse, { capture: true });
+      document.removeEventListener("pointermove", handlePointer, { capture: true });
+      document.removeEventListener("mousemove", handleMouse, { capture: true });
       window.removeEventListener("cursor-pet-toggle", handleToggle as EventListener);
     };
   }, []);
 
-  // 初始位置直接放在左下角“监狱”中心，而不是屏幕中央
-  const initialH =
-    typeof window !== "undefined" ? window.innerHeight || 600 : 600;
   const x = useMotionValue(50);
-  const y = useMotionValue(initialH - 32);
+  const y = useMotionValue(600);
   const bob = useMotionValue(0);
 
   useAnimationFrame((t, delta) => {
-    const dt = Math.max((delta || 16) / 1000, 1 / 120);
+    const dt = Math.min(delta / 1000, 0.1); 
 
     const curX = x.get();
     const curY = y.get();
 
     const idleSinceMove = (performance.now() - lastMoveTimeRef.current) / 1000;
-    // 只要开关是开启的，且不是触摸设备，并且 2 秒内有鼠标移动，就跟随鼠标；
-    // 否则就回到左下角自己漂浮
-    const shouldFollowMouse =
-      enabled && !isTouchRef.current && idleSinceMove <= 2; // 2 秒内有移动就跟随
+    const shouldFollowMouse = enabled && !isTouchRef.current && idleSinceMove <= 5;
 
     if (shouldFollowMouse) {
-      // 跟随鼠标：简单缓动
-      const followSpeed = 8;
+      const followSpeed = 12; 
+      const lerpFactor = 1 - Math.exp(-followSpeed * dt);
+
       const tx = targetXRef.current;
       const ty = targetYRef.current;
-      x.set(curX + (tx - curX) * followSpeed * dt);
-      y.set(curY + (ty - curY) * followSpeed * dt);
+      
+      x.set(curX + (tx - curX) * lerpFactor);
+      y.set(curY + (ty - curY) * lerpFactor);
 
-      // 闲置时的“自己动一下”：做一个极小幅度的上下轻微摆动
-      const idle = Math.min(Math.max(idleSinceMove - 1, 0) / 3, 1); // 鼠标停 1s 后慢慢开启，3s 后达到满强度
-      const bobAmp = 3; // 最大摆动幅度（像素）
-      const bobValue = Math.sin(t / 500) * bobAmp * idle;
-      bob.set(bobValue);
+      const idle = Math.min(Math.max(idleSinceMove - 1, 0) / 3, 1);
+      const bobAmp = 3; 
+      bob.set(Math.sin(t / 500) * bobAmp * idle);
     } else {
-      // 没有鼠标或开关关闭：宠物缓慢靠近左下角“监狱”的中心位置，然后停住并做极小的“呼吸”
       const h = typeof window !== "undefined" ? window.innerHeight : 600;
-      // page.tsx 中监狱是 fixed bottom-4 left-4，宽度 w-10 (≈40px)，高度 h-8 (≈32px)
-      // left: 16px, top: h - 16 - 32 = h - 48，中心大约在 (16 + 20, (h - 48) + 16)
-      const baseX = 50; // 监狱的水平中心
-      const baseY = h - 32; // 监狱的垂直中心
+      const targetLX = 50; 
+      const targetLY = h - 32;
 
-      const settleSpeed = 4;
-      const targetLX = baseX;
-      const targetLY = baseY;
+      const settleSpeed = 5;
+      const lerpFactor = 1 - Math.exp(-settleSpeed * dt);
 
-      x.set(curX + (targetLX - curX) * settleSpeed * dt);
-      y.set(curY + (targetLY - curY) * settleSpeed * dt);
+      x.set(curX + (targetLX - curX) * lerpFactor);
+      y.set(curY + (targetLY - curY) * lerpFactor);
 
       const bobAmp = 1.5;
-      const bobValue = Math.sin(t / 700) * bobAmp;
-      bob.set(bobValue);
+      bob.set(Math.sin(t / 700) * bobAmp);
     }
   });
 
   return (
     <motion.div
-      style={{ x, y, translateY: bob }}
+      style={{ x, y }}
       className="pointer-events-none fixed top-0 left-0 z-[120]"
     >
-      {/* 像素风小宠物：一个小“胶囊”形状 + 耳朵 + 眼睛 */}
-      <div className="relative -translate-x-1/2 -translate-y-1/2">
+      <motion.div 
+        style={{ y: bob }}
+        className="relative -translate-x-1/2 -translate-y-1/2"
+      >
         <div className="relative w-6 h-5 rounded-[999px] bg-[color-mix(in_oklab,var(--pixel-accent)_75%,transparent)] shadow-[0_0_10px_color-mix(in_oklab,var(--pixel-accent)_80%,transparent)] border border-[color-mix(in_oklab,var(--pixel-accent)_90%,black)]">
-          {/* 耳朵 */}
           <div className="absolute -top-[4px] left-1 w-2 h-2 rounded-t-[6px] bg-[color-mix(in_oklab,var(--pixel-accent)_85%,transparent)]" />
           <div className="absolute -top-[4px] right-1 w-2 h-2 rounded-t-[6px] bg-[color-mix(in_oklab,var(--pixel-accent)_85%,transparent)]" />
-          {/* 眼睛 */}
           <div className="absolute inset-0 flex items-center justify-center gap-[4px]">
             <div className="w-[3px] h-[3px] rounded-full bg-[var(--pixel-bg)]" />
             <div className="w-[3px] h-[3px] rounded-full bg-[var(--pixel-bg)]" />
           </div>
-          {/* 小嘴巴 */}
           <div className="absolute inset-x-0 bottom-[4px] flex justify-center">
             <div className="w-3 h-[1px] rounded-full bg-[color-mix(in_oklab,var(--pixel-bg)_60%,transparent)]" />
           </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
-
-
