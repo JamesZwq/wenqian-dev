@@ -115,8 +115,10 @@ a:hover{ text-decoration: underline; }
   }
 
   .colRight{
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
+    padding-right: 4px;
   }
 }
 
