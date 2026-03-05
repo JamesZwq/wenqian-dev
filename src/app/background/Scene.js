@@ -650,8 +650,8 @@ export function Scene({ isFullscreen, theme }) {
           backgroundColor: theme === "dark" 
             ? "rgba(2, 6, 23, 0.35)" 
             : "rgba(244, 245, 247, 0.5)",
-          backdropFilter: "blur(1px)",
-          WebkitBackdropFilter: "blur(1px)",
+          backdropFilter: "blur(0.5px)",
+          WebkitBackdropFilter: "blur(0.5px)",
           zIndex: 1,
           willChange: "transform" // 提示浏览器开启 GPU 硬件加速
         }}
