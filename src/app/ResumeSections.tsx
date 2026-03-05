@@ -318,7 +318,13 @@ export default function ResumeSections() {
         <SectionTitle icon={IconBook}>Publications</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <PublicationCard
-            status="Accepted - SIGMOD 2025"
+            status="Accepted - SIGMOD 2026"
+            title="Nucleus Decomposition Revisited: An Efficient Counting-Based Approach"
+            meta="Co-Author"
+            desc="Proposing a novel counting-based framework for dense subgraph discovery."
+          />
+          <PublicationCard
+            status="Published - SIGMOD 2025"
             title="Accelerating Core Decomposition in Billion-Scale Hypergraphs"
             meta="First Author"
             desc="Improved efficiency by 7x and reduced memory by 36x compared to state-of-the-art."
@@ -328,12 +334,6 @@ export default function ResumeSections() {
             title="Efficient Distributed Core Graph Decomposition"
             meta="First Author"
             desc="Optimized algorithms deployed on Spark/Flink via Kubernetes clusters."
-          />
-          <PublicationCard
-            status="Under Review - SIGMOD"
-            title="Nucleus Decomposition Revisited: An Efficient Counting-Based Approach"
-            meta="Co-Author"
-            desc="Proposing a novel counting-based framework for dense subgraph discovery."
           />
         </div>
       </motion.section>

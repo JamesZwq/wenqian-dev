@@ -7,10 +7,12 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 
-const GRID_SIZE = 40;
+const BASE_GRID_SIZE = 38;
 const VIEW_SIZE = 50;
-const BOX_SIZE = 1;
 
+// Dynamic LOD caps (tune for perf/visual density)
+const GRID_MIN = 18;
+const GRID_MAX = 44;
 const RANDOM_BLOCK_DURATION = 6; 
 const RANDOM_BLOCK_HEIGHT = 2; 
 const RANDOM_SPAWN_INTERVAL = 1; 
@@ -43,7 +45,7 @@ export function Scene({ isFullscreen, theme }) {
   const modeRef = useRef("random");
   const lastTimeRef = useRef(0);
   const waveProgressRef = useRef(0);
-  const waveOriginRef = useRef({ x: GRID_SIZE / 2, y: GRID_SIZE / 2 });
+  const waveOriginRef = useRef({ x: BASE_GRID_SIZE / 2, y: BASE_GRID_SIZE / 2 });
   const lastLocalTRef = useRef(0);
   const randomActiveBlocksRef = useRef([]); 
   const lastSpawnTimeRef = useRef(0);
@@ -74,9 +76,60 @@ export function Scene({ isFullscreen, theme }) {
   const rippleMaxDistRef = useRef(0);
   const resizeRafRef = useRef(null);
 
+  // --- Responsive LOD (reduce instance count & render resolution on small/slow devices) ---
+  const [gridSize, setGridSize] = useState(BASE_GRID_SIZE);
+  const gridSizeRef = useRef(BASE_GRID_SIZE);
+  useEffect(() => {
+    gridSizeRef.current = gridSize;
+    // keep wave origin centered for the new grid
+    waveOriginRef.current = { x: gridSize / 2, y: gridSize / 2 };
+  }, [gridSize]);
+
+  const lodRef = useRef({ gridSize: BASE_GRID_SIZE, scale: 1, pixelRatio: 1, enableBloom: true });
+
+  const pickLOD = React.useCallback((w, h) => {
+    const area = Math.max(1, w * h);
+    const dpr = window.devicePixelRatio || 1;
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    const ua = navigator.userAgent || "";
+    const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
+
+    // Target instance budget ~ proportional to screen area (tune)
+    // 1920x1080 -> ~590  (close to your current ~722)
+    let target = area / 3500;
+    target = Math.max(220, Math.min(950, target));
+
+    // Hardware penalties
+    let hw = 1;
+    if (dpr >= 2.5) hw *= 0.85;
+    if (cores <= 4) hw *= 0.85;
+    if (mem && mem <= 4) hw *= 0.85;
+    if (isSafari) hw *= 0.9;
+    target *= hw;
+
+    // Convert instance budget -> grid size (since count ≈ grid^2 / 2)
+    let g = Math.round(Math.sqrt(target * 2));
+    if (g % 2 === 1) g += 1; // keep even for symmetry
+    g = Math.max(GRID_MIN, Math.min(GRID_MAX, g));
+
+    // Scale so the pattern keeps roughly the same world footprint as BASE_GRID_SIZE
+    const scale = BASE_GRID_SIZE / g;
+
+    // Lower render resolution on heavy DPR / Safari
+    let prCap = isSafari ? 1.25 : 1.5;
+    let pr = Math.min(dpr, prCap);
+    if (target < 320) pr = Math.min(pr, 1.0);
+    if (target < 260) pr = Math.min(pr, 0.9);
+
+    const enableBloom = !isSafari && target >= 320;
+
+    return { gridSize: g, scale, pixelRatio: pr, enableBloom };
+  }, []);
+
   const basePositions = useMemo(() => {
     const positions = [];
-    const size = GRID_SIZE;
+    const size = gridSize;
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         if (r % 2) {
@@ -86,13 +139,13 @@ export function Scene({ isFullscreen, theme }) {
       }
     }
     return positions;
-  }, []);
+  }, [gridSize]);
   const instanceCount = basePositions.length;
 
   const { lightColors, darkColors } = useMemo(() => {
     const lc = [];
     const dc = [];
-    const size = GRID_SIZE;
+    const size = gridSize;
 
     // 高级感调色：纯白至浅灰 vs 深邃黑蓝至暗紫
     const dayStart = new THREE.Color("#ffffff"); 
@@ -116,7 +169,7 @@ export function Scene({ isFullscreen, theme }) {
       }
     }
     return { lightColors: lc, darkColors: dc };
-  }, []);
+  }, [gridSize]);
 
   const introDropData = useMemo(() => {
     const arr = [];
@@ -136,8 +189,8 @@ export function Scene({ isFullscreen, theme }) {
     if (!instanceCount) return;
     const distances = new Float32Array(instanceCount);
     let maxDist = 0;
-    const originX = GRID_SIZE + 2;
-    const originY = GRID_SIZE + 2;
+    const originX = gridSize + 2;
+    const originY = gridSize + 2;
 
     for (let i = 0; i < instanceCount; i++) {
       const p = basePositions[i];
@@ -150,7 +203,7 @@ export function Scene({ isFullscreen, theme }) {
 
     rippleDistancesRef.current = distances;
     rippleMaxDistRef.current = maxDist || 1;
-  }, [basePositions, instanceCount]);
+  }, [basePositions, instanceCount, gridSize]);
 
   useEffect(() => {
     const handleToggle = () => {
@@ -185,9 +238,16 @@ export function Scene({ isFullscreen, theme }) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const lod0 = pickLOD(container.clientWidth, container.clientHeight);
+    lodRef.current = lod0;
+    // If LOD wants a different grid, update state and let the effect re-run (avoids building twice)
+    if (lod0.gridSize !== gridSizeRef.current) {
+      setGridSize(lod0.gridSize);
+      return;
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false }); // 关闭 alpha 配合后期处理
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(lod0.pixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
     
     const initialIsDark = theme === "dark";
@@ -227,15 +287,17 @@ export function Scene({ isFullscreen, theme }) {
     scene.add(fillLight);
 
     const root = new THREE.Group();
-    const offset = -Math.ceil(GRID_SIZE / 2);
-    const shift = GRID_SIZE * 0.18;
+    const gridScale = lodRef.current?.scale ?? 1;
+    const offset = -Math.ceil(gridSize / 2) * gridScale;
+    const shift = gridSize * 0.18 * gridScale;
     root.position.set(offset + shift, offset + shift, 0);
+    root.scale.set(gridScale, gridScale, gridScale);
     const startRotation = { x: THREE.MathUtils.degToRad(-20), y: THREE.MathUtils.degToRad(20) };
     root.rotation.set(startRotation.x, startRotation.y, 0);
     scene.add(root);
     rootRef.current = root;
 
-    const geometry = new THREE.BoxGeometry(BOX_SIZE, BOX_SIZE, BOX_SIZE);
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
 
     // --- 高级感磨砂材质 ---
     const material = new THREE.MeshStandardMaterial({
@@ -276,6 +338,7 @@ export function Scene({ isFullscreen, theme }) {
       0.6 
     );
     bloomPassRef.current = bloomPass;
+    bloomPass.enabled = lod0.enableBloom;
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
     composer.addPass(bloomPass);
@@ -433,11 +496,11 @@ export function Scene({ isFullscreen, theme }) {
                 lastLocalTRef.current = 0;
                 randomActiveBlocksRef.current = [];
                 lastSpawnTimeRef.current = t;
-                waveOriginRef.current = { x: Math.random() * GRID_SIZE, y: Math.random() * GRID_SIZE };
+                waveOriginRef.current = { x: Math.random() * gridSize, y: Math.random() * gridSize };
               }
             } else if (currentMode === "wave") {
               const localDummy = dummy;
-              const maxRadius = Math.sqrt((GRID_SIZE * GRID_SIZE) * 2);
+              const maxRadius = Math.sqrt((gridSize * gridSize) * 2);
               const waveSpeed = maxRadius / 50; 
               const pulseDuration = 5; 
               const amp = 3; 
@@ -446,7 +509,7 @@ export function Scene({ isFullscreen, theme }) {
               const localT = t % totalCycle;
 
               if (localT < lastLocalTRef.current) {
-                waveOriginRef.current = { x: Math.random() * GRID_SIZE, y: Math.random() * GRID_SIZE };
+                waveOriginRef.current = { x: Math.random() * gridSize, y: Math.random() * gridSize };
               }
               lastLocalTRef.current = localT;
 
@@ -548,6 +611,16 @@ export function Scene({ isFullscreen, theme }) {
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
         if (!container || !cameraRef.current || !rendererRef.current) return;
+        const lodN = pickLOD(container.clientWidth, container.clientHeight);
+        // Rebuild only when grid changes meaningfully (avoids thrashing during tiny resizes)
+        if (Math.abs(lodN.gridSize - gridSizeRef.current) >= 2) {
+          lodRef.current = lodN;
+          setGridSize(lodN.gridSize);
+          return;
+        }
+        lodRef.current = lodN;
+        rendererRef.current.setPixelRatio(lodN.pixelRatio);
+        if (bloomPassRef.current) bloomPassRef.current.enabled = lodN.enableBloom;
         const aspectNew = container.clientWidth / container.clientHeight || 1;
         const cam = cameraRef.current;
         const frustum = frustumSize;
@@ -633,6 +706,7 @@ export function Scene({ isFullscreen, theme }) {
     ripple.toBg.set(isDark ? 0x05050a : 0xf4f5f7);
 
     if (bloomPassRef.current) {
+      bloomPassRef.current.enabled = lodRef.current.enableBloom;
       ripple.fromBloom = bloomPassRef.current.strength;
       ripple.toBloom = isDark ? 0.35 : 0.0;
     }
