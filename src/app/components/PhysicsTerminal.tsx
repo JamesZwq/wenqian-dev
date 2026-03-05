@@ -50,7 +50,7 @@ type World = {
   gravityOn: boolean;
   collisionsOn: boolean;
   returnAlpha: number;
-  isClearing: boolean; // 新增：是否处于爆炸清屏状态
+  isClearing: boolean; 
 };
 
 const OFFSET = 32768;
@@ -149,7 +149,7 @@ function stepWorld(world: World, dt: number) {
   const bodies = world.bodies;
   const GRAV = 1500;
   const airDrag = 1.05;
-  const maxSpeed = 3500; // 提高最大速度上限，让爆炸更爽快
+  const maxSpeed = 3500; 
   const restitution = 0.42;
   const mu = 0.25;
   const wallFriction = 0.05;
@@ -184,7 +184,6 @@ function stepWorld(world: World, dt: number) {
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     
-    // 如果不在清屏状态，才开启空气墙碰撞；如果正在清屏，让它们飞出屏幕外！
     if (!world.isClearing) {
       resolveWalls(b, world.w, world.h, restitution, wallFriction);
     }
@@ -402,12 +401,10 @@ function initBootExplosion(world: World) {
   }
 }
 
-// 新增：专为 clear 命令设计的破坏性爆炸动画
-function initClearExplosion(world: World) {
-  const cx = world.w * 0.5; const cy = world.h * 0.5;
+// 核心修改：接受光标的动态坐标作为震源
+function initClearExplosion(world: World, cx: number, cy: number) {
   for (let i = 0; i < world.bodies.length; i++) {
     const b = world.bodies[i];
-    // 从中心产生向外推的冲击波
     const dx = b.x - cx; 
     const dy = b.y - cy;
     const d = Math.hypot(dx, dy) || 1;
@@ -417,26 +414,33 @@ function initClearExplosion(world: World) {
     const cs = Math.cos(jitter); const sn = Math.sin(jitter);
     nx = nx * cs - ny * sn; ny = nx * sn + ny * cs;
 
-    // 速度调得极大，确保它们能迅速飞出屏幕边界
-    const base = clamp(d * 2.0 + 2200, 2500, 4500); 
-    const sp = base * (0.8 + 0.6 * hash01(b.id + 1999));
+    const base = clamp(d * 2.0 + 1200, 1500, 3500); 
+    const sp = base * (0.8 + 0.6 * hash01(b.id + 999));
     b.vx = nx * sp; b.vy = ny * sp;
   }
 }
 
-function drawBootShockwave(ctx: CanvasRenderingContext2D, w: number, h: number, elapsedMs: number, pal: Palette) {
+// 通用的冲击波绘制函数，支持自定义原点、最大半径和颜色
+// 通用的冲击波绘制函数，支持自定义原点、最大半径和颜色
+function drawShockwave(ctx: CanvasRenderingContext2D, cx: number, cy: number, maxR: number, elapsedMs: number, pal: Palette, colorKey: ColorKey) {
   const DUR = 700;
   const u = clamp(elapsedMs / DUR, 0, 1);
   if (u <= 0 || u >= 1) return;
+  
   const eased = 1 - Math.pow(1 - u, 3);
-  const r = eased * Math.min(w, h) * 0.72;
-  const cx = w * 0.5; const cy = h * 0.5;
+  const r = eased * maxR;
 
   ctx.save();
-  ctx.globalAlpha = 0.14 * (1 - u); ctx.lineWidth = 2; ctx.strokeStyle = pal.accent2;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-  ctx.globalAlpha = 0.08 * (1 - u); ctx.fillStyle = pal.accent;
-  ctx.beginPath(); ctx.arc(cx, cy, 18 * (1 - 0.4 * u), 0, Math.PI * 2); ctx.fill();
+  // 只保留向外扩散的线框圆环（冲击波）
+  ctx.globalAlpha = 0.14 * (1 - u); 
+  ctx.lineWidth = 2; 
+  ctx.strokeStyle = pal[colorKey];
+  ctx.beginPath(); 
+  ctx.arc(cx, cy, r, 0, Math.PI * 2); 
+  ctx.stroke();
+  
+  // 删除了原本在这里绘制中心实心圆圈 (ctx.fill) 的代码
+
   ctx.restore();
 }
 
@@ -496,9 +500,10 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   const returnStartRef = useRef<number | null>(null);
   const bootStartRef = useRef<number | null>(null);
   
-  // 新增：爆炸清屏状态 Refs
   const isClearingRef = useRef(false);
   const clearStartRef = useRef<number | null>(null);
+  // 新增：记录清屏时的震源坐标
+  const clearCenterRef = useRef<{x: number, y: number} | null>(null);
 
   const paletteRef = useRef<Palette>({ accent: "#00ff88", accent2: "#00d4ff", warn: "#ff6b35", text: "#e6e6e6" });
   const fontFamilyRef = useRef<string>(FALLBACK_FONT_FAMILY);
@@ -632,19 +637,24 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
         newHistory.push("wenqian is not in the sudoers file. This incident will be reported.");
         break;
       case "clear":
-        // 核心修改：触发物理大爆炸，延时后再清除记录
         if (worldRef.current) {
-          initClearExplosion(worldRef.current);
+          // 核心修改：在清除之前，找到物理世界中光标(cursor)的位置
+          const cursor = worldRef.current.bodies.find(b => b.key === "cursor");
+          // 如果找到了光标就以光标为中心，否则退回屏幕中央
+          const cx = cursor ? cursor.x : worldRef.current.w / 2;
+          const cy = cursor ? cursor.y : worldRef.current.h / 2;
+          
+          clearCenterRef.current = { x: cx, y: cy };
+          initClearExplosion(worldRef.current, cx, cy);
         }
         isClearingRef.current = true;
         clearStartRef.current = nowMs();
         
-        // 等待 600ms，让字符充分飞出屏幕外
         setTimeout(() => {
           setHistory([]);
           isClearingRef.current = false;
         }, 600);
-        return; // 不要直接往 history 里塞东西了
+        return; 
       default:
         newHistory.push(`bash: ${baseCmd}: command not found`);
     }
@@ -653,10 +663,8 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 屏蔽组合键
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (!hasInteracted) setHasInteracted(true);
-      // 如果正在爆炸清屏，屏蔽任何键盘输入，直到动画结束
       if (isClearingRef.current) {
         e.preventDefault();
         return;
@@ -691,7 +699,6 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       const world = worldRef.current; const cvs = canvasRef.current;
       if (!world || !cvs) return;
 
-      // 同步清屏状态到物理世界
       world.isClearing = isClearingRef.current;
 
       const dragging = dragRef.current.active;
@@ -715,23 +722,19 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
       world.axExt = dragging ? -axBox : 0; world.ayExt = dragging ? -ayBox : 0; world.gravityOn = dragging;
 
-      // Boot 动画时间
       const bootStart = bootStartRef.current;
       const bootElapsed = bootStart !== null ? t - bootStart : 1e9;
       const bootActive = bootStart !== null && bootElapsed < 1400;
       if (bootStart !== null && !bootActive) bootStartRef.current = null;
 
-      // Clear 冲击波特效时间
       const clearStart = clearStartRef.current;
       const clearElapsed = clearStart !== null ? t - clearStart : 1e9;
       const clearActive = clearStart !== null && clearElapsed < 700;
       if (clearStart !== null && !clearActive) clearStartRef.current = null;
 
-      // 如果正在清屏，完全关闭碰撞
       world.collisionsOn = dragging || (bootActive && bootElapsed > 120 && bootElapsed < 900);
       if (world.isClearing) world.collisionsOn = false;
 
-      // 弹性归位管理：正在拖拽、处于启动或清屏阶段时，暂时关闭回弹引力
       if (dragging) {
         world.returnAlpha = 0; returnStartRef.current = null;
       } else if (bootActive) {
@@ -757,9 +760,17 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
       const pal = paletteRef.current; const ff = fontFamilyRef.current || FALLBACK_FONT_FAMILY;
 
-      if (bootActive) drawBootShockwave(ctx, world.w, world.h, bootElapsed, pal);
-      // 为清屏也画一个冲击波
-      if (clearActive) drawBootShockwave(ctx, world.w, world.h, clearElapsed, pal);
+      // 绘制开机动画 (中心蓝绿色)
+      if (bootActive) {
+        drawShockwave(ctx, world.w * 0.5, world.h * 0.5, Math.min(world.w, world.h) * 0.72, bootElapsed, pal, "accent2");
+      }
+      
+      // 绘制清屏爆炸动画 (光标位置，橘红色，半径更大以覆盖全屏)
+      if (clearActive && clearCenterRef.current) {
+        const { x, y } = clearCenterRef.current;
+        const maxR = Math.hypot(world.w, world.h); 
+        drawShockwave(ctx, x, y, maxR, clearElapsed, pal, "warn");
+      }
       
       ctx.globalAlpha = bootActive ? clamp(bootElapsed / 180, 0, 1) : 1;
 

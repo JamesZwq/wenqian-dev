@@ -32,7 +32,7 @@ export default function Home() {
     <MouseProvider>
       <IsMobileProvider>
         <ScrollLagProvider>
-          <PixelKeyboardHandler />
+          {/* <PixelKeyboardHandler /> */}
           <main className="relative min-h-screen bg-[var(--pixel-bg)] text-[var(--pixel-text)] selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
             <Background />
             <CursorPet />
