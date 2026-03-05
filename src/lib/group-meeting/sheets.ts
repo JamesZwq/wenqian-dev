@@ -23,9 +23,7 @@ export async function fetchSheetCsv(params: {
   revalidateSeconds: number;
 }): Promise<{ csvText: string; url: string; notes: string[] }> {
   const { sheetId, gid, revalidateSeconds } = params;
-  const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=csv&gid=${encodeURIComponent(
-    gid,
-  )}`;
+  const url = `https://docs.google.com/spreadsheets/d/18ffrZOqvPL7YS9pUcN18OIrEuIZ395yoTjPHWyFxjNI/export?format=csv&gid=1602646240`;
 
   const res = await fetch(url, {
     next: { revalidate: revalidateSeconds },
