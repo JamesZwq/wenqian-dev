@@ -8,6 +8,7 @@ import {
 } from "@/lib/group-meeting/sheets";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 type Payload = {
   headers: string[];
