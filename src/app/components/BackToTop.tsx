@@ -5,28 +5,31 @@ import {
   motion,
   useTransform,
   useMotionValueEvent,
-  useMotionValue,
+  useScroll,
 } from "framer-motion";
 import { ArrowUp } from "lucide-react";
-import { useScrollLag } from "./ScrollLagContext";
 
 export default function BackToTop() {
-  const scrollLag = useScrollLag();
-  const zeroProgress = useMotionValue(0);
-  const scrollYProgress = scrollLag?.scrollYProgress ?? zeroProgress;
+  // 核心修改 1：直接获取页面的绝对滚动像素 (scrollY)，摒弃百分比
+  const { scrollY } = useScroll();
   const [show, setShow] = useState(false);
   const showRef = useRef(false);
 
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    const next = v > 0.2;
+  useMotionValueEvent(scrollY, "change", (v) => {
+    // 向下滚动超过 300px 时，才允许鼠标点击交互
+    const next = v > 300;
     if (next !== showRef.current) {
       showRef.current = next;
       setShow(next);
     }
   });
 
-  const opacity = useTransform(scrollYProgress, [0.15, 0.25], [0, 1]);
-  const scale = useTransform(scrollYProgress, [0.15, 0.25], [0.8, 1]);
+  // 核心修改 2：使用绝对像素映射区间
+  // 当滚动距离在 0 ~ 200px 之间时，opacity 为 0（完全消失/最浅）
+  // 当滚动距离在 200 ~ 400px 之间时，逐渐显现
+  // 当滚动距离 > 400px 后，opacity 永远锁定在 1（完全实心/最深）
+  const opacity = useTransform(scrollY, [200, 400], [0, 1]);
+  const scale = useTransform(scrollY, [200, 400], [0.8, 1]);
 
   return (
     <motion.button

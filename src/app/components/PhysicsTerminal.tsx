@@ -830,7 +830,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
   };
 
   return (
-    <div ref={outerRef} className={rootClass} style={{ willChange: "transform" }}>
+    <div ref={outerRef} className={rootClass} style={{willChange: "transform" ,  zIndex: 1}}>
       {/* Scale-on-hover wrapper (matches DraggableFloat hover/tap feel without interfering with translate transform) */}
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div

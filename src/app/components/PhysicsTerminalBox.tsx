@@ -314,7 +314,7 @@ export default function PhysicsTerminalBox(props: {
     <div
       ref={boxRef}
       className={
-        "select-none touch-none " +
+        "select-none touch-none" +
         (className ?? "")
       }
       style={{
