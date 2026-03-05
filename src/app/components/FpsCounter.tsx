@@ -48,7 +48,7 @@ export default function FpsCounter() {
   return (
     <div
       className={`mix-blend-difference mix-blend-mode pointer-events-none fixed right-2 bottom-2 z-[190] px-2 py-1 font-[family-name:var(--font-jetbrains)] text-[10px] ${colorClass}`}
-      style={{ backdropFilter: "blur(6px)" }}
+      // style={{ backdropFilter: "blur(6px)" }}
     >
       FPS: {fps}
     </div>
