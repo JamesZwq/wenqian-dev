@@ -557,12 +557,7 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
 
   const rootClass = ["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ");
 
-  const [glitch, setGlitch] = useState(false);
   const [uiDragging, setUiDragging] = useState(false);
-  useEffect(() => {
-    const t = window.setInterval(() => setGlitch((g) => !g), 3000);
-    return () => window.clearInterval(t);
-  }, []);
 
   // Drag state
   const dragRef = useRef<{ active: boolean; pid: number; sx: number; sy: number; tx: number; ty: number }>({
@@ -862,17 +857,6 @@ export default function PhysicsTerminal({ className, title }: PhysicsTerminalPro
             <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
           </div>
         </div>
-
-        {/* Glitch overlay (matches the non-physics terminal) */}
-        {glitch && (
-          <div
-            className="absolute inset-0 pointer-events-none mix-blend-difference"
-            style={{
-              background: "linear-gradient(90deg, transparent 48%, #ff00ff 50%, transparent 52%)",
-              opacity: 0.03,
-            }}
-          />
-        )}
       </div>
     </div>
   );

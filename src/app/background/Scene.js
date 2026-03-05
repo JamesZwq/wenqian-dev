@@ -75,6 +75,9 @@ export function Scene({ isFullscreen, theme }) {
   const rippleDistancesRef = useRef(null);
   const rippleMaxDistRef = useRef(0);
   const resizeRafRef = useRef(null);
+  const resizeDebounceRef = useRef(null);
+  const pendingResizeRef = useRef({ w: 0, h: 0 });
+  const appliedSizeRef = useRef({ w: 0, h: 0 });
 
   // --- Responsive LOD (reduce instance count & render resolution on small/slow devices) ---
   const [gridSize, setGridSize] = useState(BASE_GRID_SIZE);
@@ -606,33 +609,88 @@ export function Scene({ isFullscreen, theme }) {
 
     animate();
 
+    const applyResize = (w, h) => {
+      if (!cameraRef.current || !rendererRef.current) return;
+
+      // Update LOD (grid + pixel ratio + bloom)
+      const lodN = pickLOD(w, h);
+      // Rebuild only when grid changes meaningfully (avoids thrashing during tiny resizes)
+      if (Math.abs(lodN.gridSize - gridSizeRef.current) >= 2) {
+        lodRef.current = lodN;
+        setGridSize(lodN.gridSize);
+        // NOTE: the effect will re-run and size will be applied during init
+        return;
+      }
+      lodRef.current = lodN;
+
+      rendererRef.current.setPixelRatio(lodN.pixelRatio);
+      if (bloomPassRef.current) bloomPassRef.current.enabled = lodN.enableBloom;
+
+      const aspectNew = w / h || 1;
+      const cam = cameraRef.current;
+      const frustum = frustumSize;
+      cam.left = (-frustum * aspectNew) / 2;
+      cam.right = (frustum * aspectNew) / 2;
+      cam.top = frustum / 2;
+      cam.bottom = -frustum / 2;
+      cam.updateProjectionMatrix();
+
+      rendererRef.current.setSize(w, h);
+      if (composerRef.current) composerRef.current.setSize(w, h);
+
+      appliedSizeRef.current = { w, h };
+    };
+
+    const scheduleDebouncedResize = (w, h) => {
+      pendingResizeRef.current = { w, h };
+      if (resizeDebounceRef.current) clearTimeout(resizeDebounceRef.current);
+      resizeDebounceRef.current = setTimeout(() => {
+        resizeDebounceRef.current = null;
+        const p = pendingResizeRef.current;
+        // Only apply if it still differs (avoid redundant work)
+        const a = appliedSizeRef.current;
+        if (!a.w || !a.h || Math.abs(p.w - a.w) > 2 || Math.abs(p.h - a.h) > 2) {
+          applyResize(p.w, p.h);
+        }
+      }, 220); // tolerate mobile address-bar jitter; apply after it settles
+    };
+
     const handleResize = () => {
       if (resizeRafRef.current !== null) return;
       resizeRafRef.current = requestAnimationFrame(() => {
         resizeRafRef.current = null;
         if (!container || !cameraRef.current || !rendererRef.current) return;
-        const lodN = pickLOD(container.clientWidth, container.clientHeight);
-        // Rebuild only when grid changes meaningfully (avoids thrashing during tiny resizes)
-        if (Math.abs(lodN.gridSize - gridSizeRef.current) >= 2) {
-          lodRef.current = lodN;
-          setGridSize(lodN.gridSize);
+
+        // Use integer pixels & bucket rounding to avoid 1~2px oscillation on mobile.
+        const rawW = container.clientWidth;
+        const rawH = container.clientHeight;
+
+        // Snap to buckets so tiny changes won't trigger resizes.
+        const BUCKET = 24; // px
+        const w = Math.max(1, Math.round(rawW / BUCKET) * BUCKET);
+        const h = Math.max(1, Math.round(rawH / BUCKET) * BUCKET);
+
+        const a = appliedSizeRef.current;
+        // First run: apply immediately
+        if (!a.w || !a.h) {
+          applyResize(w, h);
           return;
         }
-        lodRef.current = lodN;
-        rendererRef.current.setPixelRatio(lodN.pixelRatio);
-        if (bloomPassRef.current) bloomPassRef.current.enabled = lodN.enableBloom;
-        const aspectNew = container.clientWidth / container.clientHeight || 1;
-        const cam = cameraRef.current;
-        const frustum = frustumSize;
-        cam.left = (-frustum * aspectNew) / 2;
-        cam.right = (frustum * aspectNew) / 2;
-        cam.top = frustum / 2;
-        cam.bottom = -frustum / 2;
-        cam.updateProjectionMatrix();
-        rendererRef.current.setSize(container.clientWidth, container.clientHeight);
-        if (composerRef.current) {
-          composerRef.current.setSize(container.clientWidth, container.clientHeight);
+
+        const dw = Math.abs(w - a.w);
+        const dh = Math.abs(h - a.h);
+        const area0 = a.w * a.h;
+        const area1 = w * h;
+        const areaRatio = Math.abs(area1 - area0) / Math.max(1, area0);
+
+        // Large changes (rotation/fullscreen) -> apply immediately
+        if (dw >= 72 || dh >= 72 || areaRatio >= 0.12) {
+          applyResize(w, h);
+          return;
         }
+
+        // Small jitter -> debounce; will apply once things settle
+        scheduleDebouncedResize(w, h);
       });
     };
 
@@ -643,6 +701,7 @@ export function Scene({ isFullscreen, theme }) {
         cancelAnimationFrame(animationFrameRef.current);
       }
       if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
+      if (resizeDebounceRef.current) clearTimeout(resizeDebounceRef.current);
       window.removeEventListener("resize", handleResize);
       if (rendererRef.current) rendererRef.current.dispose();
       if (meshRef.current) {
