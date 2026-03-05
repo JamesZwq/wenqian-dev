@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import {
   fetchSheetCsv,
   parseCsvToTable,
-} from "@/lib/group-meeting/sheets";
+} from "@/lib/meeting/sheets";
 
 function env(name: string, fallback?: string) {
   const v = process.env[name] ?? fallback;

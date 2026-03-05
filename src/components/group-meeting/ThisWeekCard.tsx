@@ -1,4 +1,4 @@
-import { pickUpcomingRow } from "@/lib/group-meeting/sheets";
+import { pickUpcomingRow } from "@/lib/meeting/sheets";
 
 export function ThisWeekCard(props: {
   headers: string[];

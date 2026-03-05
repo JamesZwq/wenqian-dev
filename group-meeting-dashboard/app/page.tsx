@@ -1,6 +1,6 @@
-import { DataTable } from "../../src/components/group-meeting/DataTable";
-import { CopyToolkit } from "../../src/components/group-meeting/CopyToolkit";
-import { fetchSheetCsv, parseCsvToTable, pickUpcomingRow, tryParseDate } from "../../src/lib/group-meeting/sheets";
+import { DataTable } from "../../src/components/meeting/DataTable";
+import { CopyToolkit } from "../../src/components/meeting/CopyToolkit";
+import { fetchSheetCsv, parseCsvToTable, pickUpcomingRow, tryParseDate } from "../../src/lib/meeting/sheets";
 
 // Avoid build-time pre-rendering that could fail if env is not present during `next build`.
 export const dynamic = "force-dynamic";

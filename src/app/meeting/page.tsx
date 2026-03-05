@@ -1,11 +1,11 @@
-import { DataTable } from "@/components/group-meeting/DataTable";
-import { CopyToolkit } from "@/components/group-meeting/CopyToolkit";
+import { DataTable } from "@/components/meeting/DataTable";
+import { CopyToolkit } from "@/components/meeting/CopyToolkit";
 import {
   fetchSheetCsv,
   parseCsvToTable,
   pickUpcomingRow,
   tryParseDate,
-} from "@/lib/group-meeting/sheets";
+} from "@/lib/meeting/sheets";
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
