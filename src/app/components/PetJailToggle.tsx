@@ -43,7 +43,7 @@ export default function PetJailToggle() {
         boxShadow: "0 0 12px rgba(255,255,255,0.35)",
       }}
       whileTap={{ scale: 0.97 }}
-      className="pointer-events-auto fixed bottom-4 left-4 z-[130] flex flex-col items-center gap-1"
+      className="pointer-events-auto fixed bottom-24 left-4 sm:bottom-4 z-[130] flex flex-col items-center gap-1"
     >
       {/* 小小说明文字 */}
       <span className="font-[family-name:var(--font-press-start)] text-[8px] text-[color-mix(in_oklab,var(--pixel-text)_80%,transparent)] tracking-[0.15em]">

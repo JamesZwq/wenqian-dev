@@ -42,7 +42,8 @@ export default function Home() {
             <FpsCounter />
 
             <div className="relative z-10">
-              <section className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
+              {/* 手机端：终端上移（justify-end + pb）、避免与底部按钮重叠；桌面端保持居中 */}
+              <section className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-end pb-44 sm:justify-center sm:pb-0">
                 <PhysicsTerminal />
 
                 {/* CTA Buttons - 保留原来的像素按钮风格 */}
@@ -61,8 +62,8 @@ export default function Home() {
                   </a>
                 </div>
 
-                {/* Scroll 提示 */}
-                <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30">
+                {/* Scroll 提示 - 手机端隐藏，减少重叠与杂乱 */}
+                <div className="hidden sm:block absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30">
                   <span className="animate-bounce text-[color-mix(in_oklab,var(--pixel-accent)_60%,transparent)] font-[family-name:var(--font-press-start)] text-[9px] sm:text-[10px]">
                     [ SCROLL ]
                   </span>

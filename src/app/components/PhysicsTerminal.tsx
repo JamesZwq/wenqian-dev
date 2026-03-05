@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useIsMobileContext } from "./IsMobileContext";
 
 // ------------------------------------------------------------
 // Tiny hand-rolled 2D physics (circle bodies + spatial hash)
@@ -465,6 +466,7 @@ const VFS_CONTENTS: Record<string, string> = {
 // ------------------------------------------------------------
 
 export default function PhysicsTerminal({ className, title }: { className?: string; title?: string }) {
+  const isMobile = useIsMobileContext();
   const outerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -662,6 +664,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   }, [history, cwd, resolvePath]);
 
   useEffect(() => {
+    if (isMobile) return; // 手机端仅展示，不响应键盘输入
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (!hasInteracted) setHasInteracted(true);
@@ -684,7 +687,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentInput, handleCommand, hasInteracted]);
+  }, [currentInput, handleCommand, hasInteracted, isMobile]);
 
 
   // 物理渲染主循环
@@ -834,17 +837,20 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
           >
             <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
             
-            <div 
-              className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${
-                hasInteracted ? "opacity-0" : "opacity-70 animate-pulse"
-              }`}
-            >
-              <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-md border border-[var(--pixel-border)] flex items-center gap-2">
-                <span className="text-[12px] sm:text-[14px] text-[var(--pixel-text)] tracking-wider">
-                  &gt; Start typing to interact _
-                </span>
+            {/* 手机端不显示输入提示框，仅桌面端展示 */}
+            {!isMobile && (
+              <div 
+                className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${
+                  hasInteracted ? "opacity-0" : "opacity-70 animate-pulse"
+                }`}
+              >
+                <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-md border border-[var(--pixel-border)] flex items-center gap-2">
+                  <span className="text-[12px] sm:text-[14px] text-[var(--pixel-text)] tracking-wider">
+                    &gt; Start typing to interact _
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
