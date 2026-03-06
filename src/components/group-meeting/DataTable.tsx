@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { pinyinToName } from "@/lib/meeting/pinyinToName";
 
 type Props = {
   headers: string[];
@@ -28,10 +29,19 @@ export function DataTable({ headers, rows }: Props) {
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return rows;
-    return rows.filter((r) =>
-      headers.some((h) => (r[h] ?? "").toLowerCase().includes(query)),
-    );
-  }, [q, rows, headers]);
+    const nameColKey = cols.nameCol;
+    return rows.filter((r) => {
+      const matchColumn = (h: string, val: string) =>
+        val.toLowerCase().includes(query);
+      return headers.some((h) => {
+        const val = r[h] ?? "";
+        if (h === nameColKey && val.trim()) {
+          return matchColumn(h, val) || pinyinToName(val).includes(query);
+        }
+        return matchColumn(h, val);
+      });
+    });
+  }, [q, rows, headers, cols.nameCol]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Record<string, string>[]>();
@@ -68,7 +78,8 @@ export function DataTable({ headers, rows }: Props) {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
               {items.map((r, idx) => {
-                const name = cols.nameCol ? (r[cols.nameCol] ?? "").trim() : "";
+                const nameRaw = cols.nameCol ? (r[cols.nameCol] ?? "").trim() : "";
+                const name = pinyinToName(nameRaw);
                 const title = cols.titleCol ? (r[cols.titleCol] ?? "").trim() : "";
                 const venue = cols.venueCol ? (r[cols.venueCol] ?? "").trim() : "";
                 const from = cols.fromCol ? (r[cols.fromCol] ?? "").trim() : "";
@@ -76,9 +87,15 @@ export function DataTable({ headers, rows }: Props) {
                 const time = cols.timeCol ? (r[cols.timeCol] ?? "").trim() : "";
                 const line = [name, title].filter(Boolean).join(" · ") || "(信息缺失)";
                 const meta = [area, venue, from, time].filter(Boolean).join(" · ");
+                const nameIsGuessed = nameRaw && name !== nameRaw;
                 return (
                   <div key={idx} style={{ padding: "6px 8px", borderRadius: 10, background: "var(--gm-card)" }}>
                     <div style={{ fontWeight: 600, color: "var(--gm-text)" }}>{line}</div>
+                    {nameIsGuessed && (
+                      <div className="small" style={{ marginTop: 2, color: "var(--gm-muted)" }}>
+                        拼音：{nameRaw}
+                      </div>
+                    )}
                     {meta && <div className="small" style={{ marginTop: 2 }}>{meta}</div>}
                   </div>
                 );
