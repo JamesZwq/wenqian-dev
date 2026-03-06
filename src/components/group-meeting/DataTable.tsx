@@ -44,8 +44,8 @@ export function DataTable({ headers, rows }: Props) {
   }, [filtered, cols.dateCol]);
 
   return (
-    <div className="card dtCard" style={{ gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div className="card dtCard" style={{ gap: 10, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexShrink: 0 }}>
         <h2 style={{ margin: 0 }}>Roster</h2>
         <span className="small">{filtered.length} / {rows.length}</span>
       </div>
@@ -55,9 +55,10 @@ export function DataTable({ headers, rows }: Props) {
         placeholder="搜索 presenter / title / venue..."
         value={q}
         onChange={(e) => setQ(e.target.value)}
+        style={{ flexShrink: 0 }}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="dtScroll" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {grouped.map(([label, items]) => (
           <div key={label} style={{ border: "1px solid var(--gm-border)", borderRadius: 12, padding: 10, background: "var(--gm-card-veil)" }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>

@@ -108,14 +108,18 @@ export function pickUpcomingRow(args: {
       : headers.filter((h) => /(date|week|time|session|meeting)/i.test(h));
 
   const now = Date.now();
+  // 当天 0 点（本地）的时间戳，用于“从今天起算”的最近会议
+  const todayStart = new Date(now).setHours(0, 0, 0, 0);
   let best: { idx: number; t: number; col: string; score: number } | null = null;
 
   for (const col of candidates) {
     for (let i = 0; i < rows.length; i++) {
       const t = tryParseDate(rows[i][col] ?? "");
       if (t == null) continue;
-      const delta = t - now;
-      const score = delta >= 0 ? delta : Math.abs(delta) + 3650 * 24 * 3600 * 1000;
+      // 将解析出的日期转为“当天 0 点”本地时间，与今天比较
+      const rowDayStart = new Date(t).setHours(0, 0, 0, 0);
+      if (rowDayStart < todayStart) continue; // 已过去的日期不参与“下一个”
+      const score = rowDayStart; // 今天最小，明天次之…
       if (!best || score < best.score) best = { idx: i, t, col, score };
     }
   }

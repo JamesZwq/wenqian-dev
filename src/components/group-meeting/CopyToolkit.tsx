@@ -84,9 +84,9 @@ export function CopyToolkit(props: {
   }, [blocks]);
 
   return (
-    <div className="card">
-      <h2>Copy Center</h2>
-      <div className="small" style={{ marginBottom: 10 }}>
+    <div className="card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <h2 style={{ flexShrink: 0 }}>Copy Center</h2>
+      <div className="small" style={{ marginBottom: 10, flexShrink: 0 }}>
         目标：把你常用的“可复制内容”集中在这里。当前 Meeting：
         <span className="code">
           {props.meetingLabel || "(unknown)"}
@@ -94,6 +94,7 @@ export function CopyToolkit(props: {
       </div>
 
       <div
+        className="copyCenterScroll"
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
         {blocks.map((b) => (
