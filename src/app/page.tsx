@@ -52,6 +52,12 @@ function HeroSection() {
         >
           [ DOWNLOAD_CV ]
         </a>
+        <a
+          href="/chat"
+          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] text-[var(--pixel-warn)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-warn)_20%,transparent)] transition-colors touch-manipulation animate-pulse"
+        >
+          [ P2P_CHAT ]
+        </a>
       </div>
 
       {/* Scroll 提示 - 手机端不显示 */}
