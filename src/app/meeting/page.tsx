@@ -126,7 +126,7 @@ function buildCopyMessage(params: {
   return [prefix, ...lines].join("\n\n");
 }
 
-export default async function Page() {
+export default async function MeetingPage() {
   const data = await getRoster();
   const sheetLink = `https://docs.google.com/spreadsheets/d/${data.source.sheetId}/edit?gid=${data.source.gid}#gid=${data.source.gid}`;
   const preferredDateColumn = process.env.DATE_COLUMN ?? "";

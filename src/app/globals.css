@@ -128,6 +128,24 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Global scrollbar styling (was styled-jsx in chat page and caused hydration drift) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--pixel-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pixel-accent);
+  border: 1px solid var(--pixel-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pixel-accent-2);
+}
+
 /* Pixel-perfect scaling */
 .pixel-scale {
   image-rendering: pixelated;

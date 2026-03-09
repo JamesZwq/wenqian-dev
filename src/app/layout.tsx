@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { VT323, Press_Start_2P, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/ThemeProvider";
+import ClientLayout from "./components/ClientLayout";
 
 const vt323 = VT323({
   weight: "400",
@@ -55,9 +56,11 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${vt323.variable} ${pressStart.variable} ${jetbrainsMono.variable} antialiased pixel-scanlines`}
+        className={`${vt323.variable} ${pressStart.variable} ${jetbrainsMono.variable} antialiased pixel-scanlines bg-[var(--pixel-bg)] text-[var(--pixel-text)]`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </ThemeProvider>
       </body>
     </html>
   );

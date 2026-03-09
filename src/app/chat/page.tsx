@@ -1,439 +1,371 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Peer, { DataConnection } from "peerjs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
+import { usePeerConnection } from "../../features/p2p/hooks/usePeerConnection";
+import { formatClockTime } from "../../features/p2p/lib/p2p";
+import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
+import {
+  decryptWithPrivateKey,
+  encryptWithPublicKey,
+  generateRsaKeyPair,
+  importRsaPublicKey,
+} from "../../features/p2p/lib/p2pCrypto";
 
-type Message = {
+type ChatPacket =
+  | {
+      type: "handshake";
+      publicKey: string;
+      timestamp: number;
+    }
+  | {
+      type: "chat-message";
+      ciphertext: string;
+      timestamp: number;
+    };
+
+type ChatMessage = {
   id: string;
   text: string;
   sender: "me" | "peer";
   timestamp: number;
 };
 
-type Particle = {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  color: string;
-};
-
 export default function ChatPage() {
-  const [peerId, setPeerId] = useState<string>("");
-  const [remotePeerId, setRemotePeerId] = useState<string>("");
-  const [connected, setConnected] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
-  const [particles, setParticles] = useState<Particle[]>([]);
-  
-  const peerRef = useRef<Peer | null>(null);
-  const connRef = useRef<DataConnection | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particleIdRef = useRef(0);
+  const [localKeyPair, setLocalKeyPair] = useState<CryptoKeyPair | null>(null);
+  const [localPublicKey, setLocalPublicKey] = useState<string | null>(null);
+  const [remotePublicKey, setRemotePublicKey] = useState<CryptoKey | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messageIdRef = useRef(0);
+  const handshakeSentRef = useRef(false);
 
-  // 初始化 Peer
+  const appendMessage = useCallback(
+    (message: Omit<ChatMessage, "id">) => {
+      messageIdRef.current += 1;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg-${message.timestamp}-${messageIdRef.current}`,
+          ...message,
+        },
+      ]);
+    },
+    [],
+  );
+
   useEffect(() => {
-    const peer = new Peer();
-    peerRef.current = peer;
-
-    peer.on("open", (id) => {
-      setPeerId(id);
-      setConnectionStatus("idle");
-    });
-
-    peer.on("connection", (conn) => {
-      connRef.current = conn;
-      setupConnection(conn);
-      setConnected(true);
-      setConnectionStatus("connected");
-      createConnectionParticles();
-    });
-
-    peer.on("error", (err) => {
-      console.error("Peer error:", err);
-      setConnectionStatus("error");
-    });
-
+    let cancelled = false;
+    (async () => {
+      try {
+        const { keyPair, publicKeyBase64 } = await generateRsaKeyPair();
+        if (cancelled) return;
+        setLocalKeyPair(keyPair);
+        setLocalPublicKey(publicKeyBase64);
+      } catch {
+        // keep UI usable even if keygen fails
+      }
+    })();
     return () => {
-      peer.destroy();
+      cancelled = true;
     };
   }, []);
 
-  const setupConnection = (conn: DataConnection) => {
-    conn.on("data", (data) => {
-      const msg = data as { text: string; timestamp: number };
-      const newMessage: Message = {
-        id: `${Date.now()}-${Math.random()}`,
-        text: msg.text,
-        sender: "peer",
-        timestamp: msg.timestamp,
-      };
-      setMessages((prev) => [...prev, newMessage]);
-      createMessageParticles();
-    });
+  const handleIncomingData = useCallback(
+    (payload: ChatPacket) => {
+      if (!payload?.type) return;
 
-    conn.on("close", () => {
-      setConnected(false);
-      setConnectionStatus("idle");
-    });
-  };
+      if (payload.type === "handshake" && payload.publicKey) {
+        (async () => {
+          try {
+            const imported = await importRsaPublicKey(payload.publicKey);
+            setRemotePublicKey(imported);
+          } catch {
+            // ignore bad public key
+          }
+        })();
+        return;
+      }
 
-  const connectToPeer = useCallback(() => {
-    if (!peerRef.current || !remotePeerId.trim()) return;
-    
-    setConnectionStatus("connecting");
-    const conn = peerRef.current.connect(remotePeerId.trim());
-    connRef.current = conn;
+      if (payload.type === "chat-message" && payload.ciphertext) {
+        if (!localKeyPair?.privateKey) return;
+        (async () => {
+          try {
+            const decrypted = await decryptWithPrivateKey(
+              localKeyPair.privateKey,
+              payload.ciphertext,
+            );
+            appendMessage({
+              text: decrypted,
+              sender: "peer",
+              timestamp: payload.timestamp,
+            });
+          } catch {
+            appendMessage({
+              text: "[Decryption failed]",
+              sender: "peer",
+              timestamp: payload.timestamp,
+            });
+          }
+        })();
+      }
+    },
+    [appendMessage, localKeyPair?.privateKey],
+  );
 
-    conn.on("open", () => {
-      setConnected(true);
-      setConnectionStatus("connected");
-      setupConnection(conn);
-      createConnectionParticles();
-    });
+  const {
+    phase,
+    localPeerId,
+    remotePeerId,
+    error,
+    isConnected,
+    connect,
+    disconnect,
+    send,
+    clearError,
+    retryLastConnection,
+    reinitialize,
+  } = usePeerConnection<ChatPacket>({
+    connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+    onData: handleIncomingData,
+    acceptIncomingConnections: true,
+  });
 
-    conn.on("error", (err) => {
-      console.error("Connection error:", err);
-      setConnectionStatus("error");
-      setTimeout(() => setConnectionStatus("idle"), 2000);
-    });
-  }, [remotePeerId]);
+  useEffect(() => {
+    if (!isConnected) {
+      handshakeSentRef.current = false;
+      setRemotePublicKey(null);
+    }
+  }, [isConnected]);
 
-  const sendMessage = useCallback(() => {
-    if (!inputText.trim() || !connRef.current) return;
-
-    const msg = {
-      text: inputText.trim(),
+  useEffect(() => {
+    if (!isConnected || !localPublicKey || handshakeSentRef.current === true) return;
+    const packet: ChatPacket = {
+      type: "handshake",
+      publicKey: localPublicKey,
       timestamp: Date.now(),
     };
+    send(packet);
+    handshakeSentRef.current = true;
+  }, [isConnected, localPublicKey, send]);
 
-    connRef.current.send(msg);
-
-    const newMessage: Message = {
-      id: `${Date.now()}-${Math.random()}`,
-      text: msg.text,
-      sender: "me",
-      timestamp: msg.timestamp,
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setInputText("");
-    createMessageParticles();
-  }, [inputText]);
-
-  const createConnectionParticles = () => {
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < 50; i++) {
-      newParticles.push({
-        id: particleIdRef.current++,
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4,
-        life: 1,
-        maxLife: 1,
-        color: `hsl(${160 + Math.random() * 40}, 80%, 60%)`,
-      });
-    }
-    setParticles((prev) => [...prev, ...newParticles]);
-  };
-
-  const createMessageParticles = () => {
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < 20; i++) {
-      newParticles.push({
-        id: particleIdRef.current++,
-        x: Math.random() * window.innerWidth,
-        y: window.innerHeight * 0.8,
-        vx: (Math.random() - 0.5) * 3,
-        vy: -Math.random() * 3 - 1,
-        life: 1,
-        maxLife: 1,
-        color: `hsl(${280 + Math.random() * 40}, 70%, 65%)`,
-      });
-    }
-    setParticles((prev) => [...prev, ...newParticles]);
-  };
-
-  // 粒子动画循环
-  useEffect(() => {
-    let animationId: number;
-    const animate = () => {
-      setParticles((prev) => {
-        return prev
-          .map((p) => ({
-            ...p,
-            x: p.x + p.vx,
-            y: p.y + p.vy,
-            life: p.life - 0.01,
-          }))
-          .filter((p) => p.life > 0);
-      });
-      animationId = requestAnimationFrame(animate);
-    };
-    animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-  }, []);
-
-  // 绘制粒子到 Canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      particles.forEach((p) => {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      requestAnimationFrame(draw);
-    };
-
-    draw();
-  }, [particles]);
-
-  // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const connectionDescription = useMemo(
+    () => [
+      "> Same P2P layer can be mounted under other routes for mini-games, whiteboards, or co-op demos.",
+      "> Error, timeout, and disconnect states are now explicit rather than leaving the UI half-locked.",
+      "> Code input is stateless from the connection lifecycle, so retries are predictable.",
+    ],
+    [],
+  );
+
+  const handleSendMessage = useCallback(async () => {
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+
+    if (!remotePublicKey) {
+      appendMessage({
+        text: "Waiting for peer key handshake...",
+        sender: "me",
+        timestamp: Date.now(),
+      });
+      return;
+    }
+
+    const timestamp = Date.now();
+    try {
+      const ciphertext = await encryptWithPublicKey(remotePublicKey, trimmed);
+      const packet: ChatPacket = {
+        type: "chat-message",
+        ciphertext,
+        timestamp,
+      };
+
+      const success = send(packet);
+      if (!success) return;
+
+      appendMessage({
+        text: trimmed,
+        sender: "me",
+        timestamp,
+      });
+      setInputText("");
+    } catch {
+      appendMessage({
+        text: "[Encryption failed]",
+        sender: "me",
+        timestamp,
+      });
+    }
+  }, [appendMessage, inputText, remotePublicKey, send]);
+
+  const encryptionReady = isConnected && Boolean(remotePublicKey && localKeyPair?.privateKey);
+
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
-      {/* 背景粒子 Canvas */}
-      <canvas
-        ref={canvasRef}
-        className="fixed inset-0 pointer-events-none z-0"
-      />
-
-      {/* 背景网格动画 */}
-      <div className="fixed inset-0 z-0 opacity-20">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '50px 50px',
-          animation: 'gridMove 20s linear infinite'
-        }} />
-      </div>
-
-      {/* 返回按钮 */}
-      <Link href="/">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="fixed top-6 left-6 z-50 px-4 py-2 bg-purple-600/20 backdrop-blur-md border border-purple-400/30 rounded-lg text-purple-200 hover:bg-purple-600/30 transition-all duration-300 flex items-center gap-2 group"
+    <div className="relative min-h-screen overflow-hidden text-[var(--pixel-text)]">
+      <motion.div
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed left-4 top-4 z-50 md:left-6 md:top-6"
+      >
+        <Link
+          href="/"
+          className="inline-flex border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] shadow-[0_0_10px_var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
         >
-          <span className="group-hover:-translate-x-1 transition-transform duration-300">←</span>
-          <span className="font-mono text-sm">Back Home</span>
-        </motion.button>
-      </Link>
+          ← BACK
+        </Link>
+      </motion.div>
 
-      {/* 主容器 */}
-      <div className="relative z-10 container mx-auto px-4 py-8 h-screen flex flex-col">
-        {/* 标题区域 */}
+      <div className="container relative z-10 mx-auto flex min-h-screen flex-col items-center justify-center px-3 py-6 md:px-4 md:py-10">
         <motion.div
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center mb-8"
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="mb-5 text-center md:mb-8"
         >
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent"
-              style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Quantum Chat
+          <h1 className="mb-3 font-[family-name:var(--font-press-start)] text-2xl tracking-wider text-[var(--pixel-accent)] md:text-5xl">
+            [ P2P_CHAT ]
           </h1>
-          <p className="text-purple-300/80 font-mono text-sm md:text-base">
-            Peer-to-Peer Encrypted Communication
+          <p className="font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)] md:text-sm">
+            &gt; Reusable peer-to-peer session layer with explicit loading, retry, and disconnect handling.
           </p>
         </motion.div>
 
-        {/* 连接区域 */}
-        {!connected && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-2xl mx-auto w-full mb-8"
-          >
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 md:p-8 shadow-2xl shadow-purple-500/20">
-              {/* Your ID */}
-              <div className="mb-6">
-                <label className="block text-cyan-400 font-mono text-sm mb-2">Your Peer ID</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={peerId}
-                    readOnly
-                    className="w-full px-4 py-3 bg-slate-950/80 border border-cyan-500/40 rounded-lg text-cyan-300 font-mono text-sm focus:outline-none focus:border-cyan-400 transition-colors"
-                    placeholder="Generating..."
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(peerId);
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 rounded text-cyan-300 text-xs transition-colors"
-                  >
-                    Copy
-                  </button>
+        <div className="w-full max-w-5xl">
+          {!isConnected && (
+            <P2PConnectionPanel
+              localPeerId={localPeerId}
+              phase={phase}
+              connectTimeoutMs={P2P_CONNECT_TIMEOUT_MS}
+              error={error}
+              description={connectionDescription}
+              onConnect={connect}
+              onRetry={retryLastConnection}
+              onClearError={clearError}
+              onReinitialize={reinitialize}
+            />
+          )}
+
+          {isConnected && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="overflow-hidden border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-[0_0_30px_var(--pixel-glow)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="h-3 w-3 animate-pulse bg-[var(--pixel-accent)]" />
+                    <div className="h-3 w-3 bg-[var(--pixel-accent-2)]" />
+                    <div className="h-3 w-3 bg-[var(--pixel-warn)]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
+                      CONNECTED TO {remotePeerId ?? "UNKNOWN"}
+                    </p>
+                    <p className="mt-1 truncate font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)]">
+                      Local: {localPeerId}
+                    </p>
+                  </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`border px-2 py-1 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider md:text-[9px] ${
+                      encryptionReady
+                        ? "border-[var(--pixel-accent)] text-[var(--pixel-accent)]"
+                        : "border-[var(--pixel-warn)] text-[var(--pixel-warn)]"
+                    }`}
+                  >
+                    {encryptionReady ? "E2EE READY" : "WAITING FOR KEY"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={disconnect}
+                  className="border-2 border-[var(--pixel-warn)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
+                >
+                  DISCONNECT
+                </button>
               </div>
 
-              {/* Connect to Peer */}
-              <div className="mb-6">
-                <label className="block text-purple-400 font-mono text-sm mb-2">Connect to Peer</label>
+              <div className="h-[48vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)] px-4 py-5 [scrollbar-color:var(--pixel-accent)_var(--pixel-bg)] [scrollbar-width:thin] md:h-[520px] md:px-6 md:py-6">
+                {messages.length === 0 && (
+                  <div className="rounded-none border border-dashed border-[var(--pixel-border)] p-6 text-center">
+                    <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
+                      [ CHANNEL_READY ]
+                    </p>
+                    <p className="mt-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-muted)]">
+                      The P2P data channel is open. Waiting for key handshake to secure messages.
+                    </p>
+                  </div>
+                )}
+
+                <AnimatePresence initial={false}>
+                  {messages.map((message) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      className={`mb-4 flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[82%] border-2 px-4 py-3 ${
+                          message.sender === "me"
+                            ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
+                            : "border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] text-[var(--pixel-accent-2)]"
+                        }`}
+                      >
+                        <p className="font-[family-name:var(--font-jetbrains)] text-sm leading-6 md:text-base">
+                          {message.text}
+                        </p>
+                        <p className="mt-2 font-[family-name:var(--font-jetbrains)] text-[10px] opacity-70 md:text-xs">
+                          {formatClockTime(message.timestamp)}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="border-t-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-4 md:px-5">
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={remotePeerId}
-                    onChange={(e) => setRemotePeerId(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && connectToPeer()}
-                    className="flex-1 px-4 py-3 bg-slate-950/80 border border-purple-500/40 rounded-lg text-purple-300 font-mono text-sm focus:outline-none focus:border-purple-400 transition-colors"
-                    placeholder="Enter peer ID..."
+                    value={inputText}
+                    onChange={(event) => setInputText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="Type a message..."
+                    className="h-12 flex-1 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)] focus:outline-none focus:shadow-[0_0_12px_var(--pixel-glow)] md:text-base"
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={connectToPeer}
-                    disabled={connectionStatus === "connecting"}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg text-white font-mono text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg shadow-purple-500/50"
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    className="border-2 border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-bg)] transition-transform hover:scale-[1.03] md:px-5 md:text-[10px]"
                   >
-                    {connectionStatus === "connecting" ? "..." : "Connect"}
-                  </motion.button>
+                    SEND
+                  </button>
                 </div>
               </div>
-
-              {/* Status */}
-              <AnimatePresence>
-                {connectionStatus === "error" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="text-red-400 text-sm font-mono text-center"
-                  >
-                    ⚠ Connection failed. Please check the peer ID.
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-
-        {/* 聊天区域 */}
-        {connected && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex-1 flex flex-col max-w-4xl mx-auto w-full"
-          >
-            {/* 连接状态指示器 */}
-            <div className="mb-4 flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-green-400 font-mono text-sm">Connected</span>
-            </div>
-
-            {/* 消息列表 */}
-            <div className="flex-1 bg-slate-900/40 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4 md:p-6 overflow-y-auto mb-4 shadow-2xl shadow-purple-500/10">
-              <AnimatePresence initial={false}>
-                {messages.map((msg, idx) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
-                    className={`mb-4 flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                        msg.sender === "me"
-                          ? "bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30"
-                          : "bg-slate-800/80 text-cyan-100 border border-cyan-500/20 shadow-lg shadow-cyan-500/10"
-                      }`}
-                    >
-                      <p className="font-mono text-sm md:text-base break-words">{msg.text}</p>
-                      <p className={`text-xs mt-1 ${msg.sender === "me" ? "text-purple-200" : "text-cyan-400/60"}`}>
-                        {new Date(msg.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* 输入区域 */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-                className="flex-1 px-4 py-3 bg-slate-950/80 backdrop-blur-md border border-purple-500/40 rounded-xl text-purple-100 font-mono text-sm focus:outline-none focus:border-purple-400 transition-colors shadow-lg"
-                placeholder="Type your message..."
-              />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={sendMessage}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 rounded-xl text-white font-mono font-bold transition-all duration-300 shadow-lg shadow-purple-500/50"
-              >
-                Send
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+        </div>
       </div>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
-        
-        @keyframes gridMove {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(50px, 50px);
-          }
-        }
-
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: rgba(15, 23, 42, 0.5);
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: rgba(139, 92, 246, 0.5);
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(139, 92, 246, 0.7);
-        }
-      `}</style>
     </div>
   );
 }

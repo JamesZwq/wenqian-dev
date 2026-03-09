@@ -6,16 +6,11 @@ import ExtraSections from "./ExtraSections";
 import MouseProvider from "./components/MouseProvider";
 import { ScrollLagProvider } from "./components/ScrollLagContext";
 import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
-import PixelKeyboardHandler from "./components/PixelKeyboardHandler";
 import PetJailToggle from "./components/PetJailToggle";
 import BackgroundModeToggle from "./components/BackgroundModeToggle";
 import ThemeToggle from "./components/ThemeToggle";
 import FpsCounter from "./components/FpsCounter";
-
-const Background = dynamic(() => import("./background/background"), {
-  ssr: false,
-  loading: () => <div className="fixed inset-0 z-0 bg-[var(--pixel-bg)]" />,
-});
+import FloatingNav from "./components/FloatingNav";
 
 const PhysicsTerminal = dynamic(
   () => import("./components/PhysicsTerminal"),
@@ -38,7 +33,7 @@ function HeroSection() {
       {/* 手机端预留底部空间给按钮（bottom-14 ≈ 3.5rem，按钮块约 7rem），终端自然在按钮之上 */}
       {isMobile && <div className="h-28 flex-shrink-0" aria-hidden />}
 
-      {/* CTA Buttons - 保留原来的像素按钮风格 */}
+      {/* CTA Buttons - 只保留查看出版物和下载简历 */}
       <div className="absolute bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-3 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2">
         <a
           href="#publications"
@@ -51,12 +46,6 @@ function HeroSection() {
           className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-colors touch-manipulation"
         >
           [ DOWNLOAD_CV ]
-        </a>
-        <a
-          href="/chat"
-          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 border-2 border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] text-[var(--pixel-warn)] font-[family-name:var(--font-press-start)] text-xs tracking-wider hover:bg-[color-mix(in_oklab,var(--pixel-warn)_20%,transparent)] transition-colors touch-manipulation animate-pulse"
-        >
-          [ P2P_CHAT ]
         </a>
       </div>
 
@@ -77,14 +66,13 @@ export default function Home() {
     <MouseProvider>
       <IsMobileProvider>
         <ScrollLagProvider>
-          {/* <PixelKeyboardHandler /> */}
-          <main className="relative min-h-screen bg-[var(--pixel-bg)] text-[var(--pixel-text)] selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
-            <Background />
+          <main className="relative min-h-screen selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
             <CursorPet />
             <PetJailToggle />
             <BackgroundModeToggle />
             <ThemeToggle />
             <FpsCounter />
+            <FloatingNav />
 
             <div className="relative z-10">
               <HeroSection />

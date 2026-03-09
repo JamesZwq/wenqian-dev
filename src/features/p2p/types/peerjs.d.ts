@@ -10,6 +10,8 @@ declare module 'peerjs' {
   }
 
   export interface DataConnection {
+    peer: string;
+    open: boolean;
     send(data: any): void;
     close(): void;
     on(event: 'data', callback: (data: any) => void): void;
@@ -30,6 +32,8 @@ declare module 'peerjs' {
     constructor(id?: string, options?: PeerJSOption);
     
     id: string;
+    destroyed: boolean;
+    disconnected: boolean;
     
     connect(peerId: string, options?: any): DataConnection;
     call(peerId: string, stream: MediaStream, options?: any): MediaConnection;
@@ -41,7 +45,15 @@ declare module 'peerjs' {
     on(event: 'disconnected', callback: () => void): void;
     on(event: 'error', callback: (err: any) => void): void;
     
+    off(event: 'open', callback: (id: string) => void): void;
+    off(event: 'connection', callback: (conn: DataConnection) => void): void;
+    off(event: 'call', callback: (call: MediaConnection) => void): void;
+    off(event: 'close', callback: () => void): void;
+    off(event: 'disconnected', callback: () => void): void;
+    off(event: 'error', callback: (err: any) => void): void;
+    
     disconnect(): void;
+    reconnect(): void;
     destroy(): void;
   }
 }
