@@ -22,20 +22,6 @@ export default function FloatingNav() {
       color: "var(--pixel-accent)",
       description: "Five in a Row multiplayer game"
     },
-    { 
-      href: "/maze", 
-      label: "MAZE_RUNNER", 
-      icon: "🏃",
-      color: "var(--pixel-accent-2)",
-      description: "Navigate through generated mazes"
-    },
-    { 
-      href: "/tank", 
-      label: "TANK_DUEL",
-      icon: "⛴",
-      color: "var(--pixel-accent-3)",
-      description: "Arena shooter with bots and buffs"
-    },
   ];
 
   return (

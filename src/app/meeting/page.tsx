@@ -1,5 +1,6 @@
 import { DataTable } from "@/components/meeting/DataTable";
 import { CopyToolkit } from "@/components/meeting/CopyToolkit";
+import RefreshButton from "./RefreshButton";
 import {
   fetchSheetCsv,
   parseCsvToTable,
@@ -245,6 +246,9 @@ export default async function MeetingPage() {
       <div className="pageHeader">
         <h1 className="h1">组会管理面板</h1>
         <p className="sub">只保留最近 3 个日期的 roster 表和复制区。</p>
+        <div style={{ marginTop: 12 }}>
+          <RefreshButton />
+        </div>
       </div>
 
       <div className="pageBody" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
