@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { pinyinToHanziSync } from "@/lib/meeting/pinyinToHanzi";
+import { useEffect, useMemo, useState } from "react";
+import { pinyinToHanzi } from "@/lib/meeting/pinyinToHanzi";
 
 type Props = {
   headers: string[];
@@ -14,6 +14,7 @@ function guess(headers: string[], pattern: RegExp) {
 
 export function DataTable({ headers, rows }: Props) {
   const [q, setQ] = useState("");
+  const [nameCache, setNameCache] = useState<Record<string, string>>({});
 
   const cols = useMemo(() => {
     const dateCol = guess(headers, /(date|week|meeting|session|日期|时间)/i) ?? "";
@@ -25,6 +26,29 @@ export function DataTable({ headers, rows }: Props) {
     const areaCol = guess(headers, /area/i) ?? "";
     return { dateCol, timeCol, nameCol, titleCol, venueCol, fromCol, areaCol };
   }, [headers]);
+
+  // 异步批量转换所有姓名
+  useEffect(() => {
+    if (!cols.nameCol) return;
+    const names = [...new Set(
+      rows.map((r) => (r[cols.nameCol] ?? "").trim()).filter(Boolean)
+    )];
+    if (names.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      names.map(async (name) => {
+        const hanzi = await pinyinToHanzi(name);
+        return [name, hanzi] as const;
+      })
+    ).then((entries) => {
+      if (!cancelled) {
+        setNameCache(Object.fromEntries(entries));
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [rows, cols.nameCol]);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -70,13 +94,18 @@ export function DataTable({ headers, rows }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
               {items.map((r, idx) => {
                 const name = cols.nameCol ? (r[cols.nameCol] ?? "").trim() : "";
-                const nameDisplay = name ? pinyinToHanziSync(name) : "";
+                // 从缓存取已转换的汉字，回退到原始名字
+                const nameDisplay = name ? (nameCache[name] ?? name) : "";
                 const title = cols.titleCol ? (r[cols.titleCol] ?? "").trim() : "";
                 const venue = cols.venueCol ? (r[cols.venueCol] ?? "").trim() : "";
                 const from = cols.fromCol ? (r[cols.fromCol] ?? "").trim() : "";
                 const area = cols.areaCol ? (r[cols.areaCol] ?? "").trim() : "";
                 const time = cols.timeCol ? (r[cols.timeCol] ?? "").trim() : "";
-                const lineParts = nameDisplay ? [nameDisplay + (nameDisplay !== name ? ` (${name})` : ""), title] : [name, title];
+                // 若转换后与原文不同，在括号内显示原文
+                const nameLabel = nameDisplay && nameDisplay !== name
+                  ? `${nameDisplay} (${name})`
+                  : nameDisplay || name;
+                const lineParts = nameLabel ? [nameLabel, title] : [title];
                 const line = lineParts.filter(Boolean).join(" · ") || "(信息缺失)";
                 const meta = [area, venue, from, time].filter(Boolean).join(" · ");
                 return (
