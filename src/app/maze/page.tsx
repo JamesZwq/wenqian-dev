@@ -1525,7 +1525,26 @@ export default function MazePage() {
           setSettings(s);
           settingsRef.current = s;
         }}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setSettingsOpen(false);
+          // Auto-regenerate maze if currently in a game
+          const m = modeRef.current;
+          if (m === "single" || m === "local" || (m === "remote" && myRemotePlayerIdRef.current === 1)) {
+            const s = settingsRef.current;
+            const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
+            if (m === "remote") {
+              runBuildAnimation(nextMaze, "remote", true);
+              sendRef.current?.({
+                type: "maze_sync",
+                maze: nextMaze,
+                settings: s,
+                timestamp: Date.now(),
+              });
+            } else {
+              runBuildAnimation(nextMaze, m, m === "local");
+            }
+          }
+        }}
       />
 
       <div className="container relative z-10 mx-auto flex min-h-screen flex-col items-center justify-center px-3 py-6 md:px-4 md:py-10">

@@ -15,12 +15,19 @@ export default function FloatingNav() {
       color: "var(--pixel-warn)",
       description: "Encrypted peer-to-peer messaging"
     },
-    { 
-      href: "/gomoku", 
-      label: "GOMOKU", 
+    {
+      href: "/gomoku",
+      label: "GOMOKU",
       icon: "⚫",
       color: "var(--pixel-accent)",
       description: "Five in a Row multiplayer game"
+    },
+    {
+      href: "/maze",
+      label: "MAZE_RUNNER",
+      icon: "🏃",
+      color: "var(--pixel-accent-2)",
+      description: "P2P maze race with items & power-ups"
     },
   ];
 
