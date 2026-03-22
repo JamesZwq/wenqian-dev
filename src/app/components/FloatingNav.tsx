@@ -8,26 +8,40 @@ export default function FloatingNav() {
   const [isOpen, setIsOpen] = useState(false);
 
   const menuItems = [
-    { 
-      href: "/chat", 
-      label: "P2P_CHAT", 
+    {
+      href: "/chat",
+      label: "P2P Chat",
       icon: "💬",
       color: "var(--pixel-warn)",
       description: "Encrypted peer-to-peer messaging"
     },
     {
       href: "/gomoku",
-      label: "GOMOKU",
+      label: "Gomoku",
       icon: "⚫",
       color: "var(--pixel-accent)",
       description: "Five in a Row multiplayer game"
     },
     {
       href: "/maze",
-      label: "MAZE_RUNNER",
+      label: "Maze Runner",
       icon: "🏃",
       color: "var(--pixel-accent-2)",
       description: "P2P maze race with items & power-ups"
+    },
+    {
+      href: "/math",
+      label: "Math Sprint",
+      icon: "🧮",
+      color: "var(--pixel-accent)",
+      description: "Speed arithmetic challenge"
+    },
+    {
+      href: "/flash-count",
+      label: "Flash Count",
+      icon: "🧊",
+      color: "var(--pixel-accent-2)",
+      description: "Count 3D blocks before they vanish"
     },
   ];
 
@@ -36,28 +50,12 @@ export default function FloatingNav() {
       {/* 主按钮 */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center gap-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-[family-name:var(--font-press-start)] text-[10px] tracking-wider text-[var(--pixel-accent)] shadow-[0_0_20px_var(--pixel-glow)] backdrop-blur-xl transition-all hover:shadow-[0_0_30px_var(--pixel-glow)]"
+        className="relative flex items-center gap-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:shadow-2xl"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
         <span className="text-base">{isOpen ? "✕" : "☰"}</span>
         <span className="hidden sm:inline">MENU</span>
-        
-        {/* 脉冲指示器 */}
-        {/* {!isOpen && (
-          <motion.div
-            className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[var(--pixel-accent)]"
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [1, 0.5, 1],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        )} */}
       </motion.button>
 
       {/* 下拉菜单 */}
@@ -68,12 +66,12 @@ export default function FloatingNav() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute left-0 top-full mt-3 w-80 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-[0_0_40px_var(--pixel-glow)] backdrop-blur-xl"
+            className="absolute left-0 top-full mt-3 w-80 rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl overflow-hidden"
           >
             {/* 标题 */}
-            <div className="border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3">
-              <h3 className="font-[family-name:var(--font-press-start)] text-[10px] tracking-wider text-[var(--pixel-accent)]">
-                [ P2P_APPLICATIONS ]
+            <div className="border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 rounded-t-2xl">
+              <h3 className="font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)]">
+                P2P Applications
               </h3>
             </div>
 
@@ -89,20 +87,20 @@ export default function FloatingNav() {
                   <Link
                     href={item.href}
                     onClick={() => setIsOpen(false)}
-                    className="group relative block border-2 border-transparent p-4 transition-all hover:border-[var(--pixel-border)] hover:bg-[var(--pixel-bg-alt)]"
+                    className="group relative block rounded-xl border border-transparent p-4 transition-all hover:border-[var(--pixel-border)] hover:bg-[var(--pixel-bg-alt)]"
                   >
                     <div className="flex items-start gap-3">
                       {/* 图标 */}
                       <span className="text-2xl transition-transform group-hover:scale-110">
                         {item.icon}
                       </span>
-                      
+
                       {/* 内容 */}
                       <div className="flex-1">
-                        <div className="mb-1 font-[family-name:var(--font-press-start)] text-[10px] tracking-wider" style={{ color: item.color }}>
+                        <div className="mb-1 font-sans text-sm font-semibold tracking-tight" style={{ color: item.color }}>
                           {item.label}
                         </div>
-                        <div className="font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)]">
+                        <div className="font-mono text-xs text-[var(--pixel-muted)]">
                           {item.description}
                         </div>
                       </div>
@@ -116,20 +114,14 @@ export default function FloatingNav() {
                         →
                       </motion.span>
                     </div>
-
-                    {/* 悬停效果 */}
-                    <motion.div
-                      className="absolute inset-0 border-2 border-[var(--pixel-accent)] opacity-0 group-hover:opacity-20"
-                      initial={false}
-                    />
                   </Link>
                 </motion.div>
               ))}
             </div>
 
             {/* 底部提示 */}
-            <div className="border-t-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-2">
-              <p className="font-[family-name:var(--font-jetbrains)] text-[10px] text-[var(--pixel-muted)]">
+            <div className="border-t border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-2 rounded-b-2xl">
+              <p className="font-mono text-[10px] text-[var(--pixel-muted)]">
                 &gt; Browser-to-browser, no server required
               </p>
             </div>

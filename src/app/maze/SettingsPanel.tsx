@@ -54,15 +54,15 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mx-4 w-full max-w-[420px] border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 shadow-[0_0_30px_var(--pixel-glow)] backdrop-blur-xl md:p-6"
+            className="mx-4 w-full max-w-[420px] rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl md:p-6"
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-[family-name:var(--font-press-start)] text-sm tracking-wider text-[var(--pixel-accent)]">
-                [ SETTINGS ]
+              <h2 className="font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)]">
+                SETTINGS
               </h2>
               <button
                 onClick={onClose}
-                className="font-[family-name:var(--font-press-start)] text-xs text-[var(--pixel-muted)] transition-colors hover:text-[var(--pixel-accent)]"
+                className="font-sans font-semibold text-xs text-[var(--pixel-muted)] transition-colors hover:text-[var(--pixel-accent)]"
               >
                 X
               </button>
@@ -70,7 +70,7 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
 
             {/* Maze Rows */}
             <div className="mb-4">
-              <label className="mb-1 block font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)]">
+              <label className="mb-1 block font-mono text-[11px] text-[var(--pixel-muted)]">
                 ROWS: {settings.rows}
               </label>
               <input
@@ -82,14 +82,14 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
                 onChange={(e) => update({ rows: ensureOdd(Number(e.target.value)) })}
                 className="w-full accent-[var(--pixel-accent)]"
               />
-              <div className="flex justify-between font-[family-name:var(--font-jetbrains)] text-[9px] text-[var(--pixel-muted)]">
+              <div className="flex justify-between font-mono text-[9px] text-[var(--pixel-muted)]">
                 <span>7</span><span>31</span>
               </div>
             </div>
 
             {/* Maze Cols */}
             <div className="mb-4">
-              <label className="mb-1 block font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)]">
+              <label className="mb-1 block font-mono text-[11px] text-[var(--pixel-muted)]">
                 COLS: {settings.cols}
               </label>
               <input
@@ -101,14 +101,14 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
                 onChange={(e) => update({ cols: ensureOdd(Number(e.target.value)) })}
                 className="w-full accent-[var(--pixel-accent)]"
               />
-              <div className="flex justify-between font-[family-name:var(--font-jetbrains)] text-[9px] text-[var(--pixel-muted)]">
+              <div className="flex justify-between font-mono text-[9px] text-[var(--pixel-muted)]">
                 <span>7</span><span>31</span>
               </div>
             </div>
 
             {/* Difficulty */}
             <div className="mb-4">
-              <label className="mb-2 block font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)]">
+              <label className="mb-2 block font-mono text-[11px] text-[var(--pixel-muted)]">
                 DIFFICULTY
               </label>
               <div className="flex gap-2">
@@ -116,7 +116,7 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
                   <button
                     key={d}
                     onClick={() => update({ difficulty: d })}
-                    className={`flex-1 border-2 px-2 py-1.5 font-[family-name:var(--font-press-start)] text-[9px] uppercase transition-colors ${
+                    className={`flex-1 rounded-xl border px-2 py-1.5 font-sans font-semibold text-[9px] uppercase transition-colors ${
                       settings.difficulty === d
                         ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
                         : "border-[var(--pixel-border)] text-[var(--pixel-muted)] hover:border-[var(--pixel-accent)]"
@@ -130,12 +130,12 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
 
             {/* Items Toggle */}
             <div className="mb-4 flex items-center justify-between">
-              <label className="font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)]">
+              <label className="font-mono text-[11px] text-[var(--pixel-muted)]">
                 ITEMS
               </label>
               <button
                 onClick={() => update({ itemsEnabled: !settings.itemsEnabled })}
-                className={`border-2 px-3 py-1 font-[family-name:var(--font-press-start)] text-[9px] transition-colors ${
+                className={`rounded-xl border px-3 py-1 font-sans font-semibold text-[9px] transition-colors ${
                   settings.itemsEnabled
                     ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
                     : "border-[var(--pixel-border)] text-[var(--pixel-muted)]"
@@ -148,7 +148,7 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
             {/* Item Frequency */}
             {settings.itemsEnabled && (
               <div className="mb-2">
-                <label className="mb-2 block font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)]">
+                <label className="mb-2 block font-mono text-[11px] text-[var(--pixel-muted)]">
                   ITEM FREQ
                 </label>
                 <div className="flex gap-2">
@@ -156,7 +156,7 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
                     <button
                       key={f}
                       onClick={() => update({ itemFrequency: f })}
-                      className={`flex-1 border-2 px-2 py-1.5 font-[family-name:var(--font-press-start)] text-[9px] uppercase transition-colors ${
+                      className={`flex-1 rounded-xl border px-2 py-1.5 font-sans font-semibold text-[9px] uppercase transition-colors ${
                         settings.itemFrequency === f
                           ? "border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)] text-[var(--pixel-bg)]"
                           : "border-[var(--pixel-border)] text-[var(--pixel-muted)] hover:border-[var(--pixel-accent-2)]"

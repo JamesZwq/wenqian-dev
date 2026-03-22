@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
 import { usePeerConnection } from "../../features/p2p/hooks/usePeerConnection";
+import { useJoinParam } from "../../features/p2p/hooks/useJoinParam";
 import { formatClockTime } from "../../features/p2p/lib/p2p";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import {
@@ -36,6 +37,7 @@ type ChatMessage = {
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
+  const joinPeerId = useJoinParam();
   const [localKeyPair, setLocalKeyPair] = useState<CryptoKeyPair | null>(null);
   const [localPublicKey, setLocalPublicKey] = useState<string | null>(null);
   const [remotePublicKey, setRemotePublicKey] = useState<CryptoKey | null>(null);
@@ -216,7 +218,7 @@ export default function ChatPage() {
       >
         <Link
           href="/"
-          className="inline-flex border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] shadow-[0_0_10px_var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
         >
           ← BACK
         </Link>
@@ -229,10 +231,10 @@ export default function ChatPage() {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="mb-5 text-center md:mb-8"
         >
-          <h1 className="mb-3 font-[family-name:var(--font-press-start)] text-2xl tracking-wider text-[var(--pixel-accent)] md:text-5xl">
-            [ P2P_CHAT ]
+          <h1 className="mb-3 font-sans font-semibold text-2xl tracking-tight text-[var(--pixel-accent)] md:text-5xl">
+            P2P CHAT
           </h1>
-          <p className="font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)] md:text-sm">
+          <p className="font-mono text-xs text-[var(--pixel-muted)] md:text-sm">
             &gt; Reusable peer-to-peer session layer with explicit loading, retry, and disconnect handling.
           </p>
         </motion.div>
@@ -245,6 +247,7 @@ export default function ChatPage() {
               connectTimeoutMs={P2P_CONNECT_TIMEOUT_MS}
               error={error}
               description={connectionDescription}
+              autoConnectPeerId={joinPeerId}
               onConnect={connect}
               onRetry={retryLastConnection}
               onClearError={clearError}
@@ -256,7 +259,7 @@ export default function ChatPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.97, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="overflow-hidden border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-[0_0_30px_var(--pixel-glow)]"
+              className="overflow-hidden rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -266,10 +269,10 @@ export default function ChatPage() {
                     <div className="h-3 w-3 bg-[var(--pixel-warn)]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
+                    <p className="font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
                       CONNECTED TO {remotePeerId ?? "UNKNOWN"}
                     </p>
-                    <p className="mt-1 truncate font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)]">
+                    <p className="mt-1 truncate font-mono text-xs text-[var(--pixel-muted)]">
                       Local: {localPeerId}
                     </p>
                   </div>
@@ -277,7 +280,7 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2">
                   <span
-                    className={`border px-2 py-1 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider md:text-[9px] ${
+                    className={`border px-2 py-1 font-sans font-semibold text-[8px] tracking-tight md:text-[9px] ${
                       encryptionReady
                         ? "border-[var(--pixel-accent)] text-[var(--pixel-accent)]"
                         : "border-[var(--pixel-warn)] text-[var(--pixel-warn)]"
@@ -290,7 +293,7 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={disconnect}
-                  className="border-2 border-[var(--pixel-warn)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
+                  className="rounded-xl border border-[var(--pixel-warn)] px-3 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
                 >
                   DISCONNECT
                 </button>
@@ -299,10 +302,10 @@ export default function ChatPage() {
               <div className="h-[48vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)] px-4 py-5 [scrollbar-color:var(--pixel-accent)_var(--pixel-bg)] [scrollbar-width:thin] md:h-[520px] md:px-6 md:py-6">
                 {messages.length === 0 && (
                   <div className="rounded-none border border-dashed border-[var(--pixel-border)] p-6 text-center">
-                    <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
-                      [ CHANNEL_READY ]
+                    <p className="font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
+                      CHANNEL READY
                     </p>
-                    <p className="mt-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-muted)]">
+                    <p className="mt-2 font-mono text-sm text-[var(--pixel-muted)]">
                       The P2P data channel is open. Waiting for key handshake to secure messages.
                     </p>
                   </div>
@@ -318,16 +321,16 @@ export default function ChatPage() {
                       className={`mb-4 flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[82%] border-2 px-4 py-3 ${
+                        className={`max-w-[82%] rounded-xl border px-4 py-3 ${
                           message.sender === "me"
                             ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
                             : "border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] text-[var(--pixel-accent-2)]"
                         }`}
                       >
-                        <p className="font-[family-name:var(--font-jetbrains)] text-sm leading-6 md:text-base">
+                        <p className="font-mono text-sm leading-6 md:text-base">
                           {message.text}
                         </p>
-                        <p className="mt-2 font-[family-name:var(--font-jetbrains)] text-[10px] opacity-70 md:text-xs">
+                        <p className="mt-2 font-mono text-[10px] opacity-70 md:text-xs">
                           {formatClockTime(message.timestamp)}
                         </p>
                       </div>
@@ -351,12 +354,12 @@ export default function ChatPage() {
                       }
                     }}
                     placeholder="Type a message..."
-                    className="h-12 flex-1 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)] focus:outline-none focus:shadow-[0_0_12px_var(--pixel-glow)] md:text-base"
+                    className="h-12 flex-1 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 font-mono text-sm text-[var(--pixel-text)] focus:outline-none focus:shadow-xl focus:shadow-[var(--pixel-glow)] md:text-base"
                   />
                   <button
                     type="button"
                     onClick={handleSendMessage}
-                    className="border-2 border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-bg)] transition-transform hover:scale-[1.03] md:px-5 md:text-[10px]"
+                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-bg)] transition-transform hover:scale-[1.03] md:px-5 md:text-[10px]"
                   >
                     SEND
                   </button>

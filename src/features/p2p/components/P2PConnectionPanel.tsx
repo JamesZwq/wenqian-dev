@@ -17,6 +17,7 @@ interface P2PConnectionPanelProps {
   error?: P2PErrorState | null;
   title?: string;
   description?: string[];
+  autoConnectPeerId?: string | null;
   onConnect: (peerId: string) => void;
   onRetry?: () => void;
   onClearError?: () => void;
@@ -39,10 +40,11 @@ export default function P2PConnectionPanel({
   error = null,
   title = "P2P_CONNECTION",
   description = [
-    "> Share your local peer code with a second device or another player.",
-    "> Enter the remote peer code to create a direct browser-to-browser session.",
-    "> This same panel can be reused for chat, co-op mini-games, whiteboards, and more.",
+    "> Share your invite link with a friend.",
+    "> Or enter their peer code to connect.",
+    "> Direct browser-to-browser, no server required.",
   ],
+  autoConnectPeerId,
   onConnect,
   onRetry,
   onClearError,
@@ -50,9 +52,23 @@ export default function P2PConnectionPanel({
 }: P2PConnectionPanelProps) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
+  const [autoConnectDone, setAutoConnectDone] = useState(false);
 
   const effectiveTimeoutMs = connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
   const progressDurationSec = Math.max(0.1, effectiveTimeoutMs / 1000);
+
+  // Auto-connect when peer ID is ready and autoConnectPeerId is provided
+  useEffect(() => {
+    if (
+      autoConnectPeerId &&
+      localPeerId &&
+      phase === "ready" &&
+      !autoConnectDone
+    ) {
+      setAutoConnectDone(true);
+      onConnect(autoConnectPeerId);
+    }
+  }, [autoConnectPeerId, localPeerId, phase, autoConnectDone, onConnect]);
 
   useEffect(() => {
     if (!error) return;
@@ -65,11 +81,13 @@ export default function P2PConnectionPanel({
     return "idle";
   }, [phase]);
 
-  const handleCopy = async () => {
+  const handleShareLink = async () => {
     if (!localPeerId) return;
 
     try {
-      await navigator.clipboard.writeText(localPeerId);
+      const url = new URL(window.location.href);
+      url.searchParams.set("join", localPeerId);
+      await navigator.clipboard.writeText(url.toString());
       setCopySuccess(true);
       window.setTimeout(() => setCopySuccess(false), 1500);
     } catch {
@@ -83,37 +101,37 @@ export default function P2PConnectionPanel({
   };
 
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center px-4">
+    <div className="flex w-full items-center justify-center px-2 md:min-h-[60vh] md:px-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
-        className="w-full max-w-3xl overflow-hidden border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-[0_0_32px_var(--pixel-glow)] backdrop-blur-xl"
+        className="w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl"
       >
-        <div className="flex items-center justify-between gap-3 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
+        <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex gap-1.5">
               <div className="h-3 w-3 bg-[var(--pixel-warn)]" />
               <div className="h-3 w-3 bg-[var(--pixel-accent-2)]" />
               <div className="h-3 w-3 bg-[var(--pixel-accent)]" />
             </div>
-            <span className="truncate font-[family-name:var(--font-press-start)] text-[8px] tracking-widest text-[var(--pixel-accent)] md:text-[10px]">
+            <span className="truncate font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
               {title}
             </span>
           </div>
 
           <div
-            className={`border px-2 py-1 font-[family-name:var(--font-press-start)] text-[7px] tracking-widest md:text-[8px] ${PHASE_BADGE_CLASS[phase]}`}
+            className={`rounded-md border px-2 py-1 font-sans font-semibold text-[8px] tracking-tight md:text-[9px] ${PHASE_BADGE_CLASS[phase]}`}
           >
             {getPhaseLabel(phase)}
           </div>
         </div>
 
-        <div className="grid gap-6 p-5 md:grid-cols-[1.2fr_1fr] md:p-7">
-          <div className="space-y-5">
+        <div className="grid gap-4 p-4 md:gap-6 md:grid-cols-[1.2fr_1fr] md:p-7">
+          <div className="space-y-4 md:space-y-5">
             <div>
-              <label className="mb-2 block font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
-                [ YOUR_PEER_ID ]
+              <label className="mb-2 block font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+                YOUR PEER ID
               </label>
 
               <div className="flex gap-2">
@@ -121,19 +139,19 @@ export default function P2PConnectionPanel({
                   readOnly
                   value={localPeerId}
                   placeholder={phase === "initializing" ? "Generating peer ID..." : "Unavailable"}
-                  className="h-12 flex-1 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-accent)] focus:outline-none md:text-base"
+                  className="h-11 flex-1 truncate rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-3 font-mono text-xs text-[var(--pixel-accent)] focus:outline-none md:h-12 md:px-4 md:text-base"
                 />
                 <button
                   type="button"
-                  onClick={handleCopy}
+                  onClick={handleShareLink}
                   disabled={!localPeerId}
-                  className={`min-w-[80px] border-2 px-3 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider transition-transform duration-150 md:text-[9px] ${
+                  className={`min-w-[80px] rounded-xl border px-3 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:text-[10px] ${
                     localPeerId
                       ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.03]"
                       : "cursor-not-allowed border-[var(--pixel-border)] bg-[var(--pixel-border)] text-[var(--pixel-bg)] opacity-60"
                   }`}
                 >
-                  {copySuccess ? "COPIED" : "COPY"}
+                  {copySuccess ? "COPIED" : "SHARE LINK"}
                 </button>
               </div>
 
@@ -142,7 +160,7 @@ export default function P2PConnectionPanel({
                   <button
                     type="button"
                     onClick={onReinitialize}
-                    className="border border-[var(--pixel-border)] px-2 py-1 font-[family-name:var(--font-press-start)] text-[7px] tracking-wider text-[var(--pixel-muted)] transition-colors hover:border-[var(--pixel-accent-2)] hover:text-[var(--pixel-accent-2)] md:text-[8px]"
+                    className="rounded-xl border border-[var(--pixel-border)] px-2 py-1 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-muted)] transition-colors hover:border-[var(--pixel-accent-2)] hover:text-[var(--pixel-accent-2)] md:text-[9px]"
                   >
                     RECREATE ID
                   </button>
@@ -150,7 +168,7 @@ export default function P2PConnectionPanel({
               </div>
             </div>
 
-            <div className="rounded-none border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
+            <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
               <CodeInput
                 length={6}
                 label="CONNECT_TO_PEER"
@@ -168,7 +186,7 @@ export default function P2PConnectionPanel({
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="border-2 border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] p-4"
+                  className="rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] p-4"
                 >
                   <div className="mb-3 flex items-center gap-3">
                     <motion.div
@@ -177,10 +195,10 @@ export default function P2PConnectionPanel({
                       className="h-4 w-4 rounded-full border-2 border-[var(--pixel-accent-2)] border-t-transparent"
                     />
                     <div>
-                      <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent-2)] md:text-[10px]">
-                        [ HANDSHAKE_IN_PROGRESS ]
+                      <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent-2)] md:text-xs">
+                        HANDSHAKE IN PROGRESS
                       </p>
-                      <p className="mt-1 font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-text)]">
+                      <p className="mt-1 font-mono text-xs text-[var(--pixel-text)]">
                         Establishing a direct channel. The code input stays locked until this attempt succeeds or fails.
                       </p>
                     </div>
@@ -202,17 +220,17 @@ export default function P2PConnectionPanel({
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                  className="border-2 border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] p-4"
+                  className="rounded-xl border border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="pt-0.5 font-[family-name:var(--font-press-start)] text-xs text-[var(--pixel-warn)]">
+                    <div className="pt-0.5 font-sans font-semibold text-xs text-[var(--pixel-warn)]">
                       ⚠
                     </div>
                     <div className="flex-1">
-                      <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-warn)] md:text-[10px]">
-                        [ {error.title} ]
+                      <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-warn)] md:text-xs">
+                        {error.title}
                       </p>
-                      <p className="mt-1 font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-text)] md:text-sm">
+                      <p className="mt-1 font-mono text-xs text-[var(--pixel-text)] md:text-sm">
                         {error.message}
                       </p>
 
@@ -224,7 +242,7 @@ export default function P2PConnectionPanel({
                               onClearError?.();
                               onRetry();
                             }}
-                            className="border-2 border-[var(--pixel-warn)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
+                            className="rounded-xl border border-[var(--pixel-warn)] px-3 py-2 font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
                           >
                             RETRY
                           </button>
@@ -232,7 +250,7 @@ export default function P2PConnectionPanel({
                         <button
                           type="button"
                           onClick={onClearError}
-                          className="border border-[var(--pixel-border)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-muted)] transition-colors hover:border-[var(--pixel-accent)] hover:text-[var(--pixel-accent)]"
+                          className="rounded-xl border border-[var(--pixel-border)] px-3 py-2 font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-muted)] transition-colors hover:border-[var(--pixel-accent)] hover:text-[var(--pixel-accent)]"
                         >
                           CLEAR
                         </button>
@@ -248,7 +266,7 @@ export default function P2PConnectionPanel({
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="border border-[var(--pixel-border)] px-4 py-3 font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)]"
+                  className="rounded-xl border border-[var(--pixel-border)] px-4 py-3 font-mono text-xs text-[var(--pixel-muted)]"
                 >
                   &gt; Creating your local peer session...
                 </motion.div>
@@ -256,12 +274,12 @@ export default function P2PConnectionPanel({
             </AnimatePresence>
           </div>
 
-          <div className="space-y-4 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)]/40 p-4">
+          <div className="hidden space-y-4 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/40 p-4 md:block">
             <div>
-              <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
-                [ STATUS ]
+              <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+                STATUS
               </p>
-              <p className="mt-2 font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)]">
+              <p className="mt-2 font-mono text-sm text-[var(--pixel-text)]">
                 {phase === "ready" && "Your local peer is ready. You can share the code or enter another code now."}
                 {phase === "connecting" && "A connection attempt is active. The panel is intentionally locked to avoid duplicated handshakes."}
                 {phase === "connected" && "The direct connection is live. This panel can now be swapped out for any game or collaborative view."}
@@ -271,10 +289,10 @@ export default function P2PConnectionPanel({
             </div>
 
             <div>
-              <p className="font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
-                [ NOTES ]
+              <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+                NOTES
               </p>
-              <div className="mt-3 space-y-2 font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-muted)] md:text-sm">
+              <div className="mt-3 space-y-2 font-mono text-xs text-[var(--pixel-muted)] md:text-sm">
                 {description.map((line, index) => (
                   <motion.p
                     key={`${index}-${line}`}

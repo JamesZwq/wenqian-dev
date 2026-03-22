@@ -61,7 +61,7 @@ function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: strin
 }
 
 const sectionTitleClass =
-  "font-[family-name:var(--font-press-start)] text-xs md:text-sm text-[var(--pixel-accent)] tracking-widest uppercase";
+  "font-sans text-base md:text-lg font-bold text-[var(--pixel-accent)] tracking-tight uppercase";
 
 const SectionTitle = ({
   children,
@@ -76,11 +76,11 @@ const SectionTitle = ({
     viewport={{ once: true }}
     className="flex items-center gap-4 mb-10"
   >
-    <div className="p-2 border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
+    <div className="p-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
       <Icon size={20} />
     </div>
     <h2 className={`${sectionTitleClass}`}>
-      [ {children} ]
+      {children}
     </h2>
   </motion.div>
 );
@@ -120,7 +120,7 @@ export default function ExtraSections() {
       />
 
       <div ref={ref} className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20 md:py-28">
-        {/* Stats - Pixel blocks */}
+        {/* Stats */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -143,9 +143,9 @@ export default function ExtraSections() {
                 whileHover={{
                   scale: 1.05,
                   borderColor: "var(--pixel-border)",
-                  boxShadow: "0 0 20px var(--pixel-glow)",
+                  boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-center font-[family-name:var(--font-jetbrains)]"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-center font-mono"
               >
                 <span className={`inline-block transition-transform duration-300 ease-out ${iconHover}`}>
                   <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
@@ -187,19 +187,19 @@ export default function ExtraSections() {
                 whileHover={{
                   x: 4,
                   borderColor: "var(--pixel-border)",
-                  boxShadow: "0 0 15px var(--pixel-glow)",
+                  boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl hover:border-[var(--pixel-border)] transition-colors"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl hover:border-[var(--pixel-border)] transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)]">
+                  <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)]">
                     {project.title}
                   </h3>
-                  <span className="text-[10px] font-mono text-[var(--pixel-accent-2)]">
+                  <span className="text-xs font-mono text-[var(--pixel-accent-2)]">
                     {project.tech}
                   </span>
                 </div>
-                <p className="text-sm text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-text)] font-mono">
                   {project.desc}
                 </p>
               </DraggableFloat>
@@ -241,11 +241,11 @@ export default function ExtraSections() {
                 whileHover={{
                   scale: 1.02,
                   borderColor: "var(--pixel-border)",
-                  boxShadow: "0 0 20px var(--pixel-glow)",
+                  boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 border-2 border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl cursor-pointer touch-manipulation"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl cursor-pointer touch-manipulation"
               >
-                <div className="w-10 h-10 border-2 border-[var(--pixel-border)] flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-xl border border-[var(--pixel-border)] flex items-center justify-center mb-4">
                   <span
                     className={`inline-flex items-center justify-center transition-transform duration-300 ease-out ${
                       item.title === "Core Decomposition"
@@ -258,14 +258,14 @@ export default function ExtraSections() {
                     <item.icon className="text-[var(--pixel-accent)]" size={20} />
                   </span>
                 </div>
-                <h3 className="font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent)] mb-2 flex items-center justify-between">
+                <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)] mb-2 flex items-center justify-between">
                   {item.title}
                   <ChevronRight size={20} className="text-[var(--pixel-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </h3>
-                <p className="text-sm text-[var(--pixel-text)] font-[family-name:var(--font-jetbrains)]">
+                <p className="text-sm text-[var(--pixel-text)] font-mono">
                   {item.desc}
                 </p>
-                <p className="mt-2 text-[10px] text-[var(--pixel-accent-2)] font-mono">Click to learn more →</p>
+                <p className="mt-2 text-xs text-[var(--pixel-accent-2)] font-mono">Click to learn more →</p>
               </DraggableFloat>
             ))}
           </div>
@@ -291,7 +291,7 @@ export default function ExtraSections() {
                 key={fact.text}
                 variants={itemVariants}
                 whileHover={{ scale: 1.03, borderColor: "var(--pixel-border)" }}
-                className="group p-4 border-2 border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-[family-name:var(--font-jetbrains)] touch-manipulation"
+                className="group p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-mono touch-manipulation"
               >
                 <span className="text-xl block mb-2 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:rotate-12">{fact.emoji}</span>
                 <p className="text-sm text-[var(--pixel-text)] font-medium">{fact.text}</p>
@@ -314,7 +314,7 @@ export default function ExtraSections() {
           className="text-center"
         >
           <SectionTitle icon={Mail}>Get in Touch</SectionTitle>
-          <p className="text-[var(--pixel-text)] max-w-xl mx-auto mb-6 sm:mb-8 font-[family-name:var(--font-jetbrains)] text-sm px-1">
+          <p className="text-[var(--pixel-text)] max-w-xl mx-auto mb-6 sm:mb-8 font-mono text-sm px-1">
             Interested in collaboration, research discussions, or just saying hi?
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -326,11 +326,11 @@ export default function ExtraSections() {
               <motion.a
                 key={label}
                 href={href}
-                whileHover={{ scale: 1.05, boxShadow: "0 0 15px var(--pixel-glow)" }}
+                whileHover={{ scale: 1.05, boxShadow: "0 8px 32px var(--pixel-glow)" }}
                 whileTap={{ scale: 0.98 }}
-                className="min-h-[44px] px-5 py-2.5 border-2 border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-[family-name:var(--font-press-start)] text-[10px] flex items-center justify-center gap-2 hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl border border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
               >
-                <Icon size={16} /> [ {label} ]
+                <Icon size={16} /> {label}
               </motion.a>
             ))}
           </div>

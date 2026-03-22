@@ -279,14 +279,14 @@ function syncTextBodies(world: World, history: string[], currentInput: string, p
 
   const maxChars = Math.max(10, Math.floor((world.w - pad * 2) / cw));
   const rawLines = readOnly ? [...history] : [...history, `${promptStr}${currentInput}`];
-  
+
   type RenderLine = { text: string; isCmd: boolean; originalIndex: number; subIndex: number };
   const wrappedLines: RenderLine[] = [];
 
   for (let li = 0; li < rawLines.length; li++) {
     const rawLine = rawLines[li];
     const isCmd = rawLine.startsWith("wenqian@unsw:");
-    
+
     if (rawLine.length === 0) {
       wrappedLines.push({ text: "", isCmd, originalIndex: li, subIndex: 0 });
       continue;
@@ -294,16 +294,16 @@ function syncTextBodies(world: World, history: string[], currentInput: string, p
 
     let remaining = rawLine;
     let subIdx = 0;
-    
+
     while (remaining.length > 0) {
       if (remaining.length <= maxChars) {
         wrappedLines.push({ text: remaining, isCmd, originalIndex: li, subIndex: subIdx });
         break;
       }
-      
+
       let breakPt = remaining.lastIndexOf(" ", maxChars);
-      if (breakPt === -1 || breakPt === 0) breakPt = maxChars; 
-      
+      if (breakPt === -1 || breakPt === 0) breakPt = maxChars;
+
       wrappedLines.push({ text: remaining.slice(0, breakPt), isCmd, originalIndex: li, subIndex: subIdx++ });
       remaining = remaining.slice(breakPt).trimStart();
     }
@@ -312,6 +312,15 @@ function syncTextBodies(world: World, history: string[], currentInput: string, p
   const availableHeight = world.h - startY - pad;
   const maxLines = Math.max(1, Math.floor(availableHeight / lh));
   const displayLines = wrappedLines.slice(-maxLines);
+
+  // Build a lookup map for O(1) body access instead of O(n) .find() per character
+  const bodyMap = new Map<string, Body>();
+  for (let i = 0; i < world.bodies.length; i++) {
+    const b = world.bodies[i];
+    if (b.key.startsWith('text_') || b.key === 'cursor') {
+      bodyMap.set(b.key, b);
+    }
+  }
 
   const desiredKeys = new Set<string>();
   let y = startY;
@@ -328,13 +337,13 @@ function syncTextBodies(world: World, history: string[], currentInput: string, p
         const key = `text_${originalIndex}_${subIndex}_${ci}`;
         desiredKeys.add(key);
 
-        let existing = world.bodies.find(b => b.key === key);
+        const existing = bodyMap.get(key);
         if (existing) {
           existing.hx = x; existing.hy = y; existing.ch = ch; existing.ck = isCmd ? "accent2" : "accent";
         } else {
           world.bodies.push({
             key, id: world.nextId++, ch, ck: isCmd ? "accent2" : "accent",
-            x, y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, 
+            x, y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80,
             hx: x, hy: y, r: typedR, fs: font, invM: 1,
           });
         }
@@ -346,7 +355,7 @@ function syncTextBodies(world: World, history: string[], currentInput: string, p
       const ux = x + Math.min(4, cw * 0.5);
       const key = `cursor`;
       desiredKeys.add(key);
-      let existing = world.bodies.find(b => b.key === key);
+      const existing = bodyMap.get(key);
       if (existing) {
         existing.hx = ux; existing.hy = y;
       } else {
@@ -370,8 +379,8 @@ function readPalette(el: HTMLElement): Palette {
   const cs = getComputedStyle(el);
   const pick = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
   return {
-    accent: pick("--pixel-accent", "#00ff88"), accent2: pick("--pixel-accent-2", "#00d4ff"),
-    warn: pick("--pixel-warn", "#ff6b35"), text: pick("--pixel-text", "#e6e6e6"),
+    accent: pick("--pixel-accent", "#818cf8"), accent2: pick("--pixel-accent-2", "#a78bfa"),
+    warn: pick("--pixel-warn", "#fbbf24"), text: pick("--pixel-text", "#e8e5f5"),
   };
 }
 
@@ -507,7 +516,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   // 新增：记录清屏时的震源坐标
   const clearCenterRef = useRef<{x: number, y: number} | null>(null);
 
-  const paletteRef = useRef<Palette>({ accent: "#00ff88", accent2: "#00d4ff", warn: "#ff6b35", text: "#e6e6e6" });
+  const paletteRef = useRef<Palette>({ accent: "#818cf8", accent2: "#a78bfa", warn: "#fbbf24", text: "#e8e5f5" });
   const fontFamilyRef = useRef<string>(FALLBACK_FONT_FAMILY);
 
   useEffect(() => {
@@ -693,7 +702,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   // 物理渲染主循环
   useEffect(() => {
     let raf = 0; let last = nowMs(); let acc = 0;
-    const FIXED_DT = 1 / 120; const SPRING_MAX_STEP = 1 / 240; const MAX_BOX_V = 6000;
+    const FIXED_DT = 1 / 60; const SPRING_MAX_STEP = 1 / 120; const MAX_BOX_V = 6000;
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
@@ -813,20 +822,20 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     <div ref={outerRef} className={["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ")} style={{willChange: "transform" ,  zIndex: 1}}>
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
-            className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-[0_0_30px_var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"
+            className="rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-xl shadow-[var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"
             style={{ touchAction: "none" }}
             onPointerDownCapture={onTerminalPointerDown}
             onPointerMoveCapture={onTerminalPointerMove}
             onPointerUpCapture={endDrag}
             onPointerCancelCapture={endDrag}
           >
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] select-none">
+          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] rounded-t-2xl select-none">
             <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ff5f56]" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#ffbd2e]" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm bg-[#27c93f]" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ff5f56]" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ffbd2e]" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#27c93f]" />
             </div>
-            <span className="font-[family-name:var(--font-press-start)] text-[10px] sm:text-[12px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-widest truncate" style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+            <span className="font-mono text-[10px] sm:text-[12px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-tight truncate">
               {title ?? "WENQIAN.ZHANG — BASH — 80x24"}
             </span>
           </div>

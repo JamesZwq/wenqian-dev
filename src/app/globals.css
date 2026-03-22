@@ -3,99 +3,71 @@
 /* Class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ========== PIXEL GEEK DESIGN SYSTEM ========== */
+/* ========== MODERN GLASSMORPHISM DESIGN SYSTEM ========== */
 :root {
-  /* Light theme (day) */
-  --pixel-bg: #f3f4f6;        /* slate-100 */
-  --pixel-bg-alt: #ffffff;    /* 纯白占位，卡片请用 --pixel-card-bg */
-  --pixel-card-bg: rgba(255, 255, 255, 0.6);   /* 磨砂卡片：半透明白 + backdrop-blur */
-  --pixel-border: #10b981;    /* emerald-500 */
-  --pixel-text: #0f172a;      /* slate-900 - 主文字，保证可读 */
-  --pixel-muted: #1f2937;     /* slate-800 - 次要文字，但保持高对比度 */
-  --pixel-accent: #059669;    /* emerald-600 */
-  --pixel-accent-2: #0ea5e9;  /* sky-500 */
-  --pixel-warn: #f97316;      /* orange-500 */
-  --pixel-glow: rgba(15, 118, 110, 0.22);
-  --pixel-grid-primary: rgba(148, 163, 184, 0.45);
-  --pixel-grid-secondary: rgba(148, 163, 184, 0.25);
+  /* Light theme */
+  --pixel-bg: #fafbfe;
+  --pixel-bg-alt: #f1f3f9;
+  --pixel-card-bg: rgba(255,255,255,0.72);
+  --pixel-border: rgba(99,102,241,0.2);
+  --pixel-text: #1e1b4b;
+  --pixel-muted: #6b7280;
+  --pixel-accent: #6366f1;
+  --pixel-accent-2: #8b5cf6;
+  --pixel-warn: #f59e0b;
+  --pixel-glow: rgba(99,102,241,0.12);
+  --pixel-grid-primary: rgba(99,102,241,0.08);
+  --pixel-grid-secondary: rgba(139,92,246,0.06);
 }
 
 .dark {
-  /* Dark theme (night) */
-  --pixel-bg: #0a0a0b;
-  --pixel-bg-alt: #121214;
-  --pixel-card-bg: rgba(18, 18, 20, 0.72);    /* 磨砂卡片：半透明深色 */
-  --pixel-border: #00ff88;
-  --pixel-text: #e0ffe8;
-  --pixel-muted: #94a3b8;     /* slate-400 - 深色背景下柔和但可读 */
-  --pixel-accent: #00ff88;
-  --pixel-accent-2: #00d4ff;
-  --pixel-warn: #ff6b35;
-  --pixel-glow: rgba(0, 255, 136, 0.3);
-  --pixel-grid-primary: rgba(0, 255, 136, 0.4);
-  --pixel-grid-secondary: rgba(0, 212, 255, 0.25);
+  /* Dark theme */
+  --pixel-bg: #0c0a1d;
+  --pixel-bg-alt: #13112b;
+  --pixel-card-bg: rgba(22,18,52,0.75);
+  --pixel-border: rgba(139,92,246,0.25);
+  --pixel-text: #e8e5f5;
+  --pixel-muted: #8b8fa3;
+  --pixel-accent: #818cf8;
+  --pixel-accent-2: #a78bfa;
+  --pixel-warn: #fbbf24;
+  --pixel-glow: rgba(129,140,248,0.2);
+  --pixel-grid-primary: rgba(129,140,248,0.15);
+  --pixel-grid-secondary: rgba(167,139,250,0.1);
 }
 
 @theme inline {
-  --font-sans: var(--font-vt323);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains);
-  --font-pixel: var(--font-press-start);
 }
 
 body {
   background: var(--pixel-bg);
   color: var(--pixel-text);
-  font-family: var(--font-vt323), monospace;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   transition: background-color 0.6s ease, color 0.6s ease;
 }
 
-/* CRT Scanline overlay - subtle */
-.dark .pixel-scanlines::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.15) 2px,
-    rgba(0, 0, 0, 0.15) 4px
-  );
-  pointer-events: none;
-  z-index: 9998;
+/* Glass card utility */
+.glass-card {
+  border-radius: 1rem;
+  border: 1px solid var(--pixel-border);
+  background: var(--pixel-card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px var(--pixel-glow);
 }
 
-/* Pixel border utility */
+/* Pixel border utility - modernized */
 .pixel-border {
-  border: 2px solid var(--pixel-border);
-  box-shadow: 0 0 10px var(--pixel-glow);
-}
-
-/* Glitch animation */
-@keyframes glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(2px, -2px); }
-  60% { transform: translate(-2px, -2px); }
-  80% { transform: translate(2px, 2px); }
-  100% { transform: translate(0); }
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  border: 1px solid var(--pixel-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px var(--pixel-glow);
 }
 
 @keyframes typewriter {
   from { width: 0; }
   to { width: 100%; }
-}
-
-@keyframes pixel-flicker {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
 }
 
 @keyframes terminal-glow {
@@ -112,14 +84,6 @@ body {
   animation: terminal-glitch-overlay 6s ease-in-out infinite;
 }
 
-.animate-glitch {
-  animation: glitch 0.3s ease-in-out;
-}
-
-.animate-blink {
-  animation: blink 1s step-end infinite;
-}
-
 .animate-terminal-glow {
   animation: terminal-glow 2s ease-in-out infinite;
 }
@@ -128,7 +92,7 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Global scrollbar styling (was styled-jsx in chat page and caused hydration drift) */
+/* Global scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -139,16 +103,10 @@ html {
 
 ::-webkit-scrollbar-thumb {
   background: var(--pixel-accent);
+  border-radius: 4px;
   border: 1px solid var(--pixel-border);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--pixel-accent-2);
-}
-
-/* Pixel-perfect scaling */
-.pixel-scale {
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
 }

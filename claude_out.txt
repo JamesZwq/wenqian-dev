@@ -1,0 +1,1213 @@
+╭─── Claude Code v2.1.80 ──────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back Wenqian!               │ started                 │
+│                                                    │ Run /init to create a … │
+│                       ▐▛███▜▌                      │ ─────────────────────── │
+│                      ▝▜█████▛▘                     │ Recent activity         │
+│                        ▘▘ ▝▝                       │ No recent activity      │
+│      Sonnet 4.6 · API Usage Billing ·              │                         │
+│      zhangwenqian6915@gmail.com's Organization     │                         │
+│                      ~/my-web                      │                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                            │
+│                                                                              │
+│ 速算挑战页面 (Math Sprint)                                                   │
+│                                                                              │
+│ Context                                                                      │
+│                                                                              │
+│ 用户想要一个快速计算100以内算术的页面，支持单人和P2P对战。UI和动画要好看，跟 │
+│ 现有gomoku/maze页面风格一致。                                                │
+│                                                                              │
+│ 核心功能                                                                     │
+│                                                                              │
+│ - 每次显示一道题，输入错误立刻清空输入框                                     │
+│ - 显示当前速度（题/分钟）                                                    │
+│ - 开始前设置难度：选择包含哪些运算（加/减/乘/除/取余），设置题目数量         │
+│ - 支持单人模式和P2P对战模式                                                  │
+│                                                                              │
+│ 文件清单                                                                     │
+│                                                                              │
+│ 新建文件                                                                     │
+│                                                                              │
+│ 1. src/app/math/page.tsx — 主页面                                            │
+│ 2. src/app/math/mathEngine.ts — 题目生成引擎                                 │
+│                                                                              │
+│ 修改文件                                                                     │
+│                                                                              │
+│ 3. src/app/components/FloatingNav.tsx — 添加 Math Sprint 菜单项              │
+│                                                                              │
+│ 实现细节                                                                     │
+│                                                                              │
+│ 1. src/app/math/mathEngine.ts                                                │
+│                                                                              │
+│ 类型:                                                                        │
+│ - Operation = "add" | "sub" | "mul" | "div" | "mod"                          │
+│ - MathConfig = { operations: Operation[]; totalQuestions: number }           │
+│ - Question = { a: number; b: number; op: Operation; answer: number; display: │
+│  string }                                                                    │
+│                                                                              │
+│ 函数:                                                                        │
+│ - generateQuestion(ops: Operation[]): Question                               │
+│   - add: a,b ∈ [1,99], a+b ≤ 100                                             │
+│   - sub: a ∈ [1,99], b ∈ [1,a], 结果≥0                                       │
+│   - mul: a ∈ [2,12], b ∈ [2,12], a*b ≤ 100 (乘法表范围)                      │
+│   - div: 先随机 b ∈ [2,12], answer ∈ [1,12], a = b*answer (保证整除)         │
+│   - mod: a ∈ [10,99], b ∈ [2,9], answer = a%b                                │
+│   - display 格式: "45 + 23 = ?"                                              │
+│                                                                              │
+│ - generateQuestionSet(ops: Operation[], count: number): Question[]           │
+│   - 生成一组不重复的题目序列                                                 │
+│                                                                              │
+│ 2. src/app/math/page.tsx                                                     │
+│                                                                              │
+│ 状态机:                                                                      │
+│ gameMode: "menu" | "solo" | "p2p"                                            │
+│                                                                              │
+│ menu 状态:                                                                   │
+│   - 运算类型多选 (toggle buttons): +, -, ×, ÷, %                             │
+│   - 题目数量选择: 10/20/50 按钮                                              │
+│   - 两个大按钮: SOLO / P2P ONLINE                                            │
+│                                                                              │
+│ solo 状态:                                                                   │
+│   - 顶部: 进度条 (当前题号/总题数) + 速度 (题/分钟) + 计时器                 │
+│   - 中间: 大号题目显示 (带动画切入)                                          │
+│   - 底部: 数字输入框 (autoFocus, 输入错误时 shake 动画 + 清空)               │
+│   - 完成后: 成绩卡片 (总时间, 平均速度, 正确率)                              │
+│                                                                              │
+│ p2p 状态:                                                                    │
+│   - 连接前: P2PConnectionPanel (复用现有组件)                                │
+│   - 连接后: host发送题目序列给guest                                          │
+│   - 双方各自做题，实时同步进度                                               │
+│   - 显示对手进度条                                                           │
+│   - 先做完的人赢                                                             │
+│                                                                              │
+│ P2P Packet 类型:                                                             │
+│ type MathPacket =                                                            │
+│   | { type: "config"; operations: Operation[]; totalQuestions: number;       │
+│ questions: Question[]; timestamp: number }                                   │
+│   | { type: "progress"; completed: number; timestamp: number }               │
+│   | { type: "finished"; totalTime: number; timestamp: number }               │
+│   | { type: "rematch"; timestamp: number }                                   │
+│                                                                              │
+│ P2P 流程:                                                                    │
+│ - outgoing (host) 连接成功后: host 的 settings 界面显示，host                │
+│ 选好后生成题目序列发送 config                                                │
+│ - incoming (guest) 收到 config 后双方同时开始答题                            │
+│ - 每答对一题发送 progress packet                                             │
+│ - 全部完成发送 finished packet                                               │
+│ - 双方都完成后显示结果对比                                                   │
+│                                                                              │
+│ 关键 imports (复用现有P2P基础设施):                                          │
+│ import P2PConnectionPanel from                                               │
+│ "../../features/p2p/components/P2PConnectionPanel";                          │
+│ import { usePeerConnection } from                                            │
+│ "../../features/p2p/hooks/usePeerConnection";                                │
+│ import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";          │
+│                                                                              │
+│ 动画效果:                                                                    │
+│ - 题目切换: motion.div slide-in with key={questionIndex} 让 AnimatePresence  │
+│ 自动管理进出                                                                 │
+│ - 答错: input 框 shake 动画 (x: [-8, 8, -4, 4, 0])，背景短暂闪红             │
+│ - 答对: 题目 scale-out + 新题 slide-in                                       │
+│ - 完成: 成绩卡片 scale-in                                                    │
+│                                                                              │
+│ 输入处理:                                                                    │
+│ - <input type="number" inputMode="numeric"> autoFocus                        │
+│ - 每次 onChange 检查:                                                        │
+│   - 如果当前输入值 === 正确答案字符串 → 正确，下一题                         │
+│   - 如果输入值长度 >= 答案字符串长度 但不匹配 → 错误，shake + 清空           │
+│   - 对于负数答案: 允许先输入 "-"                                             │
+│                                                                              │
+│ 速度计算:                                                                    │
+│ - speed = completedQuestions / (elapsedSeconds / 60)                         │
+│ - 用 setInterval 每200ms刷新显示                                             │
+│                                                                              │
+│ 3. FloatingNav.tsx 修改                                                      │
+│                                                                              │
+│ 在 menuItems 数组末尾添加:                                                   │
+│ {                                                                            │
+│   href: "/math",                                                             │
+│   label: "Math Sprint",                                                      │
+│   icon: "🧮",                                                                │
+│   color: "var(--pixel-accent)",                                              │
+│   description: "Speed arithmetic challenge"                                  │
+│ }                                                                            │
+│                                                                              │
+│ UI 布局                                                                      │
+│                                                                              │
+│ Menu 页面                                                                    │
+│                                                                              │
+│ ┌─────────────────────┐                                                      │
+│ │ ← BACK              │                                                      │
+│ │                      │                                                     │
+│ │   MATH SPRINT        │                                                     │
+│ │   > Speed arithmetic │                                                     │
+│ │                      │                                                     │
+│ │ ┌──── OPERATIONS ──┐ │                                                     │
+│ │ │ [+] [-] [×] [÷] [%]│  ← toggle buttons                                   │
+│ │ └──────────────────┘ │                                                     │
+│ │                      │                                                     │
+│ │ ┌──── QUESTIONS ───┐ │                                                     │
+│ │ │ [10] [20] [50]   │ │  ← 选择题数                                         │
+│ │ └──────────────────┘ │                                                     │
+│ │                      │                                                     │
+│ │ [ ████ SOLO ████ ]   │                                                     │
+│ │ [ ██ P2P ONLINE ██ ] │                                                     │
+│ └─────────────────────┘                                                      │
+│                                                                              │
+│ 答题页面                                                                     │
+│                                                                              │
+│ ┌─────────────────────┐                                                      │
+│ │ 12/20  ⚡3.2/min    │  ← 进度 + 速度                                       │
+│ │ ████████░░░░░░░░░░  │  ← 进度条(动画)                                      │
+│ │                      │                                                     │
+│ │   ┌──────────────┐   │                                                     │
+│ │   │              │   │                                                     │
+│ │   │  45 + 23 = ? │   │  ← 大号题目(切换动画)                               │
+│ │   │              │   │                                                     │
+│ │   └──────────────┘   │                                                     │
+│ │                      │                                                     │
+│ │   ┌──────────────┐   │                                                     │
+│ │   │   [    68  ] │   │  ← 输入框                                           │
+│ │   └──────────────┘   │                                                     │
+│ │                      │                                                     │
+│ │  P2P: 对手 15/20     │  ← P2P时显示对手进度                                │
+│ │  ████████████░░░░░░  │                                                     │
+│ └─────────────────────┘                                                      │
+│                                                                              │
+│ 验证                                                                         │
+│                                                                              │
+│ - bunx tsc --noEmit — 零错误                                                 │
+│ - 单人模式: 选择运算类型和题数 → 答题 → 速度实时更新 → 错误输入shake清空 →   │
+│ 完成显示成绩                                                                 │
+│ - P2P模式: 两端连接 → host选设置发题 → 双方答题 → 实时看到对方进度 →         │
+│ 先完成者赢                                                                   │
+│ - 手机端: 输入框不被键盘遮挡, 布局紧凑, inputMode="numeric" 调起数字键盘     │
+│ - FloatingNav 中能看到新的 Math Sprint 入口                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+⏺ I'll start by examining the existing codebase to understand patterns, then
+  implement the plan.
+
+⏺ Explore(Explore existing codebase patterns)
+  ⎿  Initializing…
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /plugin install frontend-design@claude-plugins-official                       
+  ⎿  ✓ Installed frontend-design. Run /reload-plugins to activate.
+
+❯ /reload-plugins                                                               
+  ⎿  Reloaded: 3 plugins · 2 skills · 5 agents · 0 hooks · 0 plugin MCP servers
+     · 1 plugin LSP server
+
+❯ 请继续, 还有就是在用户做当前题的时候, 下一道题也要显示出来让用户做预备.       
+
+⏺ Let me explore the codebase first to understand existing patterns.
+
+⏺ Explore(Explore codebase patterns)
+  ⎿  Done (0 tool uses · 0 tokens · 3m 13s)
+  (ctrl+o to expand)
+
+⏺ The explore agent failed due to a model issue. Let me read the files directly.
+
+  Read 3 files (ctrl+o to expand)
+
+⏺ Now let me read the P2P infrastructure files.
+
+  Read 3 files (ctrl+o to expand)
+
+⏺ Now I have all the context I need. Let me create the files.
+
+⏺ Let me create all the files now.
+
+⏺ Let me start implementing. First, the math engine.
+
+⏺ Let me create the math engine file first.
+
+⏺ Write(src/app/math/mathEngine.ts)
+  ⎿  Wrote 96 lines to src/app/math/mathEngine.ts
+       1 export type Operation = "add" | "sub" | "mul" | "div" | "mod";
+       2 
+       3 export type MathConfig = {
+       4   operations: Operation[];
+       5   totalQuestions: number;
+       6 };
+       7 
+       8 export type Question = {
+       9   a: number;
+      10   b: number;
+     … +86 lines (ctrl+o to expand)
+⏺ Now let me create the main page. This is the big one.
+
+⏺ Let me now create the main Math Sprint page.
+
+⏺ Write(src/app/math/page.tsx)
+  ⎿  Wrote 792 lines to src/app/math/page.tsx
+       1 "use client";
+       2 
+       3 import { useCallback, useEffect, useMemo, useRef, useState } fro
+         m "react";
+       4 import Link from "next/link";
+       5 import { AnimatePresence, motion } from "framer-motion";
+       6 import P2PConnectionPanel from "../../features/p2p/components/P2
+         PConnectionPanel";
+       7 import { usePeerConnection } from "../../features/p2p/hooks/useP
+         eerConnection";
+       8 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/confi
+         g";
+       9 import {
+      10   generateQuestionSet,
+     … +782 lines (ctrl+o to expand)
+
+⏺ Now let me update the FloatingNav and run type-checking.
+
+⏺ Let me add the Math Sprint entry to FloatingNav and then type-check.
+
+⏺ Update(src/app/components/FloatingNav.tsx)
+  ⎿  Added 7 lines
+      29        color: "var(--pixel-accent-2)",
+      30        description: "P2P maze race with items & power-ups"
+      31      },
+      32 +    {                                                          
+      33 +      href: "/math",                                           
+      34 +      label: "Math Sprint",                                    
+      35 +      icon: "🧮",                                              
+      36 +      color: "var(--pixel-accent)",                            
+      37 +      description: "Speed arithmetic challenge"                
+      38 +    },                                                         
+      39    ];
+      40  
+      41    return (
+
+⏺ Now let me run the type-check.
+
+⏺ Let me run the type-check now.
+
+⏺ Bash(bunx tsc --noEmit 2>&1)
+  ⎿  (No output)
+
+⏺ Zero TypeScript errors. All three files have been created/modified:
+
+  New files:
+  - src/app/math/mathEngine.ts — question generation engine with support for +,
+  −, ×, ÷, % operations, unique question sets, and proper constraints (results
+  ≤100, integer division, etc.)
+  - src/app/math/page.tsx — full Math Sprint page with:
+    - Menu: toggle operations, select question count (10/20/50), Solo or P2P
+  buttons
+    - Solo mode: progress bar, speed (questions/min), timer, animated question
+  transitions, next question preview, shake + flash-red on wrong answer, result
+  card
+    - P2P mode: reuses existing P2P infrastructure, host configures settings and
+   sends question set, real-time opponent progress bar, win/lose result, rematch
+   support
+
+  Modified:
+  - src/app/components/FloatingNav.tsx — added Math Sprint (🧮) menu entry
+
+  Key features per your request:
+  - Next question preview shown below the current question for preparation
+  - Wrong answer → input shakes + flashes red + clears instantly
+  - Correct answer → auto-advances with spring animation
+  - Real-time speed display updated every 200ms
+  - P2P: host sends identical question set to both players, progress synced
+  live, first to finish wins
+  - bunx tsc --noEmit passes with zero errors
+
+⏺ All done. Here's a summary of what was implemented:
+
+  New files created:
+
+  1. src/app/math/mathEngine.ts — Question generation engine
+    - Supports 5 operations: +, −, ×, ÷, %
+    - Constraints: sums ≤100, non-negative subtraction, multiplication table
+  range (2-12), guaranteed integer division, modulo with reasonable ranges
+    - generateQuestionSet() produces unique, non-repeating question sets
+  2. src/app/math/page.tsx — Full Math Sprint page
+    - Menu screen: operation toggle buttons, question count selector (10/20/50),
+   Solo and P2P Online buttons
+    - Solo mode: progress bar + speed (questions/min) + timer, animated question
+   card with spring transitions, next question preview below current question,
+  shake animation + red flash on wrong answer with auto-clear, result card on
+  completion
+    - P2P mode: reuses existing P2PConnectionPanel + usePeerConnection hook,
+  host configures settings then sends question set to guest, real-time opponent
+  progress bar, win/lose determination (first to finish wins), rematch support
+    - Input: type="number" inputMode="numeric" with auto-focus, spinner buttons
+  hidden via CSS
+
+  Modified file:
+
+  3. src/app/components/FloatingNav.tsx — Added Math Sprint entry (🧮) to the
+  navigation menu
+
+  Verification: bunx tsc --noEmit passes with zero errors.
+
+✻ Brewed for 6m 47s
+
+❯ 目前下一道题的时候卡一下, 不要任何的卡, 这个要非常流畅和快速的                
+
+⏺ Let me look at the current question transition animation to understand the
+  lag.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me read the full question display and animation section to understand
+  exactly where the lag comes from.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me read the question display section to see the exact animation causing
+  the lag.
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me see the full question display/animation code.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ The lag comes from two sources:
+
+  1. AnimatePresence mode="wait" on the current question — it waits for the exit
+   animation to complete before mounting the next question, creating a visible
+  delay
+  2. The next-question preview also has its own AnimatePresence with exit/enter
+  animations, doubling the layout thrash
+
+  The fix: remove mode="wait", use instant transitions with no exit delay, and
+  make the next-question preview swap without AnimatePresence overhead.
+
+⏺ Update(src/app/math/page.tsx)
+  ⎿  Added 24 lines, removed 30 lines
+      645                      {/* Question display — current + next prev
+           iew */}
+      646                      <div className="w-full space-y-3">
+      647                        {/* Current question */}
+      648 -                      <div className={`relative w-full rounded
+          --xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          --xl text-center overflow-hidden transition-colors duration-300
+          - ${                                                           
+      648 +                      <div className={`relative w-full rounded
+          +-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          +-xl text-center overflow-hidden transition-colors duration-150
+          + ${                                                           
+      649                          flashRed ? "border-[var(--pixel-warn)]
+            bg-[color-mix(in_oklab,var(--pixel-warn)_8%,var(--pixel-card-
+           bg))]" : "border-[var(--pixel-border)]"
+      650                        }`}>
+      651 -                        <AnimatePresence mode="wait">         
+      652 -                          {isPlaying && (                     
+      653 -                            <motion.div                       
+      654 -                              key={currentIndex}              
+      655 -                              initial={{ opacity: 0, y: 32, sc
+          -ale: 0.9 }}                                                   
+      656 -                              animate={{ opacity: 1, y: 0, sca
+          -le: 1 }}                                                      
+      657 -                              exit={{ opacity: 0, y: -32, scal
+          -e: 0.9 }}                                                     
+      658 -                              transition={{ type: "spring", st
+          -iffness: 400, damping: 30 }}                                  
+      659 -                              className="font-mono text-3xl md
+          -:text-5xl font-bold text-[var(--pixel-text)]"                 
+      660 -                            >                                 
+      661 -                              {questions[currentIndex].display
+          -} = <span className="text-[var(--pixel-accent)]">?</span>     
+      662 -                            </motion.div>                     
+      663 -                          )}                                  
+      664 -                        </AnimatePresence>                    
+      665 -                      </div>                                  
+      666 -                                                              
+      667 -                      {/* Next question preview */}           
+      668 -                      <AnimatePresence>                       
+      669 -                        {isPlaying && currentIndex + 1 < quest
+          -ions.length && (                                              
+      651 +                        {isPlaying && (                       
+      652                            <motion.div
+      671 -                            key={`next-${currentIndex + 1}`}  
+      672 -                            initial={{ opacity: 0, y: 16 }}   
+      673 -                            animate={{ opacity: 0.4, y: 0 }}  
+      674 -                            exit={{ opacity: 0, y: -8 }}      
+      675 -                            transition={{ type: "spring", stif
+          -fness: 300, damping: 30 }}                                    
+      676 -                            className="w-full rounded-xl borde
+          -r border-[var(--pixel-border)]/50 bg-[var(--pixel-card-bg)]/50
+          - py-3 md:py-4 text-center backdrop-blur-sm"                   
+      653 +                            key={currentIndex}                
+      654 +                            initial={{ opacity: 0, x: 40 }}   
+      655 +                            animate={{ opacity: 1, x: 0 }}    
+      656 +                            transition={{ duration: 0.12, ease
+          +: "easeOut" }}                                                
+      657 +                            className="font-mono text-3xl md:t
+          +ext-5xl font-bold text-[var(--pixel-text)]"                   
+      658                            >
+      678 -                            <span className="font-mono text-lg
+          - md:text-2xl text-[var(--pixel-muted)]">                      
+      679 -                              {questions[currentIndex + 1].dis
+          -play} = ?                                                     
+      680 -                            </span>                           
+      659 +                            {questions[currentIndex].display} 
+          += <span className="text-[var(--pixel-accent)]">?</span>       
+      660                            </motion.div>
+      661                          )}
+      683 -                      </AnimatePresence>                      
+      662 +                      </div>                                  
+      663 +                                                              
+      664 +                      {/* Next question preview */}           
+      665 +                      {isPlaying && currentIndex + 1 < questio
+          +ns.length && (                                                
+      666 +                        <motion.div                           
+      667 +                          key={`next-${currentIndex + 1}`}    
+      668 +                          initial={{ opacity: 0 }}            
+      669 +                          animate={{ opacity: 0.4 }}          
+      670 +                          transition={{ duration: 0.1 }}      
+      671 +                          className="w-full rounded-xl border 
+          +border-[var(--pixel-border)]/50 bg-[var(--pixel-card-bg)]/50 p
+          +y-3 md:py-4 text-center backdrop-blur-sm"                     
+      672 +                        >                                     
+      673 +                          <span className="font-mono text-lg m
+          +d:text-2xl text-[var(--pixel-muted)]">                        
+      674 +                            {questions[currentIndex + 1].displ
+          +ay} = ?                                                       
+      675 +                          </span>                             
+      676 +                        </motion.div>                         
+      677 +                      )}                                      
+      678                      </div>
+      679  
+      680                      {/* Input */}
+
+⏺ Now also remove the setTimeout focus delay on correct answer — that adds
+  another 10ms of perceived lag. The input should refocus instantly since we're
+  not waiting for exit animations anymore.
+
+⏺ Update(src/app/math/page.tsx)
+  ⎿  Added 1 line, removed 1 line
+      282              send({ type: "finished", totalTime, timestamp: Dat
+           e.now() });
+      283            }
+      284          } else {
+      285 -          setTimeout(() => inputRef.current?.focus(), 10);    
+      285 +          inputRef.current?.focus();                          
+      286          }
+      287        } else if (val.length >= answerStr.length && val !== ans
+           werStr) {
+      288          // Wrong — shake + clear
+
+⏺ Done. Three changes to eliminate the lag:
+
+  1. Removed AnimatePresence mode="wait" — this was the main culprit. It blocks
+  mounting the new question until the exit animation finishes. Now the new
+  question mounts instantly with no exit delay.
+  2. Switched to a fast slide-in — x: 40 → 0 over 120ms with easeOut instead of
+  a spring with scale+y. The new question appears nearly instantly with just a
+  subtle horizontal slide.
+  3. Removed setTimeout on focus — the input refocuses synchronously instead of
+  waiting 10ms.
+
+  The next-question preview also no longer uses AnimatePresence (which adds exit
+   animation overhead), it just swaps instantly with a quick 100ms fade-in.
+
+✻ Sautéed for 56s
+
+❯ 在本地存储目前的最快速度, 再刷新最快速度的时候显示一个恭喜什么的,             
+根据speed来算, 注意不同的加减乘除组合要是不同的,                                
+在最后complete的页面也显示一下当前是什么setting                                 
+                                                                                
+还有就是我希望这个ui切换下一题有个滚动的效果. 输入答案的地方我希望在🟰后面,     
+并且字体一样                                                                    
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Now I have the full file. Let me rewrite it with all the requested changes:
+
+  1. Local storage best speed per operation combo, with congrats on new record
+  2. Settings shown on result card
+  3. Scroll/slot-machine effect for question transitions
+  4. Input inline after = with matching font
+
+⏺ Write(src/app/math/page.tsx)
+  ⎿  Added 144 lines, removed 48 lines
+      38    { op: "mod", label: "%" },
+      39  ];
+      40  
+      41 +const OP_LABEL_MAP: Record<Operation, string> = {              
+      42 +  add: "+", sub: "−", mul: "×", div: "÷", mod: "%",            
+      43 +};                                                             
+      44 +                                                               
+      45  const QUESTION_COUNTS = [10, 20, 50];
+      46 +const LS_KEY = "math-sprint-best";                             
+      47  
+      48 +// ─── Best speed helpers ───                                  
+      49 +                                                               
+      50 +function getSettingsKey(ops: Operation[], count: number): strin
+         +g {                                                            
+      51 +  return [...ops].sort().join(",") + ":" + count;              
+      52 +}                                                              
+      53 +                                                               
+      54 +function getBestSpeed(ops: Operation[], count: number): number 
+         +| null {                                                       
+      55 +  try {                                                        
+      56 +    const all = JSON.parse(localStorage.getItem(LS_KEY) || "{}"
+         +);                                                             
+      57 +    const v = all[getSettingsKey(ops, count)];                 
+      58 +    return typeof v === "number" ? v : null;                   
+      59 +  } catch { return null; }                                     
+      60 +}                                                              
+      61 +                                                               
+      62 +function saveBestSpeed(ops: Operation[], count: number, speed: 
+         +number): boolean {                                             
+      63 +  try {                                                        
+      64 +    const key = getSettingsKey(ops, count);                    
+      65 +    const all = JSON.parse(localStorage.getItem(LS_KEY) || "{}"
+         +);                                                             
+      66 +    const prev = all[key];                                     
+      67 +    if (typeof prev !== "number" || speed > prev) {            
+      68 +      all[key] = speed;                                        
+      69 +      localStorage.setItem(LS_KEY, JSON.stringify(all));       
+      70 +      return true; // new record                               
+      71 +    }                                                          
+      72 +    return false;                                              
+      73 +  } catch { return false; }                                    
+      74 +}                                                              
+      75 +                                                               
+      76  // ─── Component ───
+      77  
+      78  export default function MathSprintPage() {
+     ...
+       91    const [startTime, setStartTime] = useState(0);
+       92    const [elapsed, setElapsed] = useState(0);
+       93    const [result, setResult] = useState<GameResult | null>(null
+           );
+       94 +  const [isNewRecord, setIsNewRecord] = useState(false);      
+       95 +  const [bestSpeed, setBestSpeed] = useState<number | null>(nu
+          +ll);                                                          
+       96 +  const [resultOps, setResultOps] = useState<Operation[]>([]);
+       97 +  const [resultCount, setResultCount] = useState(0);          
+       98    const [direction, setDirection] = useState<"outgoing" | "inc
+           oming" | null>(null);
+       99  
+      100    // P2P state
+     ...
+      111    useEffect(() => { questionsRef.current = questions; }, [ques
+           tions]);
+      112    useEffect(() => { currentIndexRef.current = currentIndex; },
+            [currentIndex]);
+      113  
+      114 +  // Load best speed when settings change                     
+      115 +  useEffect(() => {                                           
+      116 +    setBestSpeed(getBestSpeed(selectedOps, totalQuestions));  
+      117 +  }, [selectedOps, totalQuestions]);                          
+      118 +                                                              
+      119    // ─── Timer ───
+      120  
+      121    const stopTimer = useCallback(() => {
+     ...
+      158            setCurrentIndex(0);
+      159            setInputValue("");
+      160            setResult(null);
+      161 +          setIsNewRecord(false);                              
+      162            setOpponentProgress(0);
+      163            setOpponentFinished(null);
+      164            setWaitingForConfig(false);
+      165            setP2pSettingsReady(false);
+      123 -          // start immediately                                
+      166 +          setResultOps(payload.operations);                   
+      167 +          setResultCount(payload.totalQuestions);             
+      168            const now = Date.now();
+      169            setStartTime(now);
+      170            setElapsed(0);
+     ...
+      182          case "finished": {
+      183            setOpponentFinished({
+      184              totalTime: payload.totalTime,
+      141 -            speed: 0, // will calculate from totalTime        
+      185 +            speed: 0,                                         
+      186              totalQuestions: questionsRef.current.length,
+      187            });
+      188            break;
+      189          }
+      190          case "rematch": {
+      191            setResult(null);
+      192 +          setIsNewRecord(false);                              
+      193            setOpponentProgress(0);
+      194            setOpponentFinished(null);
+      195            setCurrentIndex(0);
+      196            setInputValue("");
+      197            setWaitingForConfig(false);
+      153 -          // if we're host, show settings again               
+      198            if (direction === "outgoing") {
+      199              setP2pSettingsReady(false);
+      200            } else {
+     ...
+      224      onConnected: ({ direction: dir }) => {
+      225        setDirection(dir);
+      226        if (dir === "outgoing") {
+      183 -        // host: show settings                                
+      227          setP2pSettingsReady(false);
+      228          setWaitingForConfig(false);
+      229        } else {
+      187 -        // guest: wait for host to configure                  
+      230          setWaitingForConfig(true);
+      231          setP2pSettingsReady(false);
+      232        }
+     ...
+      256      setCurrentIndex(0);
+      257      setInputValue("");
+      258      setResult(null);
+      259 +    setIsNewRecord(false);                                    
+      260 +    setResultOps([...selectedOps]);                           
+      261 +    setResultCount(totalQuestions);                           
+      262      setGameMode("solo");
+      263      startTimer();
+      264      setTimeout(() => inputRef.current?.focus(), 100);
+      265    }, [selectedOps, totalQuestions, startTimer]);
+      266  
+      267    const startP2pGame = useCallback(() => {
+      223 -    // Host sends config                                      
+      268      const qs = generateQuestionSet(selectedOps, totalQuestions
+           );
+      269      setQuestions(qs);
+      270      setCurrentIndex(0);
+      271      setInputValue("");
+      272      setResult(null);
+      273 +    setIsNewRecord(false);                                    
+      274      setOpponentProgress(0);
+      275      setOpponentFinished(null);
+      276      setP2pSettingsReady(true);
+      277 +    setResultOps([...selectedOps]);                           
+      278 +    setResultCount(totalQuestions);                           
+      279  
+      280      send({
+      281        type: "config",
+     ...
+      291  
+      292    // ─── Answer logic ───
+      293  
+      247 -  const finishGame = useCallback((totalTime: number, total: nu
+          -mber) => {                                                    
+      294 +  const finishGame = useCallback((totalTime: number, total: nu
+          +mber, ops: Operation[], count: number) => {                   
+      295      const spd = total / (totalTime / 60000);
+      296 +    const nr = saveBestSpeed(ops, count, spd);                
+      297      setResult({ totalTime, speed: spd, totalQuestions: total }
+           );
+      298 +    setIsNewRecord(nr);                                       
+      299 +    setBestSpeed(getBestSpeed(ops, count));                   
+      300    }, []);
+      301  
+      302    const handleInputChange = useCallback(
+     ...
+      309        const currentQ = questions[currentIndex];
+      310        const answerStr = String(currentQ.answer);
+      311  
+      262 -      // Allow typing "-" for negative answers                
+      312        if (val === "-" && currentQ.answer < 0) return;
+      313  
+      314        if (val === answerStr) {
+      266 -        // Correct!                                           
+      315          const nextIndex = currentIndex + 1;
+      316          setCurrentIndex(nextIndex);
+      317          setInputValue("");
+     ...
+      321          }
+      322  
+      323          if (nextIndex >= questions.length) {
+      276 -          // Done                                             
+      324            stopTimer();
+      325            const totalTime = Date.now() - startTime;
+      279 -          finishGame(totalTime, questions.length);            
+      326 +          finishGame(totalTime, questions.length, resultOps, r
+          +esultCount);                                                  
+      327  
+      328            if (gameMode === "p2p") {
+      329              send({ type: "finished", totalTime, timestamp: Dat
+           e.now() });
+     ...
+      332            inputRef.current?.focus();
+      333          }
+      334        } else if (val.length >= answerStr.length && val !== ans
+           werStr) {
+      288 -        // Wrong — shake + clear                              
+      335          setShakeKey(k => k + 1);
+      336          setFlashRed(true);
+      337          setTimeout(() => {
+     ...
+      341          }, 300);
+      342        }
+      343      },
+      298 -    [currentIndex, questions, gameMode, send, stopTimer, start
+          -Time, finishGame],                                            
+      344 +    [currentIndex, questions, gameMode, send, stopTimer, start
+          +Time, finishGame, resultOps, resultCount],                    
+      345    );
+      346  
+      347    // ─── Exit ───
+     ...
+      350      stopTimer();
+      351      setGameMode("menu");
+      352      setResult(null);
+      353 +    setIsNewRecord(false);                                    
+      354      setQuestions([]);
+      355      setCurrentIndex(0);
+      356      setInputValue("");
+     ...
+      363    const handleRematch = useCallback(() => {
+      364      send({ type: "rematch", timestamp: Date.now() });
+      365      setResult(null);
+      366 +    setIsNewRecord(false);                                    
+      367      setOpponentProgress(0);
+      368      setOpponentFinished(null);
+      369      setCurrentIndex(0);
+     ...
+      382    const toggleOp = (op: Operation) => {
+      383      setSelectedOps(prev => {
+      384        if (prev.includes(op)) {
+      337 -        if (prev.length <= 1) return prev; // must keep at lea
+          -st one                                                        
+      385 +        if (prev.length <= 1) return prev;                    
+      386          return prev.filter(o => o !== op);
+      387        }
+      388        return [...prev, op];
+     ...
+      396      return `${m}:${String(s).padStart(2, "0")}`;
+      397    };
+      398  
+      399 +  const opsLabel = (ops: Operation[]) => ops.map(o => OP_LABEL
+          +_MAP[o]).join(" ");                                           
+      400 +                                                              
+      401    const isPlaying = questions.length > 0 && currentIndex < que
+           stions.length && !result;
+      402    const showP2pSettings = gameMode === "p2p" && isConnected &&
+            !p2pSettingsReady && direction === "outgoing" && !result;
+      403    const showP2pWaiting = gameMode === "p2p" && isConnected && 
+           waitingForConfig && !result;
+     ...
+      493                    </div>
+      494                  </div>
+      495  
+      496 +                {/* Best speed display */}                    
+      497 +                {bestSpeed !== null && (                      
+      498 +                  <div className="w-full rounded-xl border bor
+          +der-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] px-5 py
+          +-3 backdrop-blur-xl">                                         
+      499 +                    <div className="flex items-center justify-
+          +between">                                                     
+      500 +                      <span className="font-mono text-xs text-
+          +[var(--pixel-muted)]">                                        
+      501 +                        Best ({opsLabel(selectedOps)} / {total
+          +Questions}Q)                                                  
+      502 +                      </span>                                 
+      503 +                      <span className="font-mono text-sm font-
+          +bold text-[var(--pixel-accent)]">                             
+      504 +                        {bestSpeed.toFixed(1)} /min           
+      505 +                      </span>                                 
+      506 +                    </div>                                    
+      507 +                  </div>                                      
+      508 +                )}                                            
+      509 +                                                              
+      510                  {/* Start buttons */}
+      511                  <button
+      512                    onClick={startSolo}
+     ...
+      706                        )}
+      707                      </div>
+      708  
+      645 -                    {/* Question display — current + next prev
+          -iew */}                                                       
+      646 -                    <div className="w-full space-y-3">        
+      647 -                      {/* Current question */}                
+      648 -                      <div className={`relative w-full rounded
+          --xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          --xl text-center overflow-hidden transition-colors duration-150
+          - ${                                                           
+      709 +                    {/* Question display — slot-machine scroll
+          + + inline input */}                                           
+      710 +                    <div className="w-full">                  
+      711 +                      {/* Current question with inline input *
+          +/}                                                            
+      712 +                      <div className={`relative w-full rounded
+          +-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          +-xl overflow-hidden transition-colors duration-150 ${         
+      713                          flashRed ? "border-[var(--pixel-warn)]
+            bg-[color-mix(in_oklab,var(--pixel-warn)_8%,var(--pixel-card-
+           bg))]" : "border-[var(--pixel-border)]"
+      714                        }`}>
+      715                          {isPlaying && (
+      716                            <motion.div
+      717                              key={currentIndex}
+      654 -                            initial={{ opacity: 0, x: 40 }}   
+      655 -                            animate={{ opacity: 1, x: 0 }}    
+      656 -                            transition={{ duration: 0.12, ease
+          -: "easeOut" }}                                                
+      657 -                            className="font-mono text-3xl md:t
+          -ext-5xl font-bold text-[var(--pixel-text)]"                   
+      718 +                            initial={{ opacity: 0, y: 48 }}   
+      719 +                            animate={{ opacity: 1, y: 0 }}    
+      720 +                            transition={{ duration: 0.15, ease
+          +: [0.2, 0, 0, 1] }}                                           
+      721 +                            className="flex items-center justi
+          +fy-center gap-2 md:gap-3"                                     
+      722                            >
+      659 -                            {questions[currentIndex].display} 
+          -= <span className="text-[var(--pixel-accent)]">?</span>       
+      723 +                            <span className="font-mono text-3x
+          +l md:text-5xl font-bold text-[var(--pixel-text)] whitespace-no
+          +wrap">                                                        
+      724 +                              {questions[currentIndex].display
+          +} =                                                           
+      725 +                            </span>                           
+      726 +                            <motion.div                       
+      727 +                              key={shakeKey}                  
+      728 +                              animate={shakeKey > 0 ? { x: [-8
+          +, 8, -4, 4, 0] } : {}}                                        
+      729 +                              transition={{ duration: 0.3 }}  
+      730 +                            >                                 
+      731 +                              <input                          
+      732 +                                ref={inputRef}                
+      733 +                                type="number"                 
+      734 +                                inputMode="numeric"           
+      735 +                                autoFocus                     
+      736 +                                value={inputValue}            
+      737 +                                onChange={handleInputChange}  
+      738 +                                disabled={!isPlaying}         
+      739 +                                className="w-[3.5ch] min-w-[60
+          +px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg
+          +-transparent font-mono text-3xl md:text-5xl font-bold text-[va
+          +r(--pixel-accent)] text-center focus:outline-none [appearance:
+          +textfield] [&::-webkit-outer-spin-button]:appearance-none [&::
+          +-webkit-inner-spin-button]:appearance-none"                   
+      740 +                                placeholder="?"               
+      741 +                              />                              
+      742 +                            </motion.div>                     
+      743                            </motion.div>
+      744                          )}
+      745                        </div>
+     ...
+      748                        {isPlaying && currentIndex + 1 < questio
+           ns.length && (
+      749                          <motion.div
+      750                            key={`next-${currentIndex + 1}`}
+      668 -                          initial={{ opacity: 0 }}            
+      669 -                          animate={{ opacity: 0.4 }}          
+      670 -                          transition={{ duration: 0.1 }}      
+      671 -                          className="w-full rounded-xl border 
+          -border-[var(--pixel-border)]/50 bg-[var(--pixel-card-bg)]/50 p
+          -y-3 md:py-4 text-center backdrop-blur-sm"                     
+      751 +                          initial={{ opacity: 0, y: 24 }}     
+      752 +                          animate={{ opacity: 0.35, y: 0 }}   
+      753 +                          transition={{ duration: 0.15, ease: 
+          +[0.2, 0, 0, 1] }}                                             
+      754 +                          className="mt-3 w-full rounded-xl bo
+          +rder border-[var(--pixel-border)]/50 bg-[var(--pixel-card-bg)]
+          +/50 py-3 md:py-4 text-center backdrop-blur-sm"                
+      755                          >
+      756                            <span className="font-mono text-lg m
+           d:text-2xl text-[var(--pixel-muted)]">
+      757                              {questions[currentIndex + 1].displ
+           ay} = ?
+     ...
+      760                        )}
+      761                      </div>
+      762  
+      680 -                    {/* Input */}                             
+      681 -                    <motion.div                               
+      682 -                      key={shakeKey}                          
+      683 -                      animate={shakeKey > 0 ? { x: [-8, 8, -4,
+          - 4, 0] } : {}}                                                
+      684 -                      transition={{ duration: 0.3 }}          
+      685 -                      className="w-full"                      
+      686 -                    >                                         
+      687 -                      <input                                  
+      688 -                        ref={inputRef}                        
+      689 -                        type="number"                         
+      690 -                        inputMode="numeric"                   
+      691 -                        autoFocus                             
+      692 -                        value={inputValue}                    
+      693 -                        onChange={handleInputChange}          
+      694 -                        disabled={!isPlaying}                 
+      695 -                        className="w-full rounded-xl border-2 
+          -border-[var(--pixel-accent)] bg-[var(--pixel-bg)] px-4 py-4 te
+          -xt-center font-mono text-2xl md:text-3xl text-[var(--pixel-tex
+          -t)] focus:outline-none focus:shadow-lg focus:shadow-[var(--pix
+          -el-glow)] [appearance:textfield] [&::-webkit-outer-spin-button
+          -]:appearance-none [&::-webkit-inner-spin-button]:appearance-no
+          -ne"                                                           
+      696 -                        placeholder="?"                       
+      697 -                      />                                      
+      698 -                    </motion.div>                             
+      699 -                                                              
+      763                      {/* Controls */}
+      764                      <button
+      765                        onClick={exitToMenu}
+     ...
+      776                      transition={{ type: "spring", stiffness: 3
+           00, damping: 25 }}
+      777                      className="w-full rounded-xl border border
+           -[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 ba
+           ckdrop-blur-xl"
+      778                    >
+      716 -                    <h2 className="mb-6 text-center font-sans 
+          -font-semibold text-xl text-[var(--pixel-accent)] md:text-2xl">
+      779 +                    <h2 className="mb-2 text-center font-sans 
+          +font-semibold text-xl text-[var(--pixel-accent)] md:text-2xl">
+      780                        {gameMode === "p2p" && opponentFinished
+      781                          ? result.totalTime <= opponentFinished
+           .totalTime
+      782                            ? "YOU WIN!"
+     ...
+      784                          : "COMPLETE!"}
+      785                      </h2>
+      786  
+      787 +                    {/* New record celebration */}            
+      788 +                    {isNewRecord && (                         
+      789 +                      <motion.div                             
+      790 +                        initial={{ opacity: 0, scale: 0.8 }}  
+      791 +                        animate={{ opacity: 1, scale: 1 }}    
+      792 +                        transition={{ type: "spring", stiffnes
+          +s: 400, damping: 20, delay: 0.2 }}                            
+      793 +                        className="mb-4 rounded-lg border bord
+          +er-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-ac
+          +cent)_12%,transparent)] px-4 py-3 text-center"                
+      794 +                      >                                       
+      795 +                        <p className="font-sans font-bold text
+          +-sm text-[var(--pixel-accent)] md:text-base">                 
+      796 +                          NEW RECORD!                         
+      797 +                        </p>                                  
+      798 +                        <p className="font-mono text-xs text-[
+          +var(--pixel-accent)]/80">                                     
+      799 +                          {result.speed.toFixed(1)} questions/
+          +min — your fastest yet!                                       
+      800 +                        </p>                                  
+      801 +                      </motion.div>                           
+      802 +                    )}                                        
+      803 +                                                              
+      804 +                    {/* Settings tag */}                      
+      805 +                    <div className="mb-4 flex items-center jus
+          +tify-center gap-2">                                           
+      806 +                      <span className="rounded-md border borde
+          +r-[var(--pixel-border)] bg-[var(--pixel-bg)] px-2 py-1 font-mo
+          +no text-xs text-[var(--pixel-muted)]">                        
+      807 +                        {opsLabel(resultOps)}                 
+      808 +                      </span>                                 
+      809 +                      <span className="rounded-md border borde
+          +r-[var(--pixel-border)] bg-[var(--pixel-bg)] px-2 py-1 font-mo
+          +no text-xs text-[var(--pixel-muted)]">                        
+      810 +                        {resultCount}Q                        
+      811 +                      </span>                                 
+      812 +                    </div>                                    
+      813 +                                                              
+      814                      <div className="space-y-3 font-mono text-s
+           m md:text-base">
+      815                        <div className="flex justify-between rou
+           nded-lg bg-[var(--pixel-bg)] px-4 py-3">
+      816                          <span className="text-[var(--pixel-mut
+           ed)]">Time</span>
+     ...
+      824                          <span className="text-[var(--pixel-mut
+           ed)]">Questions</span>
+      825                          <span className="text-[var(--pixel-tex
+           t)]">{result.totalQuestions}</span>
+      826                        </div>
+      827 +                      {bestSpeed !== null && !isNewRecord && (
+      828 +                        <div className="flex justify-between r
+          +ounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-
+          +bg)] px-4 py-3">                                              
+      829 +                          <span className="text-[var(--pixel-m
+          +uted)]">Best</span>                                           
+      830 +                          <span className="text-[var(--pixel-a
+          +ccent)]">{bestSpeed.toFixed(1)} /min</span>                   
+      831 +                        </div>                                
+      832 +                      )}                                      
+      833  
+      834                        {/* Opponent result */}
+      835                        {gameMode === "p2p" && opponentFinished 
+           && (
+
+⏺ Bash(bunx tsc --noEmit 2>&1)
+  ⎿  (No output)
+
+⏺ Zero TypeScript errors. Here's what changed:
+
+  1. Best speed in localStorage
+  - Key format: add,sub:20 — each unique combo of operations + question count
+  has its own record
+  - On game finish, saveBestSpeed() checks if the new speed beats the stored
+  best; returns true if it's a new record
+  - Menu page shows current best for the selected settings (e.g. "Best (+ − /
+  20Q) 12.3 /min")
+
+  2. New record celebration
+  - When you beat your best, a "NEW RECORD!" banner animates in on the result
+  card with a spring scale-in + 0.2s delay
+  - Shows the new speed with "your fastest yet!"
+
+  3. Settings shown on result card
+  - Operation tags (e.g. + −) and question count (20Q) displayed as badges above
+   the stats
+  - If not a new record, the previous best speed is also shown for comparison
+
+  4. Scroll/slot-machine effect for question transitions
+  - Questions now slide in vertically from below (y: 48 → 0) with a fast 150ms
+  ease curve [0.2, 0, 0, 1] — feels like a slot wheel snapping into place
+  - No exit animation blocking (no AnimatePresence mode="wait") — instant swap
+  - Next question preview also slides up from below in sync
+
+  5. Input inline after = with matching font
+  - The input is now part of the question line: 45 + 23 = [___]
+  - Same font-mono text-3xl md:text-5xl font-bold as the question text
+  - Styled as an underline-only input (border-b-2, transparent background) in
+  accent color
+  - Shake animation applies only to the input portion, not the whole question
+  - Width auto-sizes to content (w-[3.5ch] with min-width fallback)
+
+✻ Crunched for 2m 38s
+
+❯ 正确的话输入窗口就不要晃动了, 还有就是不管正确还是错误，就在当前这个边框组件  
+上，让它有一个淡淡的绿色或红色的边框稍微发一下光。                              
+                                                                                
+但是效果不要太严重，不要剥夺用户的注意力。                                      
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me read the relevant sections to understand the current flash/shake logic.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Now let me read the answer handling and the question display sections.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me read the answer handling and question display sections to make precise
+  edits.
+
+  Read 1 file (ctrl+o to expand)
+⏺ Now let me read the question display section to see the border styling.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me find the question display section with the border and shake logic.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Let me find the exact question card section.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Now I have the full picture. I need to:
+
+  1. Replace flashRed with a flashColor that can be "green" or "red" or null
+  2. Add green flash on correct answer, red flash on wrong
+  3. Remove shake on the input — only keep it for wrong answers
+  4. Keep effects subtle (just a faint border color + tiny shadow glow)
+
+⏺ Update(src/app/math/page.tsx)
+  ⎿  Added 1 line, removed 1 line
+      87    const [currentIndex, setCurrentIndex] = useState(0);
+      88    const [inputValue, setInputValue] = useState("");
+      89    const [shakeKey, setShakeKey] = useState(0);
+      90 -  const [flashRed, setFlashRed] = useState(false);             
+      90 +  const [flashColor, setFlashColor] = useState<"green" | "red" 
+         +| null>(null);                                                 
+      91    const [startTime, setStartTime] = useState(0);
+      92    const [elapsed, setElapsed] = useState(0);
+      93    const [result, setResult] = useState<GameResult | null>(null)
+          ;
+
+⏺ Now update the answer handling — add green flash on correct, keep red+shake
+  only for wrong.
+
+⏺ Update(src/app/math/page.tsx)
+  ⎿  Added 8 lines, removed 3 lines
+      312        if (val === "-" && currentQ.answer < 0) return;
+      313  
+      314        if (val === answerStr) {
+      315 +        // Correct — subtle green pulse                       
+      316 +        setFlashColor("green");                               
+      317 +        setTimeout(() => setFlashColor(null), 350);           
+      318 +                                                              
+      319          const nextIndex = currentIndex + 1;
+      320          setCurrentIndex(nextIndex);
+      321          setInputValue("");
+     ...
+      336            inputRef.current?.focus();
+      337          }
+      338        } else if (val.length >= answerStr.length && val !== ans
+           werStr) {
+      339 +        // Wrong — subtle red pulse + shake + clear           
+      340          setShakeKey(k => k + 1);
+      336 -        setFlashRed(true);                                    
+      341 +        setFlashColor("red");                                 
+      342          setTimeout(() => {
+      338 -          setFlashRed(false);                                 
+      343 +          setFlashColor(null);                                
+      344            setInputValue("");
+      345            inputRef.current?.focus();
+      341 -        }, 300);                                              
+      346 +        }, 350);                                              
+      347        }
+      348      },
+      349      [currentIndex, questions, gameMode, send, stopTimer, start
+           Time, finishGame, resultOps, resultCount],
+
+⏺ Now update the question card border to use flashColor instead of flashRed,
+  with subtle green/red glow.
+
+⏺ Update(src/app/math/page.tsx)
+  ⎿  Added 8 lines, removed 4 lines
+      714                      {/* Question display — slot-machine scroll
+            + inline input */}
+      715                      <div className="w-full">
+      716                        {/* Current question with inline input *
+           /}
+      717 -                      <div className={`relative w-full rounded
+          --xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          --xl overflow-hidden transition-colors duration-150 ${         
+      718 -                        flashRed ? "border-[var(--pixel-warn)]
+          - bg-[color-mix(in_oklab,var(--pixel-warn)_8%,var(--pixel-card-
+          -bg))]" : "border-[var(--pixel-border)]"                       
+      717 +                      <div className={`relative w-full rounded
+          +-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur
+          +-xl overflow-hidden transition-all duration-200 ${            
+      718 +                        flashColor === "red"                  
+      719 +                          ? "border-[#ef4444]/50 shadow-[0_0_1
+          +2px_rgba(239,68,68,0.15)]"                                    
+      720 +                          : flashColor === "green"            
+      721 +                            ? "border-[#22c55e]/50 shadow-[0_0
+          +_12px_rgba(34,197,94,0.15)]"                                  
+      722 +                            : "border-[var(--pixel-border)] sh
+          +adow-none"                                                    
+      723                        }`}>
+      724                          {isPlaying && (
+      725                            <motion.div
+     ...
+      734                              </span>
+      735                              <motion.div
+      736                                key={shakeKey}
+      733 -                              animate={shakeKey > 0 ? { x: [-8
+          -, 8, -4, 4, 0] } : {}}                                        
+      734 -                              transition={{ duration: 0.3 }}  
+      737 +                              animate={shakeKey > 0 && flashCo
+          +lor === "red" ? { x: [-6, 6, -3, 3, 0] } : {}}                
+      738 +                              transition={{ duration: 0.25 }} 
+      739                              >
+      740                                <input
+      741                                  ref={inputRef}
+
+⏺ Let me verify the build is clean.
+
+⏺ Bash(bunx tsc --noEmit 2>&1)
+  ⎿  (No output)
+
+⏺ Done. Here's what changed:
+
+  1. Correct answer — the question card border briefly glows a subtle green
+  (#22c55e at 50% opacity + faint 0 0 12px shadow at 15% opacity), then fades
+  back after 350ms. No shake.
+  2. Wrong answer — the card border glows a subtle red (#ef4444 at 50% opacity +
+   matching faint shadow), the input shakes gently (±6px, 250ms), then clears.
+  Same 350ms fade.
+  3. Both effects use transition-all duration-200 so the glow appears and
+  disappears smoothly without grabbing attention — just enough visual feedback
+  to register correct/wrong without interrupting flow.
+
+✻ Brewed for 1m 43s

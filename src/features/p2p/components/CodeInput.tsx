@@ -138,11 +138,11 @@ export default function CodeInput({
 
   return (
     <div className="w-full">
-      <label className="mb-3 block font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] md:text-[10px]">
-        [ {label} ]
+      <label className="mb-3 block font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+        {label}
       </label>
 
-      <div className="flex justify-center gap-2 md:gap-3">
+      <div className="flex justify-center gap-1.5 md:gap-3">
         {chars.map((char, index) => {
           const isFocused = focusedIndex === index;
 
@@ -169,19 +169,19 @@ export default function CodeInput({
                 onPaste={handlePaste}
                 onFocus={() => setFocusedIndex(index)}
                 className={`
-                  h-14 w-12 border-2 bg-[var(--pixel-bg)] text-center
-                  font-[family-name:var(--font-press-start)] text-2xl font-bold text-transparent
+                  h-12 w-10 rounded-xl border bg-[var(--pixel-bg)] text-center
+                  font-sans font-bold text-xl text-transparent
                   caret-transparent transition-all duration-200 focus:outline-none
                   md:h-16 md:w-14 md:text-3xl
                   ${STATUS_TONE[status]}
                   ${disabled ? "cursor-not-allowed opacity-70" : "cursor-text"}
-                  ${char ? "shadow-[0_0_14px_var(--pixel-glow)]" : "shadow-none"}
+                  ${char ? "shadow-xl shadow-[var(--pixel-glow)]" : "shadow-none"}
                 `}
               />
 
               {isFocused && !disabled && !char && status === "idle" && (
                 <motion.div
-                  className="pointer-events-none absolute inset-0 border-2 border-[var(--pixel-accent-2)]"
+                  className="pointer-events-none absolute inset-0 rounded-xl border border-[var(--pixel-accent-2)]"
                   animate={{ opacity: [0.25, 1, 0.25] }}
                   transition={{ duration: 1.2, repeat: Infinity }}
                 />
@@ -197,7 +197,7 @@ export default function CodeInput({
                     transition={{ duration: 0.15 }}
                     className="pointer-events-none absolute inset-0 flex items-center justify-center"
                   >
-                    <span className="font-[family-name:var(--font-press-start)] text-2xl text-[var(--pixel-accent)] md:text-3xl">
+                    <span className="font-sans font-bold text-xl text-[var(--pixel-accent)] md:text-3xl">
                       {char}
                     </span>
                   </motion.div>

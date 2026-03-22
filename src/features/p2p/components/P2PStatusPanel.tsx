@@ -35,13 +35,13 @@ export function P2PStatusPanel({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`fixed bottom-3 left-3 right-3 z-40 w-auto max-w-[calc(100vw-24px)] border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3 backdrop-blur-xl md:bottom-4 md:left-auto md:right-4 md:w-[300px] ${className}`}
+      className={`fixed bottom-3 left-3 right-3 z-40 w-auto max-w-[calc(100vw-24px)] rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3 backdrop-blur-xl md:bottom-4 md:left-auto md:right-4 md:w-[300px] ${className}`}
     >
-      <div className="mb-2 font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent-2)]">
-        [ P2P STATUS ]
+      <div className="mb-2 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)]">
+        P2P STATUS
       </div>
 
-      <div className="space-y-2 font-[family-name:var(--font-jetbrains)] text-xs text-[var(--pixel-text)]">
+      <div className="space-y-2 font-mono text-xs text-[var(--pixel-text)]">
         <div className="flex justify-between gap-3">
           <span className="text-[var(--pixel-muted)]">state</span>
           <span>{isConnected ? "connected" : phase || "idle"}</span>

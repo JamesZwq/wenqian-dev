@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateMaze, canMove, type Maze } from "./mazeGenerator";
 import { usePeerConnection } from "../../features/p2p/hooks/usePeerConnection";
+import { useJoinParam } from "../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
 import { P2PStatusPanel } from "../../features/p2p/components/P2PStatusPanel";
@@ -120,6 +121,7 @@ function AnimatedCircle({ x, y, radius, fill }: AnimatedCircleProps) {
 
 export default function MazePage() {
   const [cellSize, setCellSize] = useState(30);
+  const joinPeerId = useJoinParam();
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -162,6 +164,8 @@ export default function MazePage() {
     playerId: 1 | 2;
     active: boolean;
   } | null>(null);
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const generationIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -217,7 +221,7 @@ export default function MazePage() {
       const viewportHeight = window.innerHeight;
 
       const horizontalPadding = viewportWidth < 768 ? 32 : 96;
-      const verticalReserved = viewportWidth < 768 ? 400 : 300;
+      const verticalReserved = viewportWidth < 768 ? 280 : 300;
 
       const maxBoardWidth = viewportWidth - horizontalPadding;
       const maxBoardHeight = viewportHeight - verticalReserved;
@@ -1186,6 +1190,40 @@ export default function MazePage() {
     [mode, queueMove]
   );
 
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, []);
+
+  const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const minSwipe = 20;
+    touchStartRef.current = null;
+
+    if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) return;
+
+    let direction: Direction;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direction = dx > 0 ? "right" : "left";
+    } else {
+      direction = dy > 0 ? "down" : "up";
+    }
+    handleTouchMove(direction);
+  }, [handleTouchMove]);
+
+  const handleTouchUseItem = useCallback(() => {
+    if (mode === "remote") {
+      if (myRemotePlayerIdRef.current) {
+        useItem(myRemotePlayerIdRef.current);
+      }
+      return;
+    }
+    useItem(1);
+  }, [mode, useItem]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (mode === "menu" || isGenerating) return;
@@ -1450,7 +1488,7 @@ export default function MazePage() {
   const SettingsGearButton = (
     <button
       onClick={() => setSettingsOpen(true)}
-      className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
+      className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
       title="Settings"
     >
       CFG
@@ -1479,7 +1517,7 @@ export default function MazePage() {
     return (
       <div className="flex items-center gap-1.5">
         <span
-          className="font-[family-name:var(--font-press-start)] text-[8px]"
+          className="font-sans font-semibold text-[8px]"
           style={{ color: accentColor }}
         >
           P{playerId}
@@ -1493,7 +1531,7 @@ export default function MazePage() {
             {slot ? ITEM_META[slot.type].emoji : "·"}
           </div>
         ))}
-        <span className="font-[family-name:var(--font-jetbrains)] text-[8px] text-[var(--pixel-muted)]">
+        <span className="font-mono text-[8px] text-[var(--pixel-muted)]">
           [{useKey}]
         </span>
       </div>
@@ -1512,7 +1550,7 @@ export default function MazePage() {
       >
         <Link
           href="/"
-          className="inline-flex border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-[family-name:var(--font-press-start)] text-[8px] tracking-wider text-[var(--pixel-accent)] shadow-[0_0_10px_var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
         >
           ← BACK
         </Link>
@@ -1554,10 +1592,10 @@ export default function MazePage() {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="mb-5 text-center md:mb-8"
         >
-          <h1 className="mb-2 font-[family-name:var(--font-press-start)] text-xl tracking-wider text-[var(--pixel-accent)] md:mb-3 md:text-5xl">
-            [ MAZE_RUNNER ]
+          <h1 className="mb-2 font-sans font-semibold text-xl tracking-tight text-[var(--pixel-accent)] md:mb-3 md:text-5xl">
+            MAZE RUNNER
           </h1>
-          <p className="font-[family-name:var(--font-jetbrains)] text-[11px] text-[var(--pixel-muted)] md:text-sm">
+          <p className="font-mono text-[11px] text-[var(--pixel-muted)] md:text-sm">
             &gt; Single / local versus / remote P2P maze race
           </p>
         </motion.div>
@@ -1573,21 +1611,21 @@ export default function MazePage() {
             >
               <button
                 onClick={startSingleGame}
-                className="w-full border-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-[family-name:var(--font-press-start)] text-sm tracking-wider text-[var(--pixel-accent)] shadow-[0_0_20px_var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
-                [ SINGLE_PLAYER ]
+                SINGLE PLAYER
               </button>
               <button
                 onClick={startLocalGame}
-                className="w-full border-2 border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-[family-name:var(--font-press-start)] text-sm tracking-wider text-[var(--pixel-warn)] shadow-[0_0_20px_var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
-                [ LOCAL_VS ]
+                LOCAL VS
               </button>
               <button
                 onClick={() => setMode("remote")}
-                className="w-full border-2 border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-[family-name:var(--font-press-start)] text-sm tracking-wider text-[var(--pixel-accent-2)] shadow-[0_0_20px_var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
-                [ REMOTE_P2P ]
+                REMOTE P2P
               </button>
               <div className="mt-2">{SettingsGearButton}</div>
             </motion.div>
@@ -1607,6 +1645,7 @@ export default function MazePage() {
                 connectTimeoutMs={P2P_CONNECT_TIMEOUT_MS}
                 error={error}
                 description={connectionDescription}
+                autoConnectPeerId={joinPeerId}
                 onConnect={connect}
                 onRetry={retryLastConnection}
                 onClearError={clearError}
@@ -1615,7 +1654,7 @@ export default function MazePage() {
               <div className="mt-4 flex justify-center gap-2">
                 <button
                   onClick={() => setMode("menu")}
-                  className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-muted)]"
+                  className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]"
                 >
                   MENU
                 </button>
@@ -1635,13 +1674,13 @@ export default function MazePage() {
                 className="flex flex-col items-center gap-4"
               >
                 <div className="flex w-full max-w-[900px] flex-wrap items-center justify-center gap-2 md:gap-4">
-                  <div className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-press-start)] text-xs text-[var(--pixel-accent)] backdrop-blur-xl md:px-4 md:text-sm">
+                  <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-xs text-[var(--pixel-accent)] backdrop-blur-xl md:px-4 md:text-sm">
                     {isGenerating
                       ? `BUILD ${Math.round((revealedCellCount / totalCells) * 100)}%`
                       : formatTime(elapsedTime)}
                   </div>
 
-                  <div className="hidden border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-jetbrains)] text-[10px] uppercase text-[var(--pixel-muted)] backdrop-blur-xl md:block">
+                  <div className="hidden rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-muted)] backdrop-blur-xl md:block">
                     queue:{" "}
                     {queueSnapshot.length > 0
                       ? queueSnapshot
@@ -1657,14 +1696,14 @@ export default function MazePage() {
                   </div>
 
                   {mode === "remote" && (
-                    <div className="border-2 border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-jetbrains)] text-[10px] uppercase text-[var(--pixel-accent-2)] backdrop-blur-xl">
+                    <div className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-accent-2)] backdrop-blur-xl">
                       {remoteStatusLabel}
                     </div>
                   )}
 
                   <button
                     onClick={exitToMenu}
-                    className="border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
+                    className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
                   >
                     MENU
                   </button>
@@ -1676,7 +1715,7 @@ export default function MazePage() {
                       else if (mode === "remote") startRemoteRound();
                     }}
                     disabled={mode === "remote" && myRemotePlayerId !== 1}
-                    className="border-2 border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-[family-name:var(--font-press-start)] text-[10px] text-[var(--pixel-accent-2)] backdrop-blur-xl transition-colors hover:bg-[var(--pixel-bg-alt)] disabled:opacity-40"
+                    className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-accent-2)] backdrop-blur-xl transition-colors hover:bg-[var(--pixel-bg-alt)] disabled:opacity-40"
                   >
                     NEW_MAZE
                   </button>
@@ -1684,11 +1723,14 @@ export default function MazePage() {
                   {SettingsGearButton}
                 </div>
 
-                <div className="relative max-w-full overflow-auto border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 backdrop-blur-xl md:p-4">
+                <div className="relative max-w-full overflow-auto rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 backdrop-blur-xl md:p-4">
                   <svg
                     width={displayCols * cellSize}
                     height={displayRows * cellSize}
                     className="block"
+                    style={{ touchAction: "none" }}
+                    onTouchStart={handleSwipeStart}
+                    onTouchEnd={handleSwipeEnd}
                   >
                     {displayMaze.map((row, r) =>
                       row.map((cell, c) => (
@@ -2047,7 +2089,7 @@ export default function MazePage() {
                 </div>
 
                 {/* Controls info + inventory */}
-                <div className="flex flex-wrap justify-center gap-4 text-xs font-[family-name:var(--font-jetbrains)] text-[var(--pixel-muted)]">
+                <div className="flex flex-wrap justify-center gap-4 text-xs font-mono text-[var(--pixel-muted)]">
                   {mode === "single" && (
                     <div>
                       <span className="text-[var(--pixel-accent)]">P1:</span>{" "}
@@ -2087,7 +2129,7 @@ export default function MazePage() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="border-2 border-[#FF4500] bg-[var(--pixel-card-bg)] px-4 py-2 font-[family-name:var(--font-press-start)] text-[9px] text-[#FF4500]"
+                    className="rounded-xl border border-[#FF4500] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[9px] text-[#FF4500]"
                   >
                     BOMB: Press arrow key to choose wall direction (ESC to
                     cancel)
@@ -2106,7 +2148,7 @@ export default function MazePage() {
                       return (
                         <div
                           key={i}
-                          className="border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-2 py-1 font-[family-name:var(--font-jetbrains)] text-[9px]"
+                          className="border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-2 py-1 font-mono text-[9px]"
                           style={{ color: meta.color }}
                         >
                           {meta.emoji} P{e.targetPlayer} {remaining}s
@@ -2118,7 +2160,7 @@ export default function MazePage() {
 
                 {/* Backpack UI */}
                 {settings.itemsEnabled && !isGenerating && (
-                  <div className="flex flex-wrap items-center justify-center gap-4 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 backdrop-blur-xl">
+                  <div className="flex flex-wrap items-center justify-center gap-4 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 backdrop-blur-xl">
                     <InventoryUI playerId={1} inventory={p1Inventory} />
                     {player2Pos !== null && (
                       <InventoryUI playerId={2} inventory={p2Inventory} />
@@ -2126,53 +2168,65 @@ export default function MazePage() {
                   </div>
                 )}
 
-                {/* Mobile touch controls */}
+                {/* Mobile touch controls — 3x3 grid D-pad */}
                 {(mode === "single" || mode === "local" || mode === "remote") && (
-                  <div className="mt-2 flex flex-col items-center gap-2 md:hidden">
-                    <button
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        handleTouchMove("up");
-                      }}
-                      onClick={() => handleTouchMove("up")}
-                      className="h-12 w-12 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-[family-name:var(--font-press-start)] text-[var(--pixel-accent)]"
-                    >
-                      ↑
-                    </button>
+                  <div className="mt-2 md:hidden" style={{ touchAction: "none" }}>
+                    <div className="grid grid-cols-3 gap-1.5 w-[186px] mx-auto">
+                      {/* Row 1: empty | up | empty */}
+                      <div />
+                      <button
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          handleTouchMove("up");
+                        }}
+                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
+                      >
+                        ↑
+                      </button>
+                      <div />
 
-                    <div className="flex gap-2">
+                      {/* Row 2: left | item/center | right */}
                       <button
                         onTouchStart={(e) => {
                           e.preventDefault();
                           handleTouchMove("left");
                         }}
-                        onClick={() => handleTouchMove("left")}
-                        className="h-12 w-12 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-[family-name:var(--font-press-start)] text-[var(--pixel-accent)]"
+                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
                       >
                         ←
                       </button>
-
                       <button
                         onTouchStart={(e) => {
                           e.preventDefault();
-                          handleTouchMove("down");
+                          handleTouchUseItem();
                         }}
-                        onClick={() => handleTouchMove("down")}
-                        className="h-12 w-12 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-[family-name:var(--font-press-start)] text-[var(--pixel-accent)]"
+                        className="h-14 w-14 rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-[9px] text-[var(--pixel-accent-2)] active:bg-[var(--pixel-bg-alt)]"
+                        title="Use Item"
                       >
-                        ↓
+                        ITEM
                       </button>
-
                       <button
                         onTouchStart={(e) => {
                           e.preventDefault();
                           handleTouchMove("right");
                         }}
-                        onClick={() => handleTouchMove("right")}
-                        className="h-12 w-12 border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-[family-name:var(--font-press-start)] text-[var(--pixel-accent)]"
+                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
                       >
                         →
                       </button>
+
+                      {/* Row 3: empty | down | empty */}
+                      <div />
+                      <button
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          handleTouchMove("down");
+                        }}
+                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
+                      >
+                        ↓
+                      </button>
+                      <div />
                     </div>
                   </div>
                 )}
@@ -2181,9 +2235,9 @@ export default function MazePage() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.82 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="border-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-6 py-4 text-center backdrop-blur-xl"
+                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-6 py-4 text-center backdrop-blur-xl"
                   >
-                    <div className="mb-2 font-[family-name:var(--font-press-start)] text-lg text-[var(--pixel-accent)]">
+                    <div className="mb-2 font-sans font-semibold text-lg text-[var(--pixel-accent)]">
                       {mode === "single"
                         ? "COMPLETED!"
                         : mode === "remote"
@@ -2192,7 +2246,7 @@ export default function MazePage() {
                             : "REMOTE WINS!"
                           : `PLAYER ${winner} WINS!`}
                     </div>
-                    <div className="font-[family-name:var(--font-jetbrains)] text-sm text-[var(--pixel-text)]">
+                    <div className="font-mono text-sm text-[var(--pixel-text)]">
                       Time: {formatTime(elapsedTime)}
                     </div>
                   </motion.div>

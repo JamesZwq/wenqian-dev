@@ -16,7 +16,6 @@ export default function FpsCounter() {
       framesRef.current += 1;
       const delta = now - lastTimeRef.current;
 
-      // 每 500ms 统计一次平均 FPS，避免过于抖动
       if (delta >= 500) {
         const currentFps = (framesRef.current * 1000) / delta;
         setFps(Math.round(currentFps));
@@ -37,7 +36,6 @@ export default function FpsCounter() {
 
   if (fps === null) return null;
 
-  // 简单的颜色提示：低于 30 红色，30–50 橙色，50+ 绿色
   let colorClass = "text-[var(--pixel-accent)]";
   if (fps < 30) {
     colorClass = "text-[var(--pixel-warn)]";
@@ -47,11 +45,9 @@ export default function FpsCounter() {
 
   return (
     <div
-      className={`mix-blend-difference mix-blend-mode pointer-events-none fixed right-2 bottom-2 z-[190] px-2 py-1 font-[family-name:var(--font-jetbrains)] text-[10px] ${colorClass}`}
-      // style={{ backdropFilter: "blur(6px)" }}
+      className={`mix-blend-difference mix-blend-mode pointer-events-none fixed right-2 bottom-2 z-[190] px-2 py-1 font-mono text-[10px] ${colorClass}`}
     >
       FPS: {fps}
     </div>
   );
 }
-

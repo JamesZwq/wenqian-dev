@@ -78,6 +78,11 @@ export function Scene({ isFullscreen, theme }) {
   const resizeDebounceRef = useRef(null);
   const pendingResizeRef = useRef({ w: 0, h: 0 });
   const appliedSizeRef = useRef({ w: 0, h: 0 });
+  // Pre-allocated buffers for random mode (avoid per-frame allocation)
+  const randomOffsetsZRef = useRef(null);
+  const randomRotationsYRef = useRef(null);
+  // Reusable THREE.Color for theme ripple (avoid per-frame allocation)
+  const tempBgColorRef = useRef(new THREE.Color());
 
   // --- Responsive LOD (reduce instance count & render resolution on small/slow devices) ---
   const [gridSize, setGridSize] = useState(BASE_GRID_SIZE);
@@ -459,7 +464,7 @@ export function Scene({ isFullscreen, theme }) {
 
               mesh.material.color.copy(ripple.fromColor).lerp(ripple.toColor, globalEase);
 
-              const tempBg = new THREE.Color().copy(ripple.fromBg).lerp(ripple.toBg, globalEase);
+              const tempBg = tempBgColorRef.current.copy(ripple.fromBg).lerp(ripple.toBg, globalEase);
               renderer.setClearColor(tempBg, 1);
 
               if (bloomPassRef.current) {
@@ -557,8 +562,15 @@ export function Scene({ isFullscreen, theme }) {
 
               const active = randomActiveBlocksRef.current;
               const nextActive = [];
-              const offsetsZ = new Array(instanceCount).fill(0);
-              const rotationsY = new Array(instanceCount).fill(0);
+              // Reuse pre-allocated buffers instead of creating new arrays every frame
+              if (!randomOffsetsZRef.current || randomOffsetsZRef.current.length !== instanceCount) {
+                randomOffsetsZRef.current = new Float32Array(instanceCount);
+                randomRotationsYRef.current = new Float32Array(instanceCount);
+              }
+              const offsetsZ = randomOffsetsZRef.current;
+              const rotationsY = randomRotationsYRef.current;
+              offsetsZ.fill(0);
+              rotationsY.fill(0);
 
               for (let k = 0; k < active.length; k++) {
                 const item = active[k];
@@ -780,13 +792,11 @@ export function Scene({ isFullscreen, theme }) {
         ref={maskLayer1Ref}
         className="absolute inset-[-30px] pointer-events-none transition-colors duration-1000 ease-in-out"
         style={{
-          backgroundColor: theme === "dark" 
-            ? "rgba(2, 6, 23, 0.35)" 
+          backgroundColor: theme === "dark"
+            ? "rgba(2, 6, 23, 0.35)"
             : "rgba(244, 245, 247, 0.5)",
-          backdropFilter: "blur(0.5px)",
-          WebkitBackdropFilter: "blur(0.5px)",
           zIndex: 1,
-          willChange: "transform" // 提示浏览器开启 GPU 硬件加速
+          willChange: "transform"
         }}
       />
 
