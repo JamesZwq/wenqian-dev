@@ -165,6 +165,12 @@ export default function MazePage() {
     active: boolean;
   } | null>(null);
 
+  // Radial wheel state (mobile)
+  const [wheel, setWheel] = useState<{ x: number; y: number; active: boolean; dir: Direction | null }>({ x: 0, y: 0, active: false, dir: null });
+  const wheelRef = useRef<{ x: number; y: number; active: boolean; dir: Direction | null }>({ x: 0, y: 0, active: false, dir: null });
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+  const wheelRepeatRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -1224,6 +1230,95 @@ export default function MazePage() {
     useItem(1);
   }, [mode, useItem]);
 
+  // Radial wheel: detect double-tap to spawn, drag to pick direction, repeat while held
+  const WHEEL_RADIUS = 70;
+  const WHEEL_DEAD_ZONE = 18;
+  const WHEEL_REPEAT_FIRST = 180;
+  const WHEEL_REPEAT_NEXT = 90;
+
+  const getWheelDirection = useCallback((cx: number, cy: number, tx: number, ty: number): Direction | null => {
+    const dx = tx - cx;
+    const dy = ty - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist < WHEEL_DEAD_ZONE) return null;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? "right" : "left";
+    }
+    return dy > 0 ? "down" : "up";
+  }, []);
+
+  const startWheelRepeat = useCallback((dir: Direction) => {
+    if (wheelRepeatRef.current) clearTimeout(wheelRepeatRef.current);
+    handleTouchMove(dir);
+    const repeat = () => {
+      handleTouchMove(dir);
+      wheelRepeatRef.current = setTimeout(repeat, WHEEL_REPEAT_NEXT);
+    };
+    wheelRepeatRef.current = setTimeout(repeat, WHEEL_REPEAT_FIRST);
+  }, [handleTouchMove]);
+
+  const stopWheelRepeat = useCallback(() => {
+    if (wheelRepeatRef.current) {
+      clearTimeout(wheelRepeatRef.current);
+      wheelRepeatRef.current = undefined;
+    }
+  }, []);
+
+  const handleWheelTouchStart = useCallback((e: React.TouchEvent) => {
+    if (modeRef.current === "menu") return;
+    const touch = e.touches[0];
+    const now = Date.now();
+    const last = lastTapRef.current;
+    const dt = now - last.time;
+    const dist = Math.hypot(touch.clientX - last.x, touch.clientY - last.y);
+
+    lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+
+    if (dt < 350 && dist < 40) {
+      // Double-tap detected — spawn wheel
+      e.preventDefault();
+      const state = { x: touch.clientX, y: touch.clientY, active: true, dir: null as Direction | null };
+      wheelRef.current = state;
+      setWheel(state);
+      lastTapRef.current = { time: 0, x: 0, y: 0 }; // reset so triple-tap doesn't re-trigger
+    }
+  }, []);
+
+  const handleWheelTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!wheelRef.current.active) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dir = getWheelDirection(wheelRef.current.x, wheelRef.current.y, touch.clientX, touch.clientY);
+
+    if (dir !== wheelRef.current.dir) {
+      stopWheelRepeat();
+      wheelRef.current = { ...wheelRef.current, dir };
+      setWheel({ ...wheelRef.current });
+      if (dir) {
+        startWheelRepeat(dir);
+      }
+    }
+  }, [getWheelDirection, startWheelRepeat, stopWheelRepeat]);
+
+  const handleWheelTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!wheelRef.current.active) return;
+    e.preventDefault();
+    stopWheelRepeat();
+    // If no direction was dragged, check final position for a single-direction tap
+    if (!wheelRef.current.dir && e.changedTouches.length > 0) {
+      const touch = e.changedTouches[0];
+      const dir = getWheelDirection(wheelRef.current.x, wheelRef.current.y, touch.clientX, touch.clientY);
+      if (dir) handleTouchMove(dir);
+    }
+    wheelRef.current = { x: 0, y: 0, active: false, dir: null };
+    setWheel({ x: 0, y: 0, active: false, dir: null });
+  }, [getWheelDirection, handleTouchMove, stopWheelRepeat]);
+
+  // Cleanup wheel repeat on unmount
+  useEffect(() => {
+    return () => { if (wheelRepeatRef.current) clearTimeout(wheelRepeatRef.current); };
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (mode === "menu" || isGenerating) return;
@@ -2168,66 +2263,10 @@ export default function MazePage() {
                   </div>
                 )}
 
-                {/* Mobile touch controls — 3x3 grid D-pad */}
+                {/* Mobile: double-tap hint */}
                 {(mode === "single" || mode === "local" || mode === "remote") && (
-                  <div className="mt-2 md:hidden" style={{ touchAction: "none" }}>
-                    <div className="grid grid-cols-3 gap-1.5 w-[186px] mx-auto">
-                      {/* Row 1: empty | up | empty */}
-                      <div />
-                      <button
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handleTouchMove("up");
-                        }}
-                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
-                      >
-                        ↑
-                      </button>
-                      <div />
-
-                      {/* Row 2: left | item/center | right */}
-                      <button
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handleTouchMove("left");
-                        }}
-                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
-                      >
-                        ←
-                      </button>
-                      <button
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handleTouchUseItem();
-                        }}
-                        className="h-14 w-14 rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-[9px] text-[var(--pixel-accent-2)] active:bg-[var(--pixel-bg-alt)]"
-                        title="Use Item"
-                      >
-                        ITEM
-                      </button>
-                      <button
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handleTouchMove("right");
-                        }}
-                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
-                      >
-                        →
-                      </button>
-
-                      {/* Row 3: empty | down | empty */}
-                      <div />
-                      <button
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          handleTouchMove("down");
-                        }}
-                        className="h-14 w-14 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-sans font-semibold text-lg text-[var(--pixel-accent)] active:bg-[var(--pixel-bg-alt)]"
-                      >
-                        ↓
-                      </button>
-                      <div />
-                    </div>
+                  <div className="mt-1 text-center font-mono text-[9px] text-[var(--pixel-muted)] md:hidden">
+                    Double-tap anywhere to summon wheel
                   </div>
                 )}
 
@@ -2272,6 +2311,85 @@ export default function MazePage() {
           latencyMs={latencyMs}
           lastRemoteMessageAt={lastRemoteMessageAt}
         />
+      )}
+
+      {/* Mobile radial wheel — full-screen touch capture overlay */}
+      {mode !== "menu" && (mode !== "remote" || isConnected) && displayMaze && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ touchAction: "none" }}
+          onTouchStart={handleWheelTouchStart}
+          onTouchMove={handleWheelTouchMove}
+          onTouchEnd={handleWheelTouchEnd}
+        >
+          <AnimatePresence>
+            {wheel.active && (
+              <motion.div
+                key="radial-wheel"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ duration: 0.12, ease: "easeOut" }}
+                className="pointer-events-none absolute"
+                style={{
+                  left: wheel.x - WHEEL_RADIUS,
+                  top: wheel.y - WHEEL_RADIUS,
+                  width: WHEEL_RADIUS * 2,
+                  height: WHEEL_RADIUS * 2,
+                }}
+              >
+                <svg width={WHEEL_RADIUS * 2} height={WHEEL_RADIUS * 2} viewBox={`0 0 ${WHEEL_RADIUS * 2} ${WHEEL_RADIUS * 2}`}>
+                  {/* Outer ring */}
+                  <circle cx={WHEEL_RADIUS} cy={WHEEL_RADIUS} r={WHEEL_RADIUS - 2} fill="none" stroke="var(--pixel-accent)" strokeWidth="2" opacity="0.5" />
+                  {/* Background */}
+                  <circle cx={WHEEL_RADIUS} cy={WHEEL_RADIUS} r={WHEEL_RADIUS - 3} fill="var(--pixel-card-bg)" opacity="0.85" />
+
+                  {/* Directional segments — highlight active */}
+                  {/* Up */}
+                  <path
+                    d={`M ${WHEEL_RADIUS} ${WHEEL_RADIUS} L ${WHEEL_RADIUS - 30} 8 A ${WHEEL_RADIUS - 4} ${WHEEL_RADIUS - 4} 0 0 1 ${WHEEL_RADIUS + 30} 8 Z`}
+                    fill={wheel.dir === "up" ? "var(--pixel-accent)" : "transparent"}
+                    opacity={wheel.dir === "up" ? 0.3 : 0}
+                  />
+                  {/* Down */}
+                  <path
+                    d={`M ${WHEEL_RADIUS} ${WHEEL_RADIUS} L ${WHEEL_RADIUS - 30} ${WHEEL_RADIUS * 2 - 8} A ${WHEEL_RADIUS - 4} ${WHEEL_RADIUS - 4} 0 0 0 ${WHEEL_RADIUS + 30} ${WHEEL_RADIUS * 2 - 8} Z`}
+                    fill={wheel.dir === "down" ? "var(--pixel-accent)" : "transparent"}
+                    opacity={wheel.dir === "down" ? 0.3 : 0}
+                  />
+                  {/* Left */}
+                  <path
+                    d={`M ${WHEEL_RADIUS} ${WHEEL_RADIUS} L 8 ${WHEEL_RADIUS - 30} A ${WHEEL_RADIUS - 4} ${WHEEL_RADIUS - 4} 0 0 0 8 ${WHEEL_RADIUS + 30} Z`}
+                    fill={wheel.dir === "left" ? "var(--pixel-accent)" : "transparent"}
+                    opacity={wheel.dir === "left" ? 0.3 : 0}
+                  />
+                  {/* Right */}
+                  <path
+                    d={`M ${WHEEL_RADIUS} ${WHEEL_RADIUS} L ${WHEEL_RADIUS * 2 - 8} ${WHEEL_RADIUS - 30} A ${WHEEL_RADIUS - 4} ${WHEEL_RADIUS - 4} 0 0 1 ${WHEEL_RADIUS * 2 - 8} ${WHEEL_RADIUS + 30} Z`}
+                    fill={wheel.dir === "right" ? "var(--pixel-accent)" : "transparent"}
+                    opacity={wheel.dir === "right" ? 0.3 : 0}
+                  />
+
+                  {/* Direction arrows */}
+                  <text x={WHEEL_RADIUS} y="22" textAnchor="middle" dominantBaseline="central" fill={wheel.dir === "up" ? "var(--pixel-accent)" : "var(--pixel-muted)"} fontSize="18" fontWeight="bold">↑</text>
+                  <text x={WHEEL_RADIUS} y={WHEEL_RADIUS * 2 - 18} textAnchor="middle" dominantBaseline="central" fill={wheel.dir === "down" ? "var(--pixel-accent)" : "var(--pixel-muted)"} fontSize="18" fontWeight="bold">↓</text>
+                  <text x="18" y={WHEEL_RADIUS} textAnchor="middle" dominantBaseline="central" fill={wheel.dir === "left" ? "var(--pixel-accent)" : "var(--pixel-muted)"} fontSize="18" fontWeight="bold">←</text>
+                  <text x={WHEEL_RADIUS * 2 - 18} y={WHEEL_RADIUS} textAnchor="middle" dominantBaseline="central" fill={wheel.dir === "right" ? "var(--pixel-accent)" : "var(--pixel-muted)"} fontSize="18" fontWeight="bold">→</text>
+
+                  {/* Center dot */}
+                  <circle cx={WHEEL_RADIUS} cy={WHEEL_RADIUS} r={WHEEL_DEAD_ZONE - 2} fill="none" stroke="var(--pixel-border)" strokeWidth="1" opacity="0.5" />
+                  <circle cx={WHEEL_RADIUS} cy={WHEEL_RADIUS} r="4" fill="var(--pixel-accent)" opacity="0.6" />
+
+                  {/* Cross guidelines */}
+                  <line x1={WHEEL_RADIUS} y1={WHEEL_DEAD_ZONE + 4} x2={WHEEL_RADIUS} y2="6" stroke="var(--pixel-border)" strokeWidth="1" opacity="0.3" />
+                  <line x1={WHEEL_RADIUS} y1={WHEEL_RADIUS * 2 - WHEEL_DEAD_ZONE - 4} x2={WHEEL_RADIUS} y2={WHEEL_RADIUS * 2 - 6} stroke="var(--pixel-border)" strokeWidth="1" opacity="0.3" />
+                  <line x1={WHEEL_DEAD_ZONE + 4} y1={WHEEL_RADIUS} x2="6" y2={WHEEL_RADIUS} stroke="var(--pixel-border)" strokeWidth="1" opacity="0.3" />
+                  <line x1={WHEEL_RADIUS * 2 - WHEEL_DEAD_ZONE - 4} y1={WHEEL_RADIUS} x2={WHEEL_RADIUS * 2 - 6} y2={WHEEL_RADIUS} stroke="var(--pixel-border)" strokeWidth="1" opacity="0.3" />
+                </svg>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
     </div>
   );

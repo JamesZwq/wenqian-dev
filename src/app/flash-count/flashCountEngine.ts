@@ -92,12 +92,46 @@ export function generatePuzzle(difficulty: Difficulty, questionIndex: number): B
   );
   const chosen = allPositions.slice(0, numPositions);
 
-  // Assign random heights
+  // Sort chosen positions back-to-front (larger row first, then larger col)
+  // so we can assign heights that respect visibility.
+  // In our isometric view, blocks at (r,c) occlude blocks at (r+dr, c+dc) where dr>=0, dc>=0.
+  // So we assign heights front-to-back: front rows (large r,c) get assigned first,
+  // back rows must not be taller than any front neighbor that occludes them.
+  chosen.sort((a, b) => (b[0] + b[1]) - (a[0] + a[1]));
+
+  // Assign random heights with visibility constraint
   let totalBlocks = 0;
   for (const [r, c] of chosen) {
-    // Scale max height slightly with question index for variety
     const effectiveMax = Math.min(maxHeight, 2 + Math.floor(questionIndex / 5));
-    const height = randInt(1, Math.max(1, effectiveMax));
+
+    // Find the max height of any position that would occlude this one
+    // A position (r2, c2) occludes (r, c) if r2 > r AND c2 > c (strictly in front)
+    // To ensure this block is at least partially visible, its height must be >=
+    // the height of at least one occluding neighbor, OR there's no occluder.
+    // Simpler: cap height so it doesn't get fully hidden.
+    // A block at (r,c) is fully hidden if ALL positions (r+1,c), (r,c+1), (r+1,c+1)
+    // that exist have height >= this block's height.
+    // To guarantee visibility: ensure height >= min height of front neighbors,
+    // OR if no front neighbors have blocks, any height is fine.
+    let maxFrontHeight = 0;
+    // Check the three positions that can occlude this one
+    for (const [dr, dc] of [[1, 0], [0, 1], [1, 1]]) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr < gridSize && nc < gridSize) {
+        maxFrontHeight = Math.max(maxFrontHeight, grid[nr][nc]);
+      }
+    }
+
+    let height: number;
+    if (maxFrontHeight > 0) {
+      // Ensure this column is at least as tall as ONE front neighbor so top face is visible
+      // Or make it taller, so it pokes above
+      height = randInt(Math.max(1, maxFrontHeight), Math.max(1, effectiveMax));
+    } else {
+      height = randInt(1, Math.max(1, effectiveMax));
+    }
+
     grid[r][c] = height;
     totalBlocks += height;
   }

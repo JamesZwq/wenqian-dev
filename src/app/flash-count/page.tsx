@@ -26,7 +26,8 @@ type FlashPacket =
   | { type: "config"; difficulty: Difficulty; totalQuestions: number; puzzles: BlockPuzzle[]; timestamp: number }
   | { type: "progress"; completed: number; timestamp: number }
   | { type: "finished"; totalTime: number; timestamp: number }
-  | { type: "rematch"; timestamp: number };
+  | { type: "rematch"; timestamp: number }
+  | { type: "settings_preview"; difficulty: Difficulty; totalQuestions: number; timestamp: number };
 
 type GameResult = {
   totalTime: number;
@@ -333,6 +334,7 @@ export default function FlashCountPage() {
   const [opponentFinished, setOpponentFinished] = useState<GameResult | null>(null);
   const [waitingForConfig, setWaitingForConfig] = useState(false);
   const [p2pSettingsReady, setP2pSettingsReady] = useState(false);
+  const [hostPreview, setHostPreview] = useState<{ difficulty: Difficulty; totalQuestions: number } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -429,7 +431,11 @@ export default function FlashCountPage() {
           setResult(null); setIsNewRecord(false); setOpponentProgress(0); setOpponentFinished(null);
           setCurrentIndex(0); setInputValue(""); setWaitingForConfig(false);
           if (direction === "outgoing") setP2pSettingsReady(false);
-          else setWaitingForConfig(true);
+          else { setWaitingForConfig(true); setHostPreview(null); }
+          break;
+        }
+        case "settings_preview": {
+          setHostPreview({ difficulty: payload.difficulty, totalQuestions: payload.totalQuestions });
           break;
         }
       }
@@ -456,6 +462,13 @@ export default function FlashCountPage() {
     "> Or enter their ID to connect",
     "> Host picks difficulty, then race!",
   ], []);
+
+  // Send settings preview to guest when host changes difficulty/questions
+  useEffect(() => {
+    if (gameMode === "p2p" && isConnected && direction === "outgoing" && !p2pSettingsReady) {
+      send({ type: "settings_preview", difficulty, totalQuestions, timestamp: Date.now() });
+    }
+  }, [gameMode, isConnected, direction, p2pSettingsReady, difficulty, totalQuestions, send]);
 
   // ─── Start game ───
 
@@ -779,6 +792,17 @@ export default function FlashCountPage() {
                   />
                   <p className="font-sans font-semibold text-sm text-[var(--pixel-accent-2)]">WAITING FOR HOST</p>
                   <p className="mt-2 font-mono text-xs text-[var(--pixel-muted)]">&gt; Host is configuring the game...</p>
+
+                  {hostPreview && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <span className="rounded-md border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-2.5 py-1 font-mono text-xs text-[var(--pixel-text)]">
+                        {hostPreview.difficulty.toUpperCase()}
+                      </span>
+                      <span className="rounded-md border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-2.5 py-1 font-mono text-xs text-[var(--pixel-text)]">
+                        {hostPreview.totalQuestions}Q
+                      </span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
