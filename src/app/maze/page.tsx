@@ -1600,14 +1600,6 @@ export default function MazePage() {
   }) => {
     const accentColor =
       playerId === 1 ? "var(--pixel-accent)" : "var(--pixel-accent-2)";
-    const useKey =
-      mode === "remote"
-        ? "Q/E"
-        : mode === "local"
-          ? playerId === 1
-            ? "Q"
-            : "/"
-          : "Q";
 
     return (
       <div className="flex items-center gap-1.5">
@@ -1626,9 +1618,6 @@ export default function MazePage() {
             {slot ? ITEM_META[slot.type].emoji : "·"}
           </div>
         ))}
-        <span className="font-mono text-[8px] text-[var(--pixel-muted)]">
-          [{useKey}]
-        </span>
       </div>
     );
   };
@@ -1775,20 +1764,6 @@ export default function MazePage() {
                       : formatTime(elapsedTime)}
                   </div>
 
-                  <div className="hidden rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-muted)] backdrop-blur-xl md:block">
-                    queue:{" "}
-                    {queueSnapshot.length > 0
-                      ? queueSnapshot
-                          .map(
-                            (m) =>
-                              `${formatQueueLabel({
-                                playerId: m.playerId,
-                                direction: m.direction,
-                              })}${m.source === "remote" ? "*" : ""}`
-                          )
-                          .join("  ")
-                      : "empty"}
-                  </div>
 
                   {mode === "remote" && (
                     <div className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-accent-2)] backdrop-blur-xl">
@@ -2189,7 +2164,6 @@ export default function MazePage() {
                     <div>
                       <span className="text-[var(--pixel-accent)]">P1:</span>{" "}
                       WASD
-                      {settings.itemsEnabled && " | Q=use item"}
                     </div>
                   )}
                   {mode === "local" && (
@@ -2198,13 +2172,13 @@ export default function MazePage() {
                         <span className="text-[var(--pixel-accent)]">
                           P1:
                         </span>{" "}
-                        WASD{settings.itemsEnabled && " | Q=item"}
+                        WASD
                       </div>
                       <div>
                         <span className="text-[var(--pixel-accent-2)]">
                           P2:
                         </span>{" "}
-                        Arrows{settings.itemsEnabled && " | /=item"}
+                        Arrows
                       </div>
                     </>
                   )}
@@ -2213,8 +2187,7 @@ export default function MazePage() {
                       <span className="text-[var(--pixel-accent-2)]">
                         REMOTE:
                       </span>{" "}
-                      WASD/Arrows to move
-                      {settings.itemsEnabled && " | Q/E=use item"}
+                      WASD/Arrows
                     </div>
                   )}
                 </div>

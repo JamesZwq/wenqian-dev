@@ -296,10 +296,13 @@ export function Scene({ isFullscreen, theme }) {
 
     const root = new THREE.Group();
     const gridScale = lodRef.current?.scale ?? 1;
-    const offset = -Math.ceil(gridSize / 2) * gridScale;
-    const shift = gridSize * 0.18 * gridScale;
+    // Scale up on ultrawide to ensure grid covers the full viewport
+    const ultrawideBoost = aspect > 1.8 ? aspect / 1.8 : 1;
+    const finalScale = gridScale * ultrawideBoost;
+    const offset = -Math.ceil(gridSize / 2) * finalScale;
+    const shift = gridSize * 0.18 * finalScale;
     root.position.set(offset + shift, offset + shift, 0);
-    root.scale.set(gridScale, gridScale, gridScale);
+    root.scale.set(finalScale, finalScale, finalScale);
     const startRotation = { x: THREE.MathUtils.degToRad(-20), y: THREE.MathUtils.degToRad(20) };
     root.rotation.set(startRotation.x, startRotation.y, 0);
     scene.add(root);
@@ -786,9 +789,9 @@ export function Scene({ isFullscreen, theme }) {
 
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden">
-      
-      {/* 🚀 第一层：底色与模糊层 (移动较慢) */}
-      <div 
+
+      {/* 底色层 (移动较慢) */}
+      <div
         ref={maskLayer1Ref}
         className="absolute inset-[-30px] pointer-events-none transition-colors duration-1000 ease-in-out"
         style={{
@@ -800,14 +803,11 @@ export function Scene({ isFullscreen, theme }) {
         }}
       />
 
-      {/* 🚀 第二层：扫描细纹层 (移动较快，产生视差) */}
-      <div 
+      {/* 第二层: 仅保留视差运动，不再有横纹 */}
+      <div
         ref={maskLayer2Ref}
-        className="absolute inset-[-30px] pointer-events-none transition-colors duration-1000 ease-in-out"
+        className="absolute inset-[-30px] pointer-events-none"
         style={{
-          backgroundImage: theme === "dark" 
-            ? "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.04) 2px, rgba(255, 255, 255, 0.04) 3px)"
-            : "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 3px)",
           zIndex: 2,
           willChange: "transform"
         }}
