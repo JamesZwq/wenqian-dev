@@ -95,6 +95,7 @@ export default function MathSprintPage() {
   const [inputValue, setInputValue] = useState("");
   const [shakeKey, setShakeKey] = useState(0);
   const [flashColor, setFlashColor] = useState<"green" | "red" | null>(null);
+  const [questionExiting, setQuestionExiting] = useState(false);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
@@ -319,29 +320,32 @@ export default function MathSprintPage() {
       if (val === "-" && currentQ.answer < 0) return;
 
       if (val === answerStr) {
-        // Correct — subtle green pulse
         setFlashColor("green");
-        setTimeout(() => setFlashColor(null), 350);
+        setQuestionExiting(true);
 
         const nextIndex = currentIndex + 1;
-        setCurrentIndex(nextIndex);
-        setInputValue("");
 
         if (gameMode === "p2p") {
           send({ type: "progress", completed: nextIndex, timestamp: Date.now() });
         }
 
-        if (nextIndex >= questions.length) {
-          stopTimer();
-          const totalTime = Date.now() - startTime;
-          finishGame(totalTime, questions.length, resultOps, resultCount);
+        setTimeout(() => {
+          setFlashColor(null);
+          setQuestionExiting(false);
+          setCurrentIndex(nextIndex);
+          setInputValue("");
 
-          if (gameMode === "p2p") {
-            send({ type: "finished", totalTime, timestamp: Date.now() });
+          if (nextIndex >= questions.length) {
+            stopTimer();
+            const totalTime = Date.now() - startTime;
+            finishGame(totalTime, questions.length, resultOps, resultCount);
+            if (gameMode === "p2p") {
+              send({ type: "finished", totalTime, timestamp: Date.now() });
+            }
+          } else {
+            inputRef.current?.focus();
           }
-        } else {
-          inputRef.current?.focus();
-        }
+        }, 220);
       } else if (val.length >= answerStr.length && val !== answerStr) {
         // Wrong — subtle red pulse + shake + clear
         setShakeKey(k => k + 1);
@@ -721,47 +725,52 @@ export default function MathSprintPage() {
                       )}
                     </div>
 
-                    {/* Question display — slot-machine scroll + inline input */}
-                    <div className="w-full">
-                      {/* Current question with inline input */}
-                      <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur-xl overflow-hidden transition-all duration-200 ${
-                        flashColor === "red"
-                          ? "border-[#ef4444]/50 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
-                          : flashColor === "green"
-                            ? "border-[#22c55e]/50 shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-                            : "border-[var(--pixel-border)] shadow-none"
-                      }`}>
-                        {isPlaying && (
+                    {/* Question display */}
+                    <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur-xl overflow-hidden transition-all duration-200 ${
+                      flashColor === "red"
+                        ? "border-[#ef4444]/50 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
+                        : flashColor === "green"
+                          ? "border-[#22c55e]/50 shadow-[0_0_12px_rgba(34,197,94,0.15)]"
+                          : "border-[var(--pixel-border)] shadow-none"
+                    }`}>
+                      {isPlaying && (
+                        <div className="flex items-center justify-center gap-2 md:gap-3">
+                          {/* Question label — animates up+fade on correct, slides in from below on new */}
+                          <div className="relative overflow-hidden">
+                            <AnimatePresence mode="popLayout">
+                              <motion.span
+                                key={currentIndex}
+                                initial={{ opacity: 0, y: 36 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -36 }}
+                                transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+                                className="block font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-text)] whitespace-nowrap"
+                              >
+                                {questions[currentIndex].display} =
+                              </motion.span>
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Input — stable, no key prop, no remount */}
                           <motion.div
-                            key={currentIndex}
-                            initial={{ opacity: 0, y: 48 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
-                            className="flex items-center justify-center gap-2 md:gap-3"
+                            key={shakeKey}
+                            animate={shakeKey > 0 && flashColor === "red" ? { x: [-6, 6, -3, 3, 0] } : {}}
+                            transition={{ duration: 0.25 }}
                           >
-                            <span className="font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-text)] whitespace-nowrap">
-                              {questions[currentIndex].display} =
-                            </span>
-                            <motion.div
-                              key={shakeKey}
-                              animate={shakeKey > 0 && flashColor === "red" ? { x: [-6, 6, -3, 3, 0] } : {}}
-                              transition={{ duration: 0.25 }}
-                            >
-                              <input
-                                ref={inputRef}
-                                type="number"
-                                inputMode="numeric"
-                                autoFocus
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                disabled={!isPlaying}
-                                className="w-[3.5ch] min-w-[60px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="?"
-                              />
-                            </motion.div>
+                            <input
+                              ref={inputRef}
+                              type="number"
+                              inputMode="numeric"
+                              value={inputValue}
+                              onChange={handleInputChange}
+                              disabled={!isPlaying || questionExiting}
+                              className="w-[3.5ch] min-w-[60px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              placeholder="?"
+                            />
                           </motion.div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                    </div>
 
                       {/* Next question preview */}
                       {isPlaying && currentIndex + 1 < questions.length && (
@@ -777,7 +786,6 @@ export default function MathSprintPage() {
                           </span>
                         </motion.div>
                       )}
-                    </div>
 
                     {/* Controls */}
                     <button
