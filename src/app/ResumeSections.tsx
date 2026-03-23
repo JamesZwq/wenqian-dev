@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Database, Cpu } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Database, Cpu, Terminal, Check, Copy } from "lucide-react";
 import unswLogo from "../Images/image.png";
 import {
   IconGraduation,
@@ -265,6 +265,87 @@ const SkillBar = ({
   </div>
 );
 
+const SETUP_COMMAND = `bash -c "$(curl -fsSL https://wenqian.dev/setup.sh)"`;
+
+function SetupCommandBlock() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(SETUP_COMMAND).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="mt-16 sm:mt-24 mb-12"
+    >
+      <div className="flex items-center gap-4 mb-6">
+        <div className="p-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
+          <Terminal size={20} />
+        </div>
+        <h2 className="font-sans text-lg md:text-xl font-bold text-[var(--pixel-accent)] tracking-tight uppercase">
+          Quick Setup
+        </h2>
+      </div>
+      <p className="text-sm text-[var(--pixel-muted)] font-mono mb-4">
+        One command to bootstrap my dev environment — Oh My Zsh, plugins, and a tuned .zshrc.
+      </p>
+      <div className="group relative rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl overflow-hidden">
+        {/* Top bar */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[color-mix(in_oklab,var(--pixel-bg-alt)_60%,transparent)]">
+          <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+          <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
+          <span className="w-3 h-3 rounded-full bg-[#28c840]" />
+          <span className="ml-2 text-[10px] font-mono text-[var(--pixel-muted)] select-none">terminal</span>
+        </div>
+        {/* Command */}
+        <div className="flex items-center gap-3 px-4 sm:px-5 py-4">
+          <span className="text-[var(--pixel-accent)] font-mono text-sm select-none flex-shrink-0">$</span>
+          <code className="flex-1 text-sm font-mono text-[var(--pixel-text)] break-all select-all leading-relaxed">
+            {SETUP_COMMAND}
+          </code>
+          <motion.button
+            onClick={handleCopy}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex-shrink-0 p-2 rounded-lg border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[color-mix(in_oklab,var(--pixel-accent)_8%,transparent)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_18%,transparent)] text-[var(--pixel-accent)] transition-colors cursor-pointer"
+            aria-label="Copy command"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {copied ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Check size={16} className="text-green-400" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="copy"
+                  initial={{ scale: 0, rotate: 90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: -90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Copy size={16} />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
 export default function ResumeSections() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20 md:py-28 space-y-16 sm:space-y-24 md:space-y-32">
@@ -432,6 +513,9 @@ export default function ResumeSections() {
           </ul>
         </div>
       </motion.section>
+
+      {/* Setup Command */}
+      <SetupCommandBlock />
 
       {/* Footer */}
       <footer className="text-center py-8 sm:py-12 border-t border-[color-mix(in_oklab,var(--pixel-border)_20%,transparent)]">
