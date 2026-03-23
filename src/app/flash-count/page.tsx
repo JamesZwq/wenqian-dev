@@ -22,16 +22,27 @@ import {
 type GameMode = "menu" | "solo" | "p2p";
 type GamePhase = "flash" | "answer" | "reveal" | "done";
 
+// P2P: new question-by-question flow
+// "answer" packet: I submitted my answer for current question
+// "question_result" packet: host broadcasts both answers + correct answer (after both submit)
 type FlashPacket =
   | { type: "config"; difficulty: Difficulty; totalQuestions: number; puzzles: BlockPuzzle[]; timestamp: number }
-  | { type: "progress"; completed: number; timestamp: number }
-  | { type: "finished"; totalTime: number; timestamp: number }
+  | { type: "answer"; questionIndex: number; value: number; timestamp: number }
+  | { type: "question_result"; questionIndex: number; p1Answer: number; p2Answer: number; correct: number; timestamp: number }
   | { type: "rematch"; timestamp: number }
   | { type: "settings_preview"; difficulty: Difficulty; totalQuestions: number; timestamp: number };
 
+type QuestionResult = {
+  myAnswer: number;
+  opponentAnswer: number;
+  correct: number;
+  myCorrect: boolean;
+  opponentCorrect: boolean;
+};
+
 type GameResult = {
-  totalTime: number;
-  speed: number;
+  myScore: number;
+  opponentScore: number;
   totalQuestions: number;
 };
 
@@ -82,7 +93,6 @@ function saveBestSpeed(diff: Difficulty, count: number, speed: number): boolean 
 function IsometricBlocks({ puzzle, tileW, tileH }: { puzzle: BlockPuzzle; tileW: number; tileH: number }) {
   const { grid, rows, cols } = puzzle;
 
-  // Compute SVG bounds
   const allPoints: { x: number; y: number }[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -113,7 +123,6 @@ function IsometricBlocks({ puzzle, tileW, tileH }: { puzzle: BlockPuzzle; tileW:
   const offX = -minX + pad;
   const offY = -minY + pad;
 
-  // Render back-to-front: row ascending, col ascending, layer ascending
   const cubes: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -164,12 +173,11 @@ function IsometricBlocks({ puzzle, tileW, tileH }: { puzzle: BlockPuzzle; tileW:
   );
 }
 
-// ─── Reveal animation: blocks appear one-by-one along a traversal path ───
+// ─── Reveal animation ───
 
 function getBlockTraversal(puzzle: BlockPuzzle): { r: number; c: number; l: number }[] {
   const blocks: { r: number; c: number; l: number }[] = [];
   const { grid, rows, cols } = puzzle;
-  // Traverse: layer 0 first (bottom), then 1, etc. Within each layer: back-to-front, left-to-right
   const maxH = Math.max(...grid.flat());
   for (let l = 0; l < maxH; l++) {
     for (let r = 0; r < rows; r++) {
@@ -183,7 +191,7 @@ function getBlockTraversal(puzzle: BlockPuzzle): { r: number; c: number; l: numb
   return blocks;
 }
 
-const REVEAL_INTERVAL = 80; // ms per block
+const REVEAL_INTERVAL = 80;
 
 function RevealBlocks({
   puzzle,
@@ -215,7 +223,6 @@ function RevealBlocks({
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [traversal]);
 
-  // Auto-advance after all blocks revealed + a short pause
   useEffect(() => {
     if (visibleCount >= traversal.length && traversal.length > 0) {
       const t = setTimeout(onComplete, 400);
@@ -223,7 +230,6 @@ function RevealBlocks({
     }
   }, [visibleCount, traversal.length, onComplete]);
 
-  // Compute SVG bounds from ALL blocks (not just visible) so the SVG doesn't resize
   const { rows, cols, grid } = puzzle;
   const allPoints: { x: number; y: number }[] = [];
   for (let r = 0; r < rows; r++) {
@@ -297,13 +303,62 @@ function RevealBlocks({
   );
 }
 
+// ─── P2P Answer Box ───
+
+function AnswerBox({
+  label,
+  submitted,
+  answer,
+  result,
+  isMe,
+}: {
+  label: string;
+  submitted: boolean;
+  answer: number | null;
+  result: QuestionResult | null;
+  isMe: boolean;
+}) {
+  const showAnswer = result !== null;
+  const myAnswer = isMe ? result?.myAnswer : result?.opponentAnswer;
+  const correct = isMe ? result?.myCorrect : result?.opponentCorrect;
+
+  return (
+    <div className="flex flex-col items-center gap-1.5 flex-1">
+      <span className="font-mono text-[10px] text-[var(--pixel-muted)] uppercase tracking-wider">{label}</span>
+      <motion.div
+        animate={showAnswer ? { scale: [1, 1.08, 1] } : {}}
+        transition={{ duration: 0.3 }}
+        className={`w-full rounded-xl border-2 px-4 py-3 text-center font-mono text-2xl font-bold transition-all duration-300 ${
+          showAnswer
+            ? correct
+              ? "border-[#22c55e] bg-[#22c55e]/15 text-[#22c55e]"
+              : "border-[#ef4444] bg-[#ef4444]/15 text-[#ef4444]"
+            : submitted
+            ? "border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/10 text-[var(--pixel-muted)]"
+            : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)]"
+        }`}
+      >
+        {showAnswer
+          ? myAnswer
+          : submitted
+          ? "★"
+          : "—"}
+      </motion.div>
+      {showAnswer && (
+        <span className={`font-mono text-xs font-bold ${correct ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+          {correct ? "✓ CORRECT" : `✗ WAS ${result.correct}`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ───
 
 export default function FlashCountPage() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const joinPeerId = useJoinParam();
 
-  // Auto-enter P2P mode when ?join= is present
   useEffect(() => {
     if (joinPeerId) setGameMode("p2p");
   }, [joinPeerId]);
@@ -312,7 +367,7 @@ export default function FlashCountPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [totalQuestions, setTotalQuestions] = useState(20);
 
-  // Game state
+  // Game state (solo)
   const [puzzles, setPuzzles] = useState<BlockPuzzle[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [gamePhase, setGamePhase] = useState<GamePhase>("flash");
@@ -321,7 +376,7 @@ export default function FlashCountPage() {
   const [flashColor, setFlashColor] = useState<"green" | "red" | null>(null);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState<GameResult | null>(null);
+  const [soloResult, setSoloResult] = useState<{ totalTime: number; speed: number; totalQuestions: number } | null>(null);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [bestSpeed, setBestSpeed] = useState<number | null>(null);
   const [resultDiff, setResultDiff] = useState<Difficulty>("easy");
@@ -330,18 +385,27 @@ export default function FlashCountPage() {
   const [revealPuzzle, setRevealPuzzle] = useState<BlockPuzzle | null>(null);
 
   // P2P state
-  const [opponentProgress, setOpponentProgress] = useState(0);
-  const [opponentFinished, setOpponentFinished] = useState<GameResult | null>(null);
   const [waitingForConfig, setWaitingForConfig] = useState(false);
   const [p2pSettingsReady, setP2pSettingsReady] = useState(false);
   const [hostPreview, setHostPreview] = useState<{ difficulty: Difficulty; totalQuestions: number } | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // P2P question-by-question state
+  const [myP2pAnswer, setMyP2pAnswer] = useState<number | null>(null);  // null = not submitted
+  const [opponentSubmitted, setOpponentSubmitted] = useState(false);     // opponent submitted (but value hidden)
+  const [questionResult, setQuestionResult] = useState<QuestionResult | null>(null); // revealed after both submit
+  const [myScore, setMyScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [p2pGameResult, setP2pGameResult] = useState<GameResult | null>(null);
+  // ref to track my submitted answer for the current question (for host computation)
+  const myP2pAnswerRef = useRef<number | null>(null);
+  const opponentAnswerRef = useRef<number | null>(null);
   const puzzlesRef = useRef(puzzles);
 
   useEffect(() => { puzzlesRef.current = puzzles; }, [puzzles]);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load best speed
   useEffect(() => {
@@ -369,7 +433,7 @@ export default function FlashCountPage() {
     };
   }, [stopTimer]);
 
-  // ─── Speed ───
+  // ─── Speed (solo) ───
 
   const speed = useMemo(() => {
     if (currentIndex === 0 || elapsed === 0) return 0;
@@ -388,7 +452,37 @@ export default function FlashCountPage() {
     }, puzzle.flashDuration);
   }, []);
 
-  // ─── P2P ───
+  // ─── P2P: reset per-question state ───
+
+  const resetP2pQuestion = useCallback(() => {
+    setMyP2pAnswer(null);
+    setOpponentSubmitted(false);
+    setQuestionResult(null);
+    myP2pAnswerRef.current = null;
+    opponentAnswerRef.current = null;
+  }, []);
+
+  // ─── P2P: after both submitted, host computes & broadcasts result ───
+
+  const broadcastResult = useCallback((qIdx: number, myAns: number, oppAns: number, send: (p: FlashPacket) => void) => {
+    const pz = puzzlesRef.current[qIdx];
+    if (!pz) return;
+    const correct = pz.answer;
+    send({
+      type: "question_result",
+      questionIndex: qIdx,
+      p1Answer: myAns,   // host = p1
+      p2Answer: oppAns,  // guest = p2
+      correct,
+      timestamp: Date.now(),
+    });
+  }, []);
+
+  // ─── P2P incoming data ───
+
+  const sendRef = useRef<((p: FlashPacket) => void) | null>(null);
+  const directionRef = useRef<"outgoing" | "incoming" | null>(null);
+  useEffect(() => { directionRef.current = direction; }, [direction]);
 
   const handleIncomingData = useCallback(
     (payload: FlashPacket) => {
@@ -400,20 +494,21 @@ export default function FlashCountPage() {
           setDifficulty(payload.difficulty);
           setCurrentIndex(0);
           setInputValue("");
-          setResult(null);
+          setSoloResult(null);
           setIsNewRecord(false);
-          setOpponentProgress(0);
-          setOpponentFinished(null);
+          setMyScore(0);
+          setOpponentScore(0);
+          setP2pGameResult(null);
           setWaitingForConfig(false);
           setP2pSettingsReady(false);
           setResultDiff(payload.difficulty);
           setResultCount(payload.totalQuestions);
+          resetP2pQuestion();
           const now = Date.now();
           setStartTime(now);
           setElapsed(0);
           if (timerRef.current) clearInterval(timerRef.current);
           timerRef.current = setInterval(() => setElapsed(Date.now() - now), 200);
-          // Start first flash
           setGamePhase("flash");
           if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
           flashTimerRef.current = setTimeout(() => {
@@ -422,15 +517,58 @@ export default function FlashCountPage() {
           }, payload.puzzles[0].flashDuration);
           break;
         }
-        case "progress": setOpponentProgress(payload.completed); break;
-        case "finished": {
-          setOpponentFinished({ totalTime: payload.totalTime, speed: 0, totalQuestions: puzzlesRef.current.length });
+        case "answer": {
+          // Opponent submitted their answer
+          const oppAns = payload.value;
+          opponentAnswerRef.current = oppAns;
+          setOpponentSubmitted(true);
+          // If I'm host and I've already submitted, broadcast result
+          if (directionRef.current === "outgoing" && myP2pAnswerRef.current !== null && sendRef.current) {
+            broadcastResult(payload.questionIndex, myP2pAnswerRef.current, oppAns, sendRef.current);
+          }
+          break;
+        }
+        case "question_result": {
+          const isHost = directionRef.current === "outgoing";
+          const myAns = isHost ? payload.p1Answer : payload.p2Answer;
+          const oppAns = isHost ? payload.p2Answer : payload.p1Answer;
+          const correct = payload.correct;
+          const myCorrect = myAns === correct;
+          const oppCorrect = oppAns === correct;
+          setQuestionResult({ myAnswer: myAns, opponentAnswer: oppAns, correct, myCorrect, opponentCorrect: oppCorrect });
+          setMyScore(prev => prev + (myCorrect ? 1 : 0));
+          setOpponentScore(prev => prev + (oppCorrect ? 1 : 0));
+          // Auto-advance after 2.5s
+          const qIdx = payload.questionIndex;
+          setTimeout(() => {
+            const pz = puzzlesRef.current;
+            const nextIdx = qIdx + 1;
+            setCurrentIndex(nextIdx);
+            resetP2pQuestion();
+            if (nextIdx >= pz.length) {
+              stopTimer();
+              setGamePhase("done");
+              // compute final result via setState updater to get latest scores
+              setMyScore(ms => {
+                setOpponentScore(os => {
+                  setP2pGameResult({ myScore: ms, opponentScore: os, totalQuestions: pz.length });
+                  return os;
+                });
+                return ms;
+              });
+            } else {
+              startFlash(pz[nextIdx]);
+            }
+          }, 2500);
           break;
         }
         case "rematch": {
-          setResult(null); setIsNewRecord(false); setOpponentProgress(0); setOpponentFinished(null);
-          setCurrentIndex(0); setInputValue(""); setWaitingForConfig(false);
-          if (direction === "outgoing") setP2pSettingsReady(false);
+          setSoloResult(null); setIsNewRecord(false);
+          setMyScore(0); setOpponentScore(0); setP2pGameResult(null);
+          setCurrentIndex(0); setInputValue("");
+          resetP2pQuestion();
+          setWaitingForConfig(false);
+          if (directionRef.current === "outgoing") setP2pSettingsReady(false);
           else { setWaitingForConfig(true); setHostPreview(null); }
           break;
         }
@@ -440,7 +578,7 @@ export default function FlashCountPage() {
         }
       }
     },
-    [direction],
+    [broadcastResult, resetP2pQuestion, startFlash, stopTimer],
   );
 
   const {
@@ -457,13 +595,16 @@ export default function FlashCountPage() {
     onDisconnected: () => { setDirection(null); setWaitingForConfig(false); setP2pSettingsReady(false); stopTimer(); },
   });
 
+  // Keep sendRef in sync
+  useEffect(() => { sendRef.current = send; }, [send]);
+
   const connectionDescription = useMemo(() => [
     "> Share your ID with a friend",
     "> Or enter their ID to connect",
     "> Host picks difficulty, then race!",
   ], []);
 
-  // Send settings preview to guest when host changes difficulty/questions
+  // Send settings preview to guest when host changes settings
   useEffect(() => {
     if (gameMode === "p2p" && isConnected && direction === "outgoing" && !p2pSettingsReady) {
       send({ type: "settings_preview", difficulty, totalQuestions, timestamp: Date.now() });
@@ -477,7 +618,7 @@ export default function FlashCountPage() {
     setPuzzles(pz);
     setCurrentIndex(0);
     setInputValue("");
-    setResult(null);
+    setSoloResult(null);
     setIsNewRecord(false);
     setResultDiff(difficulty);
     setResultCount(totalQuestions);
@@ -491,29 +632,31 @@ export default function FlashCountPage() {
     setPuzzles(pz);
     setCurrentIndex(0);
     setInputValue("");
-    setResult(null);
+    setSoloResult(null);
     setIsNewRecord(false);
-    setOpponentProgress(0);
-    setOpponentFinished(null);
+    setMyScore(0);
+    setOpponentScore(0);
+    setP2pGameResult(null);
     setP2pSettingsReady(true);
     setResultDiff(difficulty);
     setResultCount(totalQuestions);
+    resetP2pQuestion();
     send({ type: "config", difficulty, totalQuestions, puzzles: pz, timestamp: Date.now() });
     startTimer();
     startFlash(pz[0]);
-  }, [difficulty, totalQuestions, send, startTimer, startFlash]);
+  }, [difficulty, totalQuestions, send, startTimer, startFlash, resetP2pQuestion]);
 
-  // ─── Answer logic ───
+  // ─── Solo answer logic ───
 
-  const finishGame = useCallback((totalTime: number, total: number, diff: Difficulty, count: number) => {
+  const finishSoloGame = useCallback((totalTime: number, total: number, diff: Difficulty, count: number) => {
     const spd = total / (totalTime / 60000);
     const nr = saveBestSpeed(diff, count, spd);
-    setResult({ totalTime, speed: spd, totalQuestions: total });
+    setSoloResult({ totalTime, speed: spd, totalQuestions: total });
     setIsNewRecord(nr);
     setBestSpeed(getBestSpeed(diff, count));
   }, []);
 
-  const handleInputChange = useCallback(
+  const handleSoloInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
       setInputValue(val);
@@ -524,19 +667,12 @@ export default function FlashCountPage() {
       const answerStr = String(currentP.answer);
 
       if (val === answerStr) {
-        // Correct — green pulse, then reveal
         setFlashColor("green");
         setTimeout(() => setFlashColor(null), 350);
-
         setRevealPuzzle(currentP);
         setGamePhase("reveal");
         setInputValue("");
-
-        if (gameMode === "p2p") {
-          send({ type: "progress", completed: currentIndex + 1, timestamp: Date.now() });
-        }
       } else if (val.length >= answerStr.length && val !== answerStr) {
-        // Wrong
         setShakeKey(k => k + 1);
         setFlashColor("red");
         setTimeout(() => {
@@ -546,10 +682,8 @@ export default function FlashCountPage() {
         }, 350);
       }
     },
-    [gamePhase, currentIndex, puzzles, gameMode, send],
+    [gamePhase, currentIndex, puzzles],
   );
-
-  // ─── Reveal complete → advance to next question ───
 
   const onRevealComplete = useCallback(() => {
     const nextIndex = currentIndex + 1;
@@ -560,32 +694,68 @@ export default function FlashCountPage() {
       stopTimer();
       const totalTime = Date.now() - startTime;
       setGamePhase("done");
-      finishGame(totalTime, puzzles.length, resultDiff, resultCount);
-      if (gameMode === "p2p") {
-        send({ type: "finished", totalTime, timestamp: Date.now() });
-      }
+      finishSoloGame(totalTime, puzzles.length, resultDiff, resultCount);
     } else {
       startFlash(puzzles[nextIndex]);
     }
-  }, [currentIndex, puzzles, stopTimer, startTime, finishGame, resultDiff, resultCount, gameMode, send, startFlash]);
+  }, [currentIndex, puzzles, stopTimer, startTime, finishSoloGame, resultDiff, resultCount, startFlash]);
+
+  // ─── P2P answer logic ───
+
+  const handleP2pInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setInputValue(val);
+
+      if (gamePhase !== "answer" || myP2pAnswer !== null) return;
+      if (currentIndex >= puzzlesRef.current.length) return;
+
+      const currentP = puzzlesRef.current[currentIndex];
+      const answerStr = String(currentP.answer);
+
+      // Submit when input length matches answer length
+      if (val.length >= answerStr.length) {
+        const numVal = parseInt(val, 10);
+        if (isNaN(numVal)) {
+          setInputValue("");
+          return;
+        }
+        // Lock in this answer
+        setMyP2pAnswer(numVal);
+        myP2pAnswerRef.current = numVal;
+        setInputValue(String(numVal));
+        // Send to peer
+        send({ type: "answer", questionIndex: currentIndex, value: numVal, timestamp: Date.now() });
+        // If host and opponent already submitted, broadcast result
+        if (direction === "outgoing" && opponentAnswerRef.current !== null) {
+          broadcastResult(currentIndex, numVal, opponentAnswerRef.current, send);
+        }
+      }
+    },
+    [gamePhase, myP2pAnswer, currentIndex, send, direction, broadcastResult],
+  );
 
   // ─── Exit ───
 
   const exitToMenu = useCallback(() => {
     stopTimer();
     if (flashTimerRef.current) { clearTimeout(flashTimerRef.current); flashTimerRef.current = null; }
-    setGameMode("menu"); setResult(null); setIsNewRecord(false); setPuzzles([]);
+    setGameMode("menu"); setSoloResult(null); setIsNewRecord(false); setPuzzles([]);
     setCurrentIndex(0); setInputValue(""); setGamePhase("flash");
-    setOpponentProgress(0); setOpponentFinished(null); setWaitingForConfig(false); setP2pSettingsReady(false);
-  }, [stopTimer]);
+    setMyScore(0); setOpponentScore(0); setP2pGameResult(null);
+    setWaitingForConfig(false); setP2pSettingsReady(false);
+    resetP2pQuestion();
+  }, [stopTimer, resetP2pQuestion]);
 
   const handleRematch = useCallback(() => {
     send({ type: "rematch", timestamp: Date.now() });
-    setResult(null); setIsNewRecord(false); setOpponentProgress(0); setOpponentFinished(null);
+    setSoloResult(null); setIsNewRecord(false);
+    setMyScore(0); setOpponentScore(0); setP2pGameResult(null);
     setCurrentIndex(0); setInputValue(""); setGamePhase("flash");
+    resetP2pQuestion();
     if (direction === "outgoing") { setP2pSettingsReady(false); setWaitingForConfig(false); }
     else setWaitingForConfig(true);
-  }, [send, direction]);
+  }, [send, direction, resetP2pQuestion]);
 
   // ─── Helpers ───
 
@@ -596,12 +766,14 @@ export default function FlashCountPage() {
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  const isPlaying = puzzles.length > 0 && currentIndex < puzzles.length && !result;
-  const showP2pSettings = gameMode === "p2p" && isConnected && !p2pSettingsReady && direction === "outgoing" && !result;
-  const showP2pWaiting = gameMode === "p2p" && isConnected && waitingForConfig && !result;
+  const isPlaying = puzzles.length > 0 && currentIndex < puzzles.length && !soloResult && !p2pGameResult;
+  const showP2pSettings = gameMode === "p2p" && isConnected && !p2pSettingsReady && direction === "outgoing" && !p2pGameResult;
+  const showP2pWaiting = gameMode === "p2p" && isConnected && waitingForConfig && !p2pGameResult;
   const showGame = (gameMode === "solo" || (gameMode === "p2p" && isConnected && !showP2pSettings && !showP2pWaiting)) && puzzles.length > 0;
+  const isP2pWaitingForOpponent = gameMode === "p2p" && myP2pAnswer !== null && !opponentSubmitted && !questionResult;
+  const isP2pWaitingForMe = gameMode === "p2p" && opponentSubmitted && myP2pAnswer === null && !questionResult;
 
-  // ─── Settings panel (shared between menu and p2p host) ───
+  // ─── Settings panel ───
 
   const settingsPanel = (
     <>
@@ -816,7 +988,7 @@ export default function FlashCountPage() {
                 exit={{ opacity: 0, scale: 0.94 }}
                 className="mx-auto flex max-w-lg flex-col items-center gap-4"
               >
-                {!result ? (
+                {!soloResult && !p2pGameResult ? (
                   <>
                     {/* Progress bar + stats */}
                     <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
@@ -824,9 +996,18 @@ export default function FlashCountPage() {
                         <span className="font-mono text-sm text-[var(--pixel-text)]">
                           {currentIndex}/{puzzles.length}
                         </span>
-                        <span className="font-mono text-sm text-[var(--pixel-accent)]">
-                          ⚡ {speed.toFixed(1)}/min
-                        </span>
+                        {gameMode === "solo" && (
+                          <span className="font-mono text-sm text-[var(--pixel-accent)]">
+                            ⚡ {speed.toFixed(1)}/min
+                          </span>
+                        )}
+                        {gameMode === "p2p" && (
+                          <span className="font-mono text-sm font-bold">
+                            <span className="text-[var(--pixel-accent)]">{myScore}</span>
+                            <span className="text-[var(--pixel-muted)]"> : </span>
+                            <span className="text-[var(--pixel-accent-2)]">{opponentScore}</span>
+                          </span>
+                        )}
                         <span className="font-mono text-sm text-[var(--pixel-muted)]">
                           {formatTime(elapsed)}
                         </span>
@@ -839,27 +1020,6 @@ export default function FlashCountPage() {
                           transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />
                       </div>
-
-                      {gameMode === "p2p" && (
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-mono text-xs text-[var(--pixel-muted)]">
-                              Opponent: {opponentProgress}/{puzzles.length}
-                            </span>
-                            {opponentFinished && (
-                              <span className="font-mono text-xs text-[var(--pixel-accent-2)]">DONE</span>
-                            )}
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-[var(--pixel-bg)] overflow-hidden">
-                            <motion.div
-                              className="h-full bg-[var(--pixel-accent-2)]"
-                              initial={false}
-                              animate={{ width: `${(opponentProgress / puzzles.length) * 100}%` }}
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            />
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Main game card */}
@@ -871,7 +1031,7 @@ export default function FlashCountPage() {
                           : "border-[var(--pixel-border)] shadow-none"
                     }`}>
                       {/* Block display area */}
-                      <div className="flex items-center justify-center p-6 md:p-10 min-h-[200px] md:min-h-[280px]">
+                      <div className="flex items-center justify-center p-6 md:p-10 min-h-[200px] md:min-h-[260px]">
                         {isPlaying && gamePhase === "flash" && (
                           <motion.div
                             key={`blocks-${currentIndex}`}
@@ -882,7 +1042,7 @@ export default function FlashCountPage() {
                             <IsometricBlocks puzzle={puzzles[currentIndex]} tileW={TILE_W} tileH={TILE_H} />
                           </motion.div>
                         )}
-                        {isPlaying && gamePhase === "answer" && (
+                        {isPlaying && gamePhase === "answer" && gameMode === "solo" && (
                           <motion.div
                             key={`answer-${currentIndex}`}
                             initial={{ opacity: 0 }}
@@ -903,7 +1063,7 @@ export default function FlashCountPage() {
                                 type="number"
                                 inputMode="numeric"
                                 value={inputValue}
-                                onChange={handleInputChange}
+                                onChange={handleSoloInputChange}
                                 disabled={gamePhase !== "answer"}
                                 className="w-[3.5ch] min-w-[60px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="?"
@@ -911,7 +1071,116 @@ export default function FlashCountPage() {
                             </motion.div>
                           </motion.div>
                         )}
-                        {gamePhase === "reveal" && revealPuzzle && (
+                        {/* P2P answer phase */}
+                        {isPlaying && gamePhase === "answer" && gameMode === "p2p" && (
+                          <div className="w-full flex flex-col items-center gap-4">
+                            {/* Puzzle question indicator */}
+                            <span className="font-mono text-xl text-[var(--pixel-muted)]">? = </span>
+
+                            {/* Input (hidden/locked after submit) */}
+                            <AnimatePresence mode="wait">
+                              {myP2pAnswer === null ? (
+                                <motion.div
+                                  key="p2p-input"
+                                  initial={{ opacity: 0, y: 8 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -8 }}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  <input
+                                    ref={inputRef}
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={inputValue}
+                                    onChange={handleP2pInputChange}
+                                    className="w-[4ch] min-w-[72px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-4xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    placeholder="?"
+                                    autoFocus
+                                  />
+                                  {isP2pWaitingForMe && (
+                                    <motion.span
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="font-mono text-xs text-[var(--pixel-accent-2)]"
+                                    >
+                                      Opponent submitted! Enter your answer.
+                                    </motion.span>
+                                  )}
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="p2p-submitted"
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="flex flex-col items-center gap-1"
+                                >
+                                  <span className="font-mono text-4xl font-bold text-[var(--pixel-accent-2)]">
+                                    {myP2pAnswer}
+                                  </span>
+                                  {isP2pWaitingForOpponent ? (
+                                    <span className="font-mono text-xs text-[var(--pixel-muted)]">Waiting for opponent...</span>
+                                  ) : (
+                                    <span className="font-mono text-xs text-[var(--pixel-accent-2)]">Both submitted!</span>
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Answer boxes (shown after both submit) */}
+                            <AnimatePresence>
+                              {questionResult && (
+                                <motion.div
+                                  key="answer-boxes"
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="w-full flex gap-3 mt-2"
+                                >
+                                  <AnswerBox
+                                    label="You"
+                                    submitted={myP2pAnswer !== null}
+                                    answer={myP2pAnswer}
+                                    result={questionResult}
+                                    isMe={true}
+                                  />
+                                  <AnswerBox
+                                    label="Opponent"
+                                    submitted={opponentSubmitted}
+                                    answer={null}
+                                    result={questionResult}
+                                    isMe={false}
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Waiting status when no result yet */}
+                            {!questionResult && (
+                              <div className="w-full flex gap-3">
+                                <div className="flex-1 flex flex-col items-center gap-1">
+                                  <span className="font-mono text-[10px] text-[var(--pixel-muted)] uppercase tracking-wider">You</span>
+                                  <div className={`w-full rounded-xl border-2 px-4 py-3 text-center font-mono text-2xl font-bold ${
+                                    myP2pAnswer !== null
+                                      ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 text-[var(--pixel-accent)]"
+                                      : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)]"
+                                  }`}>
+                                    {myP2pAnswer !== null ? "★" : "—"}
+                                  </div>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center gap-1">
+                                  <span className="font-mono text-[10px] text-[var(--pixel-muted)] uppercase tracking-wider">Opponent</span>
+                                  <div className={`w-full rounded-xl border-2 px-4 py-3 text-center font-mono text-2xl font-bold ${
+                                    opponentSubmitted
+                                      ? "border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/10 text-[var(--pixel-muted)]"
+                                      : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)]"
+                                  }`}>
+                                    {opponentSubmitted ? "★" : "—"}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {gamePhase === "reveal" && revealPuzzle && gameMode === "solo" && (
                           <motion.div
                             key={`reveal-${currentIndex}`}
                             initial={{ opacity: 0 }}
@@ -942,8 +1211,8 @@ export default function FlashCountPage() {
                       QUIT
                     </button>
                   </>
-                ) : (
-                  /* ─── Result Card ─── */
+                ) : soloResult ? (
+                  /* ─── Solo Result Card ─── */
                   <motion.div
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -951,9 +1220,7 @@ export default function FlashCountPage() {
                     className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-xl"
                   >
                     <h2 className="mb-2 text-center font-sans font-semibold text-xl text-[var(--pixel-accent)] md:text-2xl">
-                      {gameMode === "p2p" && opponentFinished
-                        ? result.totalTime <= opponentFinished.totalTime ? "YOU WIN!" : "YOU LOSE"
-                        : "COMPLETE!"}
+                      COMPLETE!
                     </h2>
 
                     {isNewRecord && (
@@ -965,7 +1232,7 @@ export default function FlashCountPage() {
                       >
                         <p className="font-sans font-bold text-sm text-[var(--pixel-accent)] md:text-base">NEW RECORD!</p>
                         <p className="font-mono text-xs text-[var(--pixel-accent)]/80">
-                          {result.speed.toFixed(1)} puzzles/min — your fastest yet!
+                          {soloResult.speed.toFixed(1)} puzzles/min — your fastest yet!
                         </p>
                       </motion.div>
                     )}
@@ -982,15 +1249,15 @@ export default function FlashCountPage() {
                     <div className="space-y-3 font-mono text-sm md:text-base">
                       <div className="flex justify-between rounded-lg bg-[var(--pixel-bg)] px-4 py-3">
                         <span className="text-[var(--pixel-muted)]">Time</span>
-                        <span className="text-[var(--pixel-text)]">{formatTime(result.totalTime)}</span>
+                        <span className="text-[var(--pixel-text)]">{formatTime(soloResult.totalTime)}</span>
                       </div>
                       <div className="flex justify-between rounded-lg bg-[var(--pixel-bg)] px-4 py-3">
                         <span className="text-[var(--pixel-muted)]">Speed</span>
-                        <span className="text-[var(--pixel-accent)]">{result.speed.toFixed(1)} /min</span>
+                        <span className="text-[var(--pixel-accent)]">{soloResult.speed.toFixed(1)} /min</span>
                       </div>
                       <div className="flex justify-between rounded-lg bg-[var(--pixel-bg)] px-4 py-3">
                         <span className="text-[var(--pixel-muted)]">Puzzles</span>
-                        <span className="text-[var(--pixel-text)]">{result.totalQuestions}</span>
+                        <span className="text-[var(--pixel-text)]">{soloResult.totalQuestions}</span>
                       </div>
                       {bestSpeed !== null && !isNewRecord && (
                         <div className="flex justify-between rounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 py-3">
@@ -998,37 +1265,70 @@ export default function FlashCountPage() {
                           <span className="text-[var(--pixel-accent)]">{bestSpeed.toFixed(1)} /min</span>
                         </div>
                       )}
-                      {gameMode === "p2p" && opponentFinished && (
-                        <div className="flex justify-between rounded-lg border border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] px-4 py-3">
-                          <span className="text-[var(--pixel-accent-2)]">Opponent</span>
-                          <span className="text-[var(--pixel-accent-2)]">{formatTime(opponentFinished.totalTime)}</span>
-                        </div>
-                      )}
-                      {gameMode === "p2p" && !opponentFinished && (
-                        <div className="flex items-center justify-between rounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-4 py-3">
-                          <span className="text-[var(--pixel-muted)]">Opponent</span>
-                          <span className="text-[var(--pixel-muted)]">Still playing... ({opponentProgress}/{puzzles.length})</span>
-                        </div>
-                      )}
                     </div>
 
                     <div className="mt-6 flex flex-col gap-2">
-                      {gameMode === "solo" && (
-                        <button onClick={startSolo} className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-3 font-sans font-semibold text-sm text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]">
-                          PLAY AGAIN
-                        </button>
-                      )}
-                      {gameMode === "p2p" && (
-                        <button onClick={handleRematch} className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-3 font-sans font-semibold text-sm text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]">
-                          REMATCH
-                        </button>
-                      )}
+                      <button onClick={startSolo} className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-3 font-sans font-semibold text-sm text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]">
+                        PLAY AGAIN
+                      </button>
                       <button onClick={exitToMenu} className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] transition-colors hover:text-[var(--pixel-accent)]">
                         MENU
                       </button>
                     </div>
                   </motion.div>
-                )}
+                ) : p2pGameResult ? (
+                  /* ─── P2P Result Card ─── */
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-xl"
+                  >
+                    <h2 className="mb-6 text-center font-sans font-semibold text-xl md:text-2xl">
+                      {p2pGameResult.myScore > p2pGameResult.opponentScore ? (
+                        <span className="text-[#22c55e]">YOU WIN!</span>
+                      ) : p2pGameResult.myScore < p2pGameResult.opponentScore ? (
+                        <span className="text-[#ef4444]">YOU LOSE</span>
+                      ) : (
+                        <span className="text-[var(--pixel-accent)]">DRAW!</span>
+                      )}
+                    </h2>
+
+                    {/* Score display */}
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex-1 rounded-xl border-2 border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 p-4 text-center">
+                        <p className="font-mono text-xs text-[var(--pixel-muted)] mb-1">YOU</p>
+                        <p className="font-mono text-4xl font-bold text-[var(--pixel-accent)]">{p2pGameResult.myScore}</p>
+                        <p className="font-mono text-xs text-[var(--pixel-muted)] mt-1">/ {p2pGameResult.totalQuestions}</p>
+                      </div>
+                      <div className="flex-1 rounded-xl border-2 border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/10 p-4 text-center">
+                        <p className="font-mono text-xs text-[var(--pixel-muted)] mb-1">OPPONENT</p>
+                        <p className="font-mono text-4xl font-bold text-[var(--pixel-accent-2)]">{p2pGameResult.opponentScore}</p>
+                        <p className="font-mono text-xs text-[var(--pixel-muted)] mt-1">/ {p2pGameResult.totalQuestions}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 font-mono text-sm mb-6">
+                      <div className="flex justify-between rounded-lg bg-[var(--pixel-bg)] px-4 py-3">
+                        <span className="text-[var(--pixel-muted)]">Questions</span>
+                        <span className="text-[var(--pixel-text)]">{p2pGameResult.totalQuestions}</span>
+                      </div>
+                      <div className="flex justify-between rounded-lg bg-[var(--pixel-bg)] px-4 py-3">
+                        <span className="text-[var(--pixel-muted)]">Time</span>
+                        <span className="text-[var(--pixel-text)]">{formatTime(elapsed)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button onClick={handleRematch} className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-3 font-sans font-semibold text-sm text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]">
+                        REMATCH
+                      </button>
+                      <button onClick={exitToMenu} className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] transition-colors hover:text-[var(--pixel-accent)]">
+                        MENU
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : null}
               </motion.div>
             )}
           </AnimatePresence>
