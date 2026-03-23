@@ -1372,7 +1372,7 @@ export default function MazePage() {
   // Greedy: at each step pick the direction that minimises Manhattan distance to goal.
   // Speed: 20% faster than the player's base move delay (MOVE_UNLOCK_MS * 0.8).
   const aiIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const AI_MOVE_MS = Math.round(MOVE_UNLOCK_MS / 0.8); // ~62ms interval
+  const AI_MOVE_MS = Math.round(MOVE_UNLOCK_MS * 0.8); // 40ms — 20% faster than player
 
   useEffect(() => {
     if (mode !== "single" || isGenerating || gameEndTime) {
