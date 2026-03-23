@@ -95,7 +95,6 @@ export default function MathSprintPage() {
   const [inputValue, setInputValue] = useState("");
   const [shakeKey, setShakeKey] = useState(0);
   const [flashColor, setFlashColor] = useState<"green" | "red" | null>(null);
-  const [questionExiting, setQuestionExiting] = useState(false);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
@@ -115,6 +114,7 @@ export default function MathSprintPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const questionsRef = useRef(questions);
   const currentIndexRef = useRef(currentIndex);
+  const exitingRef = useRef(false);
 
   useEffect(() => { questionsRef.current = questions; }, [questions]);
   useEffect(() => { currentIndexRef.current = currentIndex; }, [currentIndex]);
@@ -320,8 +320,9 @@ export default function MathSprintPage() {
       if (val === "-" && currentQ.answer < 0) return;
 
       if (val === answerStr) {
+        if (exitingRef.current) return;
+        exitingRef.current = true;
         setFlashColor("green");
-        setQuestionExiting(true);
 
         const nextIndex = currentIndex + 1;
 
@@ -330,8 +331,8 @@ export default function MathSprintPage() {
         }
 
         setTimeout(() => {
+          exitingRef.current = false;
           setFlashColor(null);
-          setQuestionExiting(false);
           setCurrentIndex(nextIndex);
           setInputValue("");
 
@@ -763,7 +764,7 @@ export default function MathSprintPage() {
                               inputMode="numeric"
                               value={inputValue}
                               onChange={handleInputChange}
-                              disabled={!isPlaying || questionExiting}
+                              disabled={!isPlaying}
                               className="w-[3.5ch] min-w-[60px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               placeholder="?"
                             />
