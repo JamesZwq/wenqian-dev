@@ -88,6 +88,18 @@ body {
   animation: terminal-glow 2s ease-in-out infinite;
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px); }
+  35%       { transform: translateX(6px); }
+  55%       { transform: translateX(-4px); }
+  75%       { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.35s ease;
+}
+
 html {
   scroll-behavior: smooth;
 }

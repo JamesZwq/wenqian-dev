@@ -93,8 +93,8 @@ export default function MathSprintPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
-  const [shakeKey, setShakeKey] = useState(0);
   const [flashColor, setFlashColor] = useState<"green" | "red" | null>(null);
+  const [shaking, setShaking] = useState(false);
   const [startTime, setStartTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
@@ -348,14 +348,14 @@ export default function MathSprintPage() {
           }
         }, 220);
       } else if (val.length >= answerStr.length && val !== answerStr) {
-        // Wrong — subtle red pulse + shake + clear
-        setShakeKey(k => k + 1);
+        // Wrong — shake + red pulse, clear value, keep focus
+        setShaking(true);
         setFlashColor("red");
+        setInputValue("");
         setTimeout(() => {
           setFlashColor(null);
-          setInputValue("");
-          inputRef.current?.focus();
-        }, 350);
+          setShaking(false);
+        }, 400);
       }
     },
     [currentIndex, questions, gameMode, send, stopTimer, startTime, finishGame, resultOps, resultCount],
@@ -752,12 +752,8 @@ export default function MathSprintPage() {
                             </AnimatePresence>
                           </div>
 
-                          {/* Input — stable, no key prop, no remount */}
-                          <motion.div
-                            key={shakeKey}
-                            animate={shakeKey > 0 && flashColor === "red" ? { x: [-6, 6, -3, 3, 0] } : {}}
-                            transition={{ duration: 0.25 }}
-                          >
+                          {/* Input — stable, never remounts */}
+                          <div className={shaking ? "animate-shake" : ""}>
                             <input
                               ref={inputRef}
                               type="number"
@@ -768,7 +764,7 @@ export default function MathSprintPage() {
                               className="w-[3.5ch] min-w-[60px] md:min-w-[80px] border-b-2 border-[var(--pixel-accent)] bg-transparent font-mono text-3xl md:text-5xl font-bold text-[var(--pixel-accent)] text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               placeholder="?"
                             />
-                          </motion.div>
+                          </div>
                         </div>
                       )}
                     </div>
