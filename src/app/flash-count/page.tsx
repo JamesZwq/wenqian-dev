@@ -546,7 +546,7 @@ export default function FlashCountPage() {
         }, 350);
       }
     },
-    [gamePhase, currentIndex, puzzles, gameMode, send, stopTimer, startTime, finishGame, resultDiff, resultCount, startFlash],
+    [gamePhase, currentIndex, puzzles, gameMode, send],
   );
 
   // ─── Reveal complete → advance to next question ───
@@ -660,7 +660,7 @@ export default function FlashCountPage() {
       >
         <Link
           href="/"
-          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs"
         >
           ← BACK
         </Link>

@@ -218,7 +218,7 @@ export default function ChatPage() {
       >
         <Link
           href="/"
-          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs"
         >
           ← BACK
         </Link>
@@ -269,7 +269,7 @@ export default function ChatPage() {
                     <div className="h-3 w-3 bg-[var(--pixel-warn)]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
+                    <p className="font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
                       CONNECTED TO {remotePeerId ?? "UNKNOWN"}
                     </p>
                     <p className="mt-1 truncate font-mono text-xs text-[var(--pixel-muted)]">
@@ -280,7 +280,7 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2">
                   <span
-                    className={`border px-2 py-1 font-sans font-semibold text-[8px] tracking-tight md:text-[9px] ${
+                    className={`border px-2 py-1 font-sans font-semibold text-[9px] tracking-tight md:text-[10px] ${
                       encryptionReady
                         ? "border-[var(--pixel-accent)] text-[var(--pixel-accent)]"
                         : "border-[var(--pixel-warn)] text-[var(--pixel-warn)]"
@@ -293,7 +293,7 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={disconnect}
-                  className="rounded-xl border border-[var(--pixel-warn)] px-3 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
+                  className="rounded-xl border border-[var(--pixel-warn)] px-3 py-2 font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-warn)] transition-colors hover:bg-[var(--pixel-warn)] hover:text-[var(--pixel-bg)]"
                 >
                   DISCONNECT
                 </button>
@@ -302,7 +302,7 @@ export default function ChatPage() {
               <div className="h-[48vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)] px-4 py-5 [scrollbar-color:var(--pixel-accent)_var(--pixel-bg)] [scrollbar-width:thin] md:h-[520px] md:px-6 md:py-6">
                 {messages.length === 0 && (
                   <div className="rounded-none border border-dashed border-[var(--pixel-border)] p-6 text-center">
-                    <p className="font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
+                    <p className="font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-accent)] md:text-[10px]">
                       CHANNEL READY
                     </p>
                     <p className="mt-2 font-mono text-sm text-[var(--pixel-muted)]">
@@ -321,10 +321,10 @@ export default function ChatPage() {
                       className={`mb-4 flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[82%] rounded-xl border px-4 py-3 ${
+                        className={`max-w-[82%] border px-4 py-3 ${
                           message.sender === "me"
-                            ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
-                            : "border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] text-[var(--pixel-accent-2)]"
+                            ? "rounded-xl rounded-tr-sm border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)]"
+                            : "rounded-xl rounded-tl-sm border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] text-[var(--pixel-accent-2)]"
                         }`}
                       >
                         <p className="font-mono text-sm leading-6 md:text-base">
@@ -359,7 +359,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     onClick={handleSendMessage}
-                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-bg)] transition-transform hover:scale-[1.03] md:px-5 md:text-[10px]"
+                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-bg)] transition-transform hover:scale-[1.03] md:px-5 md:text-[10px]"
                   >
                     SEND
                   </button>

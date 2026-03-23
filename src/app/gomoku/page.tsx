@@ -566,7 +566,7 @@ export default function GomokuPage() {
       >
         <Link
           href="/"
-          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs"
         >
           ← BACK
         </Link>
@@ -703,12 +703,12 @@ export default function GomokuPage() {
                         PLAYERS
                       </h3>
                       <div className="space-y-2">
-                        <div className={`flex items-center gap-2 p-2 border ${
+                        <div className={`flex items-center gap-2 rounded-lg p-2 border ${
                           (gameMode === "ai" || myColor === "black")
                             ? "border-[var(--pixel-accent)]"
                             : "border-[var(--pixel-border)]"
                         }`}>
-                          <div className="w-5 h-5 bg-black border border-[var(--pixel-border)]" />
+                          <div className="w-5 h-5 rounded-full bg-black border border-[var(--pixel-border)]" />
                           <span className="font-mono text-sm">
                             {gameMode === "ai" ? "You (Black)" : myColor === "black" ? `${myPlayerId} (You)` : "P1"}
                           </span>
@@ -716,12 +716,12 @@ export default function GomokuPage() {
                             <span className="ml-auto text-[var(--pixel-accent)]">●</span>
                           )}
                         </div>
-                        <div className={`flex items-center gap-2 p-2 border ${
+                        <div className={`flex items-center gap-2 rounded-lg p-2 border ${
                           (gameMode === "ai" ? false : myColor === "white")
                             ? "border-[var(--pixel-accent)]"
                             : "border-[var(--pixel-border)]"
                         }`}>
-                          <div className="w-5 h-5 bg-white border border-[var(--pixel-border)]" />
+                          <div className="w-5 h-5 rounded-full bg-white border border-[var(--pixel-border)]" />
                           <span className="font-mono text-sm">
                             {gameMode === "ai" ? `AI (${aiDifficulty})` : myColor === "white" ? `${myPlayerId} (You)` : "P2"}
                           </span>

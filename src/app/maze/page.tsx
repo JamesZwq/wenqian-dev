@@ -1634,7 +1634,7 @@ export default function MazePage() {
       >
         <Link
           href="/"
-          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-[10px]"
+          className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs"
         >
           ← BACK
         </Link>
@@ -1865,7 +1865,8 @@ export default function MazePage() {
                             y={0}
                             width={displayCols * cellSize}
                             height={displayRows * cellSize}
-                            fill="rgba(255, 255, 255, 0.92)"
+                            fill="var(--pixel-bg)"
+                            opacity={0.92}
                           />
 
                           {displayMaze.map((row, r) =>
@@ -1892,7 +1893,8 @@ export default function MazePage() {
                                     y={r * cellSize + 2}
                                     width={cellSize - 4}
                                     height={cellSize - 4}
-                                    fill="rgba(255,255,255,0.96)"
+                                    fill="var(--pixel-bg)"
+                                    opacity={0.96}
                                     initial={{ opacity: 0, scale: 0.65 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{
@@ -1970,7 +1972,8 @@ export default function MazePage() {
                                 }
                                 width={displayCols * cellSize}
                                 height={40}
-                                fill="rgba(255,255,255,0.32)"
+                                fill="var(--pixel-bg)"
+                                opacity={0.32}
                                 initial={false}
                                 animate={{
                                   y:
@@ -2122,7 +2125,8 @@ export default function MazePage() {
                               y={r * cellSize}
                               width={cellSize}
                               height={cellSize}
-                              fill="rgba(40,40,60,0.85)"
+                              fill="var(--pixel-bg)"
+                              opacity={0.85}
                             />
                           );
                         })

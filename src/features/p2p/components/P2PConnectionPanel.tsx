@@ -145,7 +145,7 @@ export default function P2PConnectionPanel({
                   type="button"
                   onClick={handleShareLink}
                   disabled={!localPeerId}
-                  className={`min-w-[80px] rounded-xl border px-3 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:text-[10px] ${
+                  className={`h-11 min-w-[80px] rounded-xl border px-3 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:h-12 md:text-[10px] ${
                     localPeerId
                       ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.03]"
                       : "cursor-not-allowed border-[var(--pixel-border)] bg-[var(--pixel-border)] text-[var(--pixel-bg)] opacity-60"
