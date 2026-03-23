@@ -49,6 +49,14 @@ type MazePacket =
       type: "maze_sync";
       maze: Maze;
       settings: GameSettings;
+      goalPos: Position;
+      timestamp: number;
+    }
+  | {
+      type: "bomb";
+      row: number;
+      col: number;
+      direction: Direction;
       timestamp: number;
     }
   | {
@@ -409,8 +417,8 @@ export default function MazePage() {
   }, []);
 
   const finalizeBuiltMaze = useCallback(
-    (nextMaze: Maze, withPlayer2: boolean) => {
-      const goal = generateGoal(nextMaze, settingsRef.current.difficulty);
+    (nextMaze: Maze, withPlayer2: boolean, precomputedGoal?: Position) => {
+      const goal = precomputedGoal ?? generateGoal(nextMaze, settingsRef.current.difficulty);
       setMaze(nextMaze);
       mazeRef.current = nextMaze;
       setGoalPos(goal);
@@ -442,7 +450,7 @@ export default function MazePage() {
   );
 
   const runBuildAnimation = useCallback(
-    (nextMaze: Maze, nextMode: GameMode, withPlayer2: boolean) => {
+    (nextMaze: Maze, nextMode: GameMode, withPlayer2: boolean, precomputedGoal?: Position) => {
       clearBuildTimers();
       clearItemTimers();
       resetRuntimeState(nextMode, withPlayer2);
@@ -489,7 +497,7 @@ export default function MazePage() {
             clearInterval(generationIntervalRef.current);
             generationIntervalRef.current = undefined;
           }
-          finalizeBuiltMaze(nextMaze, withPlayer2);
+          finalizeBuiltMaze(nextMaze, withPlayer2, precomputedGoal);
         }
       }, 16);
 
@@ -699,6 +707,17 @@ export default function MazePage() {
       setMaze(newMaze);
       mazeRef.current = newMaze;
       setBombMode(null);
+
+      // Sync bomb to remote peer
+      if (modeRef.current === "remote") {
+        sendRef.current?.({
+          type: "bomb",
+          row: pos.row,
+          col: pos.col,
+          direction,
+          timestamp: Date.now(),
+        });
+      }
     },
     []
   );
@@ -715,7 +734,34 @@ export default function MazePage() {
           setSettings(payload.settings);
           settingsRef.current = payload.settings;
         }
-        runBuildAnimation(payload.maze, "remote", true);
+        runBuildAnimation(payload.maze, "remote", true, payload.goalPos);
+        return;
+      }
+
+      if (payload.type === "bomb") {
+        const currentMaze = mazeRef.current;
+        if (!currentMaze) return;
+        const { row, col, direction } = payload;
+        const wallMap: Record<Direction, "top" | "bottom" | "left" | "right"> = {
+          up: "top", down: "bottom", left: "left", right: "right",
+        };
+        const oppositeWall: Record<Direction, "top" | "bottom" | "left" | "right"> = {
+          up: "bottom", down: "top", left: "right", right: "left",
+        };
+        const dr: Record<Direction, number> = { up: -1, down: 1, left: 0, right: 0 };
+        const dc: Record<Direction, number> = { up: 0, down: 0, left: -1, right: 1 };
+        const nr = row + dr[direction];
+        const nc = col + dc[direction];
+        const rows = currentMaze.length;
+        const cols = currentMaze[0].length;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return;
+        const newMaze = currentMaze.map((r) =>
+          r.map((c) => ({ ...c, walls: { ...c.walls } }))
+        );
+        newMaze[row][col].walls[wallMap[direction]] = false;
+        newMaze[nr][nc].walls[oppositeWall[direction]] = false;
+        setMaze(newMaze);
+        mazeRef.current = newMaze;
         return;
       }
 
@@ -827,11 +873,13 @@ export default function MazePage() {
       if (direction === "outgoing") {
         const s = settingsRef.current;
         const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
-        runBuildAnimation(nextMaze, "remote", true);
+        const goal = generateGoal(nextMaze, s.difficulty);
+        runBuildAnimation(nextMaze, "remote", true, goal);
         send({
           type: "maze_sync",
           maze: nextMaze,
           settings: s,
+          goalPos: goal,
           timestamp: Date.now(),
         });
       }
@@ -1439,11 +1487,13 @@ export default function MazePage() {
     if (!isConnected || myRemotePlayerIdRef.current !== 1) return;
     const s = settingsRef.current;
     const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
-    runBuildAnimation(nextMaze, "remote", true);
+    const goal = generateGoal(nextMaze, s.difficulty);
+    runBuildAnimation(nextMaze, "remote", true, goal);
     send({
       type: "maze_sync",
       maze: nextMaze,
       settings: s,
+      goalPos: goal,
       timestamp: Date.now(),
     });
   }, [isConnected, runBuildAnimation, send]);
@@ -1634,11 +1684,13 @@ export default function MazePage() {
             const s = settingsRef.current;
             const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
             if (m === "remote") {
-              runBuildAnimation(nextMaze, "remote", true);
+              const goal = generateGoal(nextMaze, s.difficulty);
+              runBuildAnimation(nextMaze, "remote", true, goal);
               sendRef.current?.({
                 type: "maze_sync",
                 maze: nextMaze,
                 settings: s,
+                goalPos: goal,
                 timestamp: Date.now(),
               });
             } else {
