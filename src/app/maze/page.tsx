@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { generateMaze, canMove, type Maze } from "./mazeGenerator";
+import { generateMaze, generateGoal, canMove, type Maze } from "./mazeGenerator";
 import { usePeerConnection } from "../../features/p2p/hooks/usePeerConnection";
 import { useJoinParam } from "../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
@@ -134,6 +134,7 @@ export default function MazePage() {
   const [mode, setMode] = useState<GameMode>("menu");
   const [player1Pos, setPlayer1Pos] = useState<Position>({ row: 0, col: 0 });
   const [player2Pos, setPlayer2Pos] = useState<Position | null>(null);
+  const [goalPos, setGoalPos] = useState<Position>({ row: 0, col: 0 });
   const [trail, setTrail] = useState<Trail[]>([]);
   const [winner, setWinner] = useState<number | null>(null);
   const [gameStartTime, setGameStartTime] = useState<number | null>(null);
@@ -186,6 +187,7 @@ export default function MazePage() {
   const modeRef = useRef<GameMode>("menu");
   const player1PosRef = useRef<Position>({ row: 0, col: 0 });
   const player2PosRef = useRef<Position | null>(null);
+  const goalPosRef = useRef<Position>({ row: 0, col: 0 });
   const gameEndTimeRef = useRef<number | null>(null);
   const myRemotePlayerIdRef = useRef<1 | 2 | null>(null);
   const sendRef = useRef<((payload: MazePacket) => void) | null>(null);
@@ -408,8 +410,11 @@ export default function MazePage() {
 
   const finalizeBuiltMaze = useCallback(
     (nextMaze: Maze, withPlayer2: boolean) => {
+      const goal = generateGoal(nextMaze, settingsRef.current.difficulty);
       setMaze(nextMaze);
       mazeRef.current = nextMaze;
+      setGoalPos(goal);
+      goalPosRef.current = goal;
       setPlayer1Pos({ row: 0, col: 0 });
       setPlayer2Pos(withPlayer2 ? { row: 0, col: 0 } : null);
       player1PosRef.current = { row: 0, col: 0 };
@@ -549,14 +554,12 @@ export default function MazePage() {
               ? player1PosRef.current
               : player2PosRef.current;
           if (currentMaze && pos) {
-            const rows = currentMaze.length;
-            const cols = currentMaze[0].length;
             const path = bfsShortestPath(
               currentMaze,
               pos.row,
               pos.col,
-              rows - 1,
-              cols - 1
+              goalPosRef.current.row,
+              goalPosRef.current.col
             );
             setXrayPath(path);
           }
@@ -1076,7 +1079,7 @@ export default function MazePage() {
     const rows = currentMaze.length;
     const cols = currentMaze[0].length;
 
-    if (newRow === rows - 1 && newCol === cols - 1) {
+    if (newRow === goalPosRef.current.row && newCol === goalPosRef.current.col) {
       const finishedAt = Date.now();
       const finalElapsed = gameStartTime
         ? finishedAt - gameStartTime
@@ -1362,8 +1365,68 @@ export default function MazePage() {
     const s = settingsRef.current;
     const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
     setMyRemotePlayerId(null);
-    runBuildAnimation(nextMaze, "single", false);
+    runBuildAnimation(nextMaze, "single", true); // withPlayer2=true for AI
   }, [runBuildAnimation]);
+
+  // AI greedy loop — runs for player 2 in single mode
+  // Greedy: at each step pick the direction that minimises Manhattan distance to goal.
+  // Speed: 20% faster than the player's base move delay (MOVE_UNLOCK_MS * 0.8).
+  const aiIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const AI_MOVE_MS = Math.round(MOVE_UNLOCK_MS / 0.8); // ~62ms interval
+
+  useEffect(() => {
+    if (mode !== "single" || isGenerating || gameEndTime) {
+      if (aiIntervalRef.current) {
+        clearInterval(aiIntervalRef.current);
+        aiIntervalRef.current = undefined;
+      }
+      return;
+    }
+
+    aiIntervalRef.current = setInterval(() => {
+      const currentMaze = mazeRef.current;
+      const pos = player2PosRef.current;
+      const goal = goalPosRef.current;
+      if (!currentMaze || !pos || gameEndTimeRef.current) return;
+
+      const DIRS: [Direction, number, number][] = [
+        ["up",    -1,  0],
+        ["down",   1,  0],
+        ["left",   0, -1],
+        ["right",  0,  1],
+      ];
+
+      // Greedy: pick the walkable direction that minimises Manhattan distance to goal
+      let bestDir: Direction | null = null;
+      let bestDist = Infinity;
+      for (const [dir, dr, dc] of DIRS) {
+        if (!canMove(currentMaze, pos.row, pos.col, dir)) continue;
+        const nr = pos.row + dr;
+        const nc = pos.col + dc;
+        const dist = Math.abs(nr - goal.row) + Math.abs(nc - goal.col);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestDir = dir;
+        }
+      }
+
+      if (bestDir) {
+        // Push directly to the queue as a "local" move for player 2
+        const queue = inputQueueRef.current;
+        if (queue.length < INPUT_QUEUE_LIMIT) {
+          queue.push({ playerId: 2, direction: bestDir, source: "local" });
+          processNextMoveRef.current();
+        }
+      }
+    }, AI_MOVE_MS);
+
+    return () => {
+      if (aiIntervalRef.current) {
+        clearInterval(aiIntervalRef.current);
+        aiIntervalRef.current = undefined;
+      }
+    };
+  }, [mode, isGenerating, gameEndTime]);
 
   const startLocalGame = useCallback(() => {
     const s = settingsRef.current;
@@ -1952,8 +2015,8 @@ export default function MazePage() {
                     />
                     {/* End cell */}
                     <rect
-                      x={(displayCols - 1) * cellSize + 2}
-                      y={(displayRows - 1) * cellSize + 2}
+                      x={goalPos.col * cellSize + 2}
+                      y={goalPos.row * cellSize + 2}
                       width={cellSize - 4}
                       height={cellSize - 4}
                       fill="var(--pixel-warn)"
