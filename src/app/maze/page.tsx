@@ -1033,45 +1033,38 @@ export default function MazePage() {
       });
     }
 
-    // Check for item pickup
+    // Check for item pickup — auto-use immediately on mobile
     if (settingsRef.current.itemsEnabled) {
       const pickedItem = fieldItemsRef.current.find(
         (item) => item.row === newRow && item.col === newCol
       );
       if (pickedItem) {
-        const inv =
-          nextMove.playerId === 1
-            ? p1InventoryRef.current
-            : p2InventoryRef.current;
-        const emptySlot = inv.findIndex((s) => s === null);
-        if (emptySlot !== -1) {
-          // Add to inventory
-          const setInv =
-            nextMove.playerId === 1 ? setP1Inventory : setP2Inventory;
-          setInv((prev) => {
-            const next = [...prev];
-            next[emptySlot] = { type: pickedItem.type };
-            return next;
+        // Remove from field
+        setFieldItems((prev) =>
+          prev.filter((i) => i.id !== pickedItem.id)
+        );
+
+        // Apply effect immediately (no inventory step)
+        applyItemEffect(nextMove.playerId, pickedItem.type);
+
+        // Sync pickup + use
+        if (
+          modeRef.current === "remote" &&
+          nextMove.source === "local" &&
+          sendRef.current
+        ) {
+          sendRef.current({
+            type: "item_pickup",
+            itemId: pickedItem.id,
+            playerId: nextMove.playerId,
+            timestamp: Date.now(),
           });
-
-          // Remove from field
-          setFieldItems((prev) =>
-            prev.filter((i) => i.id !== pickedItem.id)
-          );
-
-          // Sync pickup
-          if (
-            modeRef.current === "remote" &&
-            nextMove.source === "local" &&
-            sendRef.current
-          ) {
-            sendRef.current({
-              type: "item_pickup",
-              itemId: pickedItem.id,
-              playerId: nextMove.playerId,
-              timestamp: Date.now(),
-            });
-          }
+          sendRef.current({
+            type: "item_use",
+            playerId: nextMove.playerId,
+            itemType: pickedItem.type,
+            timestamp: Date.now(),
+          });
         }
       }
     }
@@ -1197,6 +1190,19 @@ export default function MazePage() {
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+
+    // Double-tap detection for D-pad toggle
+    if (modeRef.current === "menu") return;
+    const now = Date.now();
+    const last = lastTapRef.current;
+    const dt = now - last.time;
+    const dist = Math.hypot(touch.clientX - last.x, touch.clientY - last.y);
+    lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+    if (dt < 350 && dist < 60) {
+      e.preventDefault();
+      setDpadVisible((v) => !v);
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+    }
   }, []);
 
   const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
@@ -1228,23 +1234,6 @@ export default function MazePage() {
     useItem(1);
   }, [mode, useItem]);
 
-  // D-pad: double-tap anywhere to toggle visibility
-  const handleDpadDoubleTap = useCallback((e: React.TouchEvent) => {
-    if (modeRef.current === "menu") return;
-    const touch = e.touches[0];
-    const now = Date.now();
-    const last = lastTapRef.current;
-    const dt = now - last.time;
-    const dist = Math.hypot(touch.clientX - last.x, touch.clientY - last.y);
-
-    lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
-
-    if (dt < 350 && dist < 60) {
-      e.preventDefault();
-      setDpadVisible((v) => !v);
-      lastTapRef.current = { time: 0, x: 0, y: 0 };
-    }
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2217,16 +2206,9 @@ export default function MazePage() {
         />
       )}
 
-      {/* Mobile D-pad — double-tap to toggle, fixed at bottom center */}
+      {/* Mobile D-pad — double-tap maze to toggle, fixed at bottom center */}
       {mode !== "menu" && (mode !== "remote" || isConnected) && displayMaze && (
-        <>
-          {/* Full-screen double-tap detector (no visual, pointer-events pass through to maze) */}
-          <div
-            className="fixed inset-0 z-40 md:hidden"
-            style={{ touchAction: "pan-x pan-y" }}
-            onTouchStart={handleDpadDoubleTap}
-          />
-          <AnimatePresence>
+        <AnimatePresence>
             {dpadVisible && (
               <motion.div
                 key="dpad"
@@ -2282,7 +2264,6 @@ export default function MazePage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </>
       )}
     </div>
   );
