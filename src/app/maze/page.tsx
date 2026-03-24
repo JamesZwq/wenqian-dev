@@ -178,6 +178,16 @@ export default function MazePage() {
   const [dpadVisible, setDpadVisible] = useState(false);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
 
+  // Touch detection — true after any touch event, items auto-use on mobile
+  const isTouchRef = useRef(false);
+
+  // AI DFS state (for local vs-AI mode)
+  const isAiGameRef = useRef(false);
+  const aiVisitedRef = useRef<Set<string>>(new Set());
+  const aiPathRef = useRef<Position[]>([]);
+  // true while AI is backtracking (so we don't re-push the cell we just came from)
+  const aiBacktrackingRef = useRef(false);
+
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -374,6 +384,9 @@ export default function MazePage() {
       player1PosRef.current = { row: 0, col: 0 };
       player2PosRef.current = withPlayer2 ? { row: 0, col: 0 } : null;
       gameEndTimeRef.current = null;
+      aiVisitedRef.current = new Set();
+      aiPathRef.current = [];
+      aiBacktrackingRef.current = false;
       resetItemState();
     },
     [resetItemState]
@@ -1084,7 +1097,7 @@ export default function MazePage() {
       });
     }
 
-    // Check for item pickup — auto-use immediately on mobile
+    // Check for item pickup
     if (settingsRef.current.itemsEnabled) {
       const pickedItem = fieldItemsRef.current.find(
         (item) => item.row === newRow && item.col === newCol
@@ -1095,27 +1108,53 @@ export default function MazePage() {
           prev.filter((i) => i.id !== pickedItem.id)
         );
 
-        // Apply effect immediately (no inventory step)
-        applyItemEffect(nextMove.playerId, pickedItem.type);
+        if (isTouchRef.current) {
+          // Mobile: auto-use immediately
+          applyItemEffect(nextMove.playerId, pickedItem.type);
 
-        // Sync pickup + use
-        if (
-          modeRef.current === "remote" &&
-          nextMove.source === "local" &&
-          sendRef.current
-        ) {
-          sendRef.current({
-            type: "item_pickup",
-            itemId: pickedItem.id,
-            playerId: nextMove.playerId,
-            timestamp: Date.now(),
+          // Sync pickup + use
+          if (
+            modeRef.current === "remote" &&
+            nextMove.source === "local" &&
+            sendRef.current
+          ) {
+            sendRef.current({
+              type: "item_pickup",
+              itemId: pickedItem.id,
+              playerId: nextMove.playerId,
+              timestamp: Date.now(),
+            });
+            sendRef.current({
+              type: "item_use",
+              playerId: nextMove.playerId,
+              itemType: pickedItem.type,
+              timestamp: Date.now(),
+            });
+          }
+        } else {
+          // Desktop: add to inventory, use with Q key
+          const setInv = nextMove.playerId === 1 ? setP1Inventory : setP2Inventory;
+          setInv((prev) => {
+            const idx = prev.findIndex((s) => s === null);
+            if (idx === -1) return prev; // inventory full
+            const next = [...prev];
+            next[idx] = { type: pickedItem.type };
+            return next;
           });
-          sendRef.current({
-            type: "item_use",
-            playerId: nextMove.playerId,
-            itemType: pickedItem.type,
-            timestamp: Date.now(),
-          });
+
+          // Sync pickup only
+          if (
+            modeRef.current === "remote" &&
+            nextMove.source === "local" &&
+            sendRef.current
+          ) {
+            sendRef.current({
+              type: "item_pickup",
+              itemId: pickedItem.id,
+              playerId: nextMove.playerId,
+              timestamp: Date.now(),
+            });
+          }
         }
       }
     }
@@ -1196,6 +1235,11 @@ export default function MazePage() {
         return;
       }
 
+      // In local mode, block player 2 keyboard input when it's an AI game
+      if (modeRef.current === "local" && isAiGameRef.current && playerId === 2) {
+        return;
+      }
+
       if (modeRef.current === "remote") {
         if (!isConnected || myRemotePlayerIdRef.current !== playerId) {
           return;
@@ -1239,6 +1283,7 @@ export default function MazePage() {
   );
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    isTouchRef.current = true;
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
 
@@ -1413,17 +1458,25 @@ export default function MazePage() {
     const s = settingsRef.current;
     const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
     setMyRemotePlayerId(null);
-    runBuildAnimation(nextMaze, "single", true); // withPlayer2=true for AI
+    isAiGameRef.current = false;
+    runBuildAnimation(nextMaze, "single", false); // true solo — no player 2
   }, [runBuildAnimation]);
 
-  // AI greedy loop — runs for player 2 in single mode
-  // Greedy: at each step pick the direction that minimises Manhattan distance to goal.
-  // Speed: 20% faster than the player's base move delay (MOVE_UNLOCK_MS * 0.8).
+  const startAiGame = useCallback(() => {
+    const s = settingsRef.current;
+    const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
+    setMyRemotePlayerId(null);
+    isAiGameRef.current = true;
+    runBuildAnimation(nextMaze, "local", true); // local mode with AI as player 2
+  }, [runBuildAnimation]);
+
+  // AI DFS loop — runs for player 2 in local mode when isAiGameRef is true
+  // DFS with backtracking: explores like a real player, avoids revisiting cells.
   const aiIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const AI_MOVE_MS = Math.round(MOVE_UNLOCK_MS * 0.8); // 40ms — 20% faster than player
 
   useEffect(() => {
-    if (mode !== "single" || isGenerating || gameEndTime) {
+    if (mode !== "local" || !isAiGameRef.current || isGenerating || gameEndTime) {
       if (aiIntervalRef.current) {
         clearInterval(aiIntervalRef.current);
         aiIntervalRef.current = undefined;
@@ -1437,6 +1490,25 @@ export default function MazePage() {
       const goal = goalPosRef.current;
       if (!currentMaze || !pos || gameEndTimeRef.current) return;
 
+      const posKey = `${pos.row},${pos.col}`;
+      const visited = aiVisitedRef.current;
+      const path = aiPathRef.current;
+
+      // When we arrive at a cell (forward move), mark visited and push to path
+      if (!visited.has(posKey)) {
+        visited.add(posKey);
+        path.push({ row: pos.row, col: pos.col });
+        aiBacktrackingRef.current = false;
+      } else if (aiBacktrackingRef.current) {
+        // We just backtracked into this cell — pop the cell we came from
+        if (path.length > 0 && path[path.length - 1].row === pos.row && path[path.length - 1].col === pos.col) {
+          // already here, nothing to pop
+        } else {
+          path.pop();
+        }
+        aiBacktrackingRef.current = false;
+      }
+
       const DIRS: [Direction, number, number][] = [
         ["up",    -1,  0],
         ["down",   1,  0],
@@ -1444,25 +1516,41 @@ export default function MazePage() {
         ["right",  0,  1],
       ];
 
-      // Greedy: pick the walkable direction that minimises Manhattan distance to goal
-      let bestDir: Direction | null = null;
-      let bestDist = Infinity;
+      // Find unvisited walkable neighbors, prefer directions closer to goal
+      const candidates: { dir: Direction; dist: number }[] = [];
       for (const [dir, dr, dc] of DIRS) {
         if (!canMove(currentMaze, pos.row, pos.col, dir)) continue;
         const nr = pos.row + dr;
         const nc = pos.col + dc;
+        if (visited.has(`${nr},${nc}`)) continue;
         const dist = Math.abs(nr - goal.row) + Math.abs(nc - goal.col);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestDir = dir;
-        }
+        candidates.push({ dir, dist });
       }
 
-      if (bestDir) {
-        // Push directly to the queue as a "local" move for player 2
+      let chosenDir: Direction | null = null;
+
+      if (candidates.length > 0) {
+        // Forward: pick unvisited neighbor biased toward goal
+        candidates.sort((a, b) => a.dist - b.dist);
+        chosenDir = candidates[0].dir;
+      } else if (path.length >= 2) {
+        // Backtrack: move toward the previous cell in the path
+        const prev = path[path.length - 2];
+        const dr = prev.row - pos.row;
+        const dc = prev.col - pos.col;
+        if (dr === -1) chosenDir = "up";
+        else if (dr === 1) chosenDir = "down";
+        else if (dc === -1) chosenDir = "left";
+        else if (dc === 1) chosenDir = "right";
+        aiBacktrackingRef.current = true;
+        // Remove current dead-end cell from path now
+        path.pop();
+      }
+
+      if (chosenDir) {
         const queue = inputQueueRef.current;
         if (queue.length < INPUT_QUEUE_LIMIT) {
-          queue.push({ playerId: 2, direction: bestDir, source: "local" });
+          queue.push({ playerId: 2, direction: chosenDir, source: "local" });
           processNextMoveRef.current();
         }
       }
@@ -1480,6 +1568,7 @@ export default function MazePage() {
     const s = settingsRef.current;
     const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
     setMyRemotePlayerId(null);
+    isAiGameRef.current = false;
     runBuildAnimation(nextMaze, "local", true);
   }, [runBuildAnimation]);
 
@@ -1731,6 +1820,12 @@ export default function MazePage() {
                 SINGLE PLAYER
               </button>
               <button
+                onClick={startAiGame}
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+              >
+                VS AI
+              </button>
+              <button
                 onClick={startLocalGame}
                 className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
@@ -1812,7 +1907,7 @@ export default function MazePage() {
                   <button
                     onClick={() => {
                       if (mode === "single") startSingleGame();
-                      else if (mode === "local") startLocalGame();
+                      else if (mode === "local") isAiGameRef.current ? startAiGame() : startLocalGame();
                       else if (mode === "remote") startRemoteRound();
                     }}
                     disabled={mode === "remote" && myRemotePlayerId !== 1}
