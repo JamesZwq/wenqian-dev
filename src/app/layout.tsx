@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/ThemeProvider";
 import ClientLayout from "./components/ClientLayout";
+import AnimatedFavicon from "./components/AnimatedFavicon";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -52,6 +53,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-[var(--pixel-bg)] text-[var(--pixel-text)]`}
       >
         <ThemeProvider>
+          <AnimatedFavicon />
           <ClientLayout>{children}</ClientLayout>
         </ThemeProvider>
       </body>

@@ -184,9 +184,8 @@ export default function MazePage() {
   // AI DFS state (for local vs-AI mode)
   const isAiGameRef = useRef(false);
   const aiVisitedRef = useRef<Set<string>>(new Set());
-  const aiPathRef = useRef<Position[]>([]);
-  // true while AI is backtracking (so we don't re-push the cell we just came from)
-  const aiBacktrackingRef = useRef(false);
+  const aiStackRef = useRef<Position[]>([]); // explicit DFS stack
+  const aiStepRef = useRef<(() => void) | null>(null);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -385,8 +384,7 @@ export default function MazePage() {
       player2PosRef.current = withPlayer2 ? { row: 0, col: 0 } : null;
       gameEndTimeRef.current = null;
       aiVisitedRef.current = new Set();
-      aiPathRef.current = [];
-      aiBacktrackingRef.current = false;
+      aiStackRef.current = [];
       resetItemState();
     },
     [resetItemState]
@@ -1200,6 +1198,10 @@ export default function MazePage() {
     moveUnlockTimeoutRef.current = setTimeout(() => {
       isMovingRef.current = false;
       processNextMoveRef.current();
+      // After player 2 move completes, trigger next AI step
+      if (nextMove.playerId === 2) {
+        aiStepRef.current?.();
+      }
     }, moveDelay);
   }, [
     elapsedTime,
@@ -1470,99 +1472,96 @@ export default function MazePage() {
     runBuildAnimation(nextMaze, "local", true); // local mode with AI as player 2
   }, [runBuildAnimation]);
 
-  // AI DFS loop — runs for player 2 in local mode when isAiGameRef is true
-  // DFS with backtracking: explores like a real player, avoids revisiting cells.
-  const aiIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const AI_MOVE_MS = Math.round(MOVE_UNLOCK_MS * 0.8); // 40ms — 20% faster than player
+  // AI DFS — event-driven: aiStep() is called once after each move completes.
+  // No interval, no timing conflicts with the move lock.
+  const AI_MOVE_DELAY_MS = Math.round(MOVE_UNLOCK_MS * 0.8); // 40ms between moves
 
-  useEffect(() => {
-    if (mode !== "local" || !isAiGameRef.current || isGenerating || gameEndTime) {
-      if (aiIntervalRef.current) {
-        clearInterval(aiIntervalRef.current);
-        aiIntervalRef.current = undefined;
-      }
-      return;
+  const aiStep = useCallback(() => {
+    if (!isAiGameRef.current || gameEndTimeRef.current) return;
+    const currentMaze = mazeRef.current;
+    const pos = player2PosRef.current;
+    const goal = goalPosRef.current;
+    if (!currentMaze || !pos) return;
+
+    const posKey = `${pos.row},${pos.col}`;
+    const visited = aiVisitedRef.current;
+    const stack = aiStackRef.current;
+
+    // Mark current cell visited (idempotent)
+    if (!visited.has(posKey)) {
+      visited.add(posKey);
+      stack.push({ row: pos.row, col: pos.col });
     }
 
-    aiIntervalRef.current = setInterval(() => {
-      const currentMaze = mazeRef.current;
-      const pos = player2PosRef.current;
-      const goal = goalPosRef.current;
-      if (!currentMaze || !pos || gameEndTimeRef.current) return;
+    const DIRS: [Direction, number, number][] = [
+      ["up",    -1,  0],
+      ["down",   1,  0],
+      ["left",   0, -1],
+      ["right",  0,  1],
+    ];
 
-      const posKey = `${pos.row},${pos.col}`;
-      const visited = aiVisitedRef.current;
-      const path = aiPathRef.current;
+    // Find unvisited walkable neighbors, prefer those closer to goal
+    const candidates: { dir: Direction; dist: number }[] = [];
+    for (const [dir, dr, dc] of DIRS) {
+      if (!canMove(currentMaze, pos.row, pos.col, dir)) continue;
+      const nr = pos.row + dr;
+      const nc = pos.col + dc;
+      if (visited.has(`${nr},${nc}`)) continue;
+      const dist = Math.abs(nr - goal.row) + Math.abs(nc - goal.col);
+      candidates.push({ dir, dist });
+    }
 
-      // When we arrive at a cell (forward move), mark visited and push to path
-      if (!visited.has(posKey)) {
-        visited.add(posKey);
-        path.push({ row: pos.row, col: pos.col });
-        aiBacktrackingRef.current = false;
-      } else if (aiBacktrackingRef.current) {
-        // We just backtracked into this cell — pop the cell we came from
-        if (path.length > 0 && path[path.length - 1].row === pos.row && path[path.length - 1].col === pos.col) {
-          // already here, nothing to pop
-        } else {
-          path.pop();
-        }
-        aiBacktrackingRef.current = false;
-      }
+    let chosenDir: Direction | null = null;
 
-      const DIRS: [Direction, number, number][] = [
-        ["up",    -1,  0],
-        ["down",   1,  0],
-        ["left",   0, -1],
-        ["right",  0,  1],
-      ];
-
-      // Find unvisited walkable neighbors, prefer directions closer to goal
-      const candidates: { dir: Direction; dist: number }[] = [];
-      for (const [dir, dr, dc] of DIRS) {
-        if (!canMove(currentMaze, pos.row, pos.col, dir)) continue;
-        const nr = pos.row + dr;
-        const nc = pos.col + dc;
-        if (visited.has(`${nr},${nc}`)) continue;
-        const dist = Math.abs(nr - goal.row) + Math.abs(nc - goal.col);
-        candidates.push({ dir, dist });
-      }
-
-      let chosenDir: Direction | null = null;
-
-      if (candidates.length > 0) {
-        // Forward: pick unvisited neighbor biased toward goal
-        candidates.sort((a, b) => a.dist - b.dist);
-        chosenDir = candidates[0].dir;
-      } else if (path.length >= 2) {
-        // Backtrack: move toward the previous cell in the path
-        const prev = path[path.length - 2];
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => a.dist - b.dist);
+      chosenDir = candidates[0].dir;
+    } else {
+      // Dead end — backtrack: pop current, move toward new top of stack
+      stack.pop();
+      if (stack.length > 0) {
+        const prev = stack[stack.length - 1];
         const dr = prev.row - pos.row;
         const dc = prev.col - pos.col;
         if (dr === -1) chosenDir = "up";
         else if (dr === 1) chosenDir = "down";
         else if (dc === -1) chosenDir = "left";
         else if (dc === 1) chosenDir = "right";
-        aiBacktrackingRef.current = true;
-        // Remove current dead-end cell from path now
-        path.pop();
       }
+    }
 
-      if (chosenDir) {
-        const queue = inputQueueRef.current;
-        if (queue.length < INPUT_QUEUE_LIMIT) {
-          queue.push({ playerId: 2, direction: chosenDir, source: "local" });
-          processNextMoveRef.current();
-        }
-      }
-    }, AI_MOVE_MS);
+    if (chosenDir) {
+      inputQueueRef.current.push({ playerId: 2, direction: chosenDir, source: "local" });
+      processNextMoveRef.current();
+    }
+  }, []);
 
+  const aiStepTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Called after every player-2 move completes (injected into processNextMove below)
+  const scheduleAiStep = useCallback(() => {
+    if (!isAiGameRef.current) return;
+    if (aiStepTimerRef.current) clearTimeout(aiStepTimerRef.current);
+    aiStepTimerRef.current = setTimeout(() => {
+      aiStep();
+    }, AI_MOVE_DELAY_MS);
+  }, [aiStep, AI_MOVE_DELAY_MS]);
+
+  // Keep aiStepRef current so processNextMove can call it without stale closure
+  useEffect(() => { aiStepRef.current = scheduleAiStep; }, [scheduleAiStep]);
+
+  // Kick off AI when game starts (local + AI mode, not generating, no winner)
+  useEffect(() => {
+    if (mode === "local" && isAiGameRef.current && !isGenerating && !gameEndTime) {
+      scheduleAiStep();
+    }
     return () => {
-      if (aiIntervalRef.current) {
-        clearInterval(aiIntervalRef.current);
-        aiIntervalRef.current = undefined;
+      if (aiStepTimerRef.current) {
+        clearTimeout(aiStepTimerRef.current);
+        aiStepTimerRef.current = undefined;
       }
     };
-  }, [mode, isGenerating, gameEndTime]);
+  }, [mode, isGenerating, gameEndTime, scheduleAiStep]);
 
   const startLocalGame = useCallback(() => {
     const s = settingsRef.current;
