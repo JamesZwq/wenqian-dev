@@ -2169,20 +2169,136 @@ export default function MazePage() {
                       opacity="0.3"
                     />
 
-                    {/* X-Ray path */}
-                    {xrayPath.length > 1 &&
-                      xrayPath.map((p, i) => (
-                        <rect
-                          key={`xray-${i}`}
-                          x={p.col * cellSize + 4}
-                          y={p.row * cellSize + 4}
-                          width={cellSize - 8}
-                          height={cellSize - 8}
-                          fill="#00CED1"
-                          opacity="0.25"
-                          rx="2"
-                        />
-                      ))}
+                    {/* X-Ray path — animated arrow trail */}
+                    {xrayPath.length > 1 && (() => {
+                      const half = cellSize / 2;
+                      // Build polyline points from path centers
+                      const pts = xrayPath.map(p => `${p.col * cellSize + half},${p.row * cellSize + half}`).join(" ");
+                      // Total length estimate for dash animation
+                      let totalLen = 0;
+                      for (let i = 1; i < xrayPath.length; i++) {
+                        totalLen += Math.abs(xrayPath[i].row - xrayPath[i - 1].row) + Math.abs(xrayPath[i].col - xrayPath[i - 1].col);
+                      }
+                      totalLen *= cellSize;
+                      const animDuration = Math.max(0.8, totalLen / 400); // speed: ~400px/s
+                      // Arrowhead at the end
+                      const last = xrayPath[xrayPath.length - 1];
+                      const prev = xrayPath[xrayPath.length - 2];
+                      const dr = last.row - prev.row;
+                      const dc = last.col - prev.col;
+                      const endX = last.col * cellSize + half;
+                      const endY = last.row * cellSize + half;
+                      // Arrow triangle pointing in movement direction
+                      const arrowSize = cellSize * 0.35;
+                      let arrowPts = "";
+                      if (dr === -1) { // up
+                        arrowPts = `${endX},${endY - arrowSize} ${endX - arrowSize * 0.6},${endY + arrowSize * 0.3} ${endX + arrowSize * 0.6},${endY + arrowSize * 0.3}`;
+                      } else if (dr === 1) { // down
+                        arrowPts = `${endX},${endY + arrowSize} ${endX - arrowSize * 0.6},${endY - arrowSize * 0.3} ${endX + arrowSize * 0.6},${endY - arrowSize * 0.3}`;
+                      } else if (dc === -1) { // left
+                        arrowPts = `${endX - arrowSize},${endY} ${endX + arrowSize * 0.3},${endY - arrowSize * 0.6} ${endX + arrowSize * 0.3},${endY + arrowSize * 0.6}`;
+                      } else { // right
+                        arrowPts = `${endX + arrowSize},${endY} ${endX - arrowSize * 0.3},${endY - arrowSize * 0.6} ${endX - arrowSize * 0.3},${endY + arrowSize * 0.6}`;
+                      }
+                      const dashLen = cellSize * 1.5;
+                      const gapLen = cellSize * 0.8;
+                      return (
+                        <g>
+                          {/* Glow layer */}
+                          <polyline
+                            points={pts}
+                            fill="none"
+                            stroke="#00e5ff"
+                            strokeWidth={cellSize * 0.28}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity="0.12"
+                            strokeDasharray={`${dashLen} ${gapLen}`}
+                          >
+                            <animate
+                              attributeName="stroke-dashoffset"
+                              from={`${totalLen}`}
+                              to="0"
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            />
+                          </polyline>
+                          {/* Main trail */}
+                          <polyline
+                            points={pts}
+                            fill="none"
+                            stroke="#00e5ff"
+                            strokeWidth={cellSize * 0.12}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity="0.7"
+                            strokeDasharray={`${totalLen}`}
+                            strokeDashoffset={totalLen}
+                          >
+                            <animate
+                              attributeName="stroke-dashoffset"
+                              from={`${totalLen}`}
+                              to="0"
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            />
+                          </polyline>
+                          {/* Running particle */}
+                          <circle r={cellSize * 0.12} fill="#00e5ff" opacity="0.9">
+                            <animate
+                              attributeName="opacity"
+                              values="0;0.9;0.9;0"
+                              keyTimes="0;0.05;0.9;1"
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            />
+                            <animateMotion
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            >
+                              <mpath xlinkHref="#xray-motion-path" />
+                            </animateMotion>
+                          </circle>
+                          {/* Particle glow */}
+                          <circle r={cellSize * 0.3} fill="#00e5ff" opacity="0">
+                            <animate
+                              attributeName="opacity"
+                              values="0;0.15;0.15;0"
+                              keyTimes="0;0.05;0.9;1"
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            />
+                            <animateMotion
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            >
+                              <mpath xlinkHref="#xray-motion-path" />
+                            </animateMotion>
+                          </circle>
+                          {/* Hidden path for animateMotion */}
+                          <polyline
+                            id="xray-motion-path"
+                            points={pts}
+                            fill="none"
+                            stroke="none"
+                          />
+                          {/* Arrowhead at destination */}
+                          <polygon
+                            points={arrowPts}
+                            fill="#00e5ff"
+                            opacity="0"
+                          >
+                            <animate
+                              attributeName="opacity"
+                              values="0;0;0.8"
+                              keyTimes={`0;${Math.max(0, 1 - 0.15 / animDuration)};1`}
+                              dur={`${animDuration}s`}
+                              fill="freeze"
+                            />
+                          </polygon>
+                        </g>
+                      );
+                    })()}
 
                     {/* Field items */}
                     {!isGenerating &&
