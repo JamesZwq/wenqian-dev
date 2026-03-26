@@ -316,6 +316,7 @@ export default function MazePage() {
   }, [clearBuildTimers, clearItemTimers]);
 
   // Effect cleanup timer — removes expired effects
+// Effect cleanup timer — removes expired effects
   useEffect(() => {
     if (activeEffects.length === 0) return;
 
@@ -325,14 +326,8 @@ export default function MazePage() {
 
     effectCleanupRef.current = setTimeout(() => {
       const current = Date.now();
+      // 只清理过期的持续性状态，不再去动 X-Ray 的路径数据
       setActiveEffects((prev) => prev.filter((e) => e.expiresAt > current));
-      // Clear xray path if X_RAY effect expired
-      setXrayPath((prev) => {
-        const hasXray = activeEffectsRef.current.some(
-          (e) => e.type === "X_RAY" && e.expiresAt > current
-        );
-        return hasXray ? prev : [];
-      });
     }, delay);
 
     return () => {
@@ -408,7 +403,18 @@ export default function MazePage() {
       );
 
       if (newItem) {
-        setFieldItems((prev) => [...prev, newItem]);
+        // --- 新增：单人模式废弃道具拦截与转换逻辑 ---
+        let finalItem = newItem;
+        if (modeRef.current === "single") {
+          const uselessInSingle = ["FREEZE", "SLOW_TRAP", "FOG"];
+          if (uselessInSingle.includes(finalItem.type)) {
+            // 将没用的道具随机替换为单人跑图神器：加速、X光、炸弹
+            const usefulItems: ItemType[] = ["SPEED_BOOST", "X_RAY", "BOMB"];
+            finalItem.type = usefulItems[Math.floor(Math.random() * usefulItems.length)];
+          }
+        }
+
+        setFieldItems((prev) => [...prev, finalItem]);
 
         // Sync in remote mode if we're host
         if (
@@ -417,7 +423,7 @@ export default function MazePage() {
         ) {
           sendRef.current?.({
             type: "item_spawn",
-            item: newItem,
+            item: finalItem, // 同步转换后的道具
             timestamp: Date.now(),
           });
         }
@@ -581,12 +587,18 @@ export default function MazePage() {
               goalPosRef.current.col
             );
             setXrayPath(path);
+            
+            // 精准计算动画总时长：每个格子延迟 25ms + 单个箭头持续 600ms + 终点爆裂 800ms
+            const totalAnimationTime = path.length * 25 + 1400; 
+            
+            // 动画彻底播放完毕后再清空路径
+            setTimeout(() => {
+              setXrayPath([]);
+            }, totalAnimationTime);
           }
-          effect = {
-            type: "X_RAY",
-            targetPlayer: playerId,
-            expiresAt: now + meta.duration,
-          };
+          
+          // X-Ray 是一次性视觉特效，不作为持续性状态加入 ActiveEffects
+          // 直接 break，不要给 effect 变量赋值
           break;
         }
         case "FREEZE":
@@ -1696,6 +1708,7 @@ export default function MazePage() {
     return visible;
   }, [displayMaze, fogVisibleCells, mode, myRemotePlayerId, player1Pos, player2Pos]);
 
+
   // Settings gear button
   const SettingsGearButton = (
     <button
@@ -2168,138 +2181,82 @@ export default function MazePage() {
                       fill="var(--pixel-warn)"
                       opacity="0.3"
                     />
+{/* X-Ray path — Sequential Arrow Wave (Plays Once) */}
+                    {xrayPath.length > 1 && (
+                      <g>
+                        {xrayPath.slice(0, -1).map((cell, i) => {
+                          const nextCell = xrayPath[i + 1];
+                          const dr = nextCell.row - cell.row;
+                          const dc = nextCell.col - cell.col;
 
-                    {/* X-Ray path — animated arrow trail */}
-                    {xrayPath.length > 1 && (() => {
-                      const half = cellSize / 2;
-                      // Build polyline points from path centers
-                      const pts = xrayPath.map(p => `${p.col * cellSize + half},${p.row * cellSize + half}`).join(" ");
-                      // Total length estimate for dash animation
-                      let totalLen = 0;
-                      for (let i = 1; i < xrayPath.length; i++) {
-                        totalLen += Math.abs(xrayPath[i].row - xrayPath[i - 1].row) + Math.abs(xrayPath[i].col - xrayPath[i - 1].col);
-                      }
-                      totalLen *= cellSize;
-                      const animDuration = Math.max(0.8, totalLen / 400); // speed: ~400px/s
-                      // Arrowhead at the end
-                      const last = xrayPath[xrayPath.length - 1];
-                      const prev = xrayPath[xrayPath.length - 2];
-                      const dr = last.row - prev.row;
-                      const dc = last.col - prev.col;
-                      const endX = last.col * cellSize + half;
-                      const endY = last.row * cellSize + half;
-                      // Arrow triangle pointing in movement direction
-                      const arrowSize = cellSize * 0.35;
-                      let arrowPts = "";
-                      if (dr === -1) { // up
-                        arrowPts = `${endX},${endY - arrowSize} ${endX - arrowSize * 0.6},${endY + arrowSize * 0.3} ${endX + arrowSize * 0.6},${endY + arrowSize * 0.3}`;
-                      } else if (dr === 1) { // down
-                        arrowPts = `${endX},${endY + arrowSize} ${endX - arrowSize * 0.6},${endY - arrowSize * 0.3} ${endX + arrowSize * 0.6},${endY - arrowSize * 0.3}`;
-                      } else if (dc === -1) { // left
-                        arrowPts = `${endX - arrowSize},${endY} ${endX + arrowSize * 0.3},${endY - arrowSize * 0.6} ${endX + arrowSize * 0.3},${endY + arrowSize * 0.6}`;
-                      } else { // right
-                        arrowPts = `${endX + arrowSize},${endY} ${endX - arrowSize * 0.3},${endY - arrowSize * 0.6} ${endX - arrowSize * 0.3},${endY + arrowSize * 0.6}`;
-                      }
-                      const dashLen = cellSize * 1.5;
-                      const gapLen = cellSize * 0.8;
-                      return (
-                        <g>
-                          {/* Glow layer */}
-                          <polyline
-                            points={pts}
-                            fill="none"
-                            stroke="#00e5ff"
-                            strokeWidth={cellSize * 0.28}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            opacity="0.12"
-                            strokeDasharray={`${dashLen} ${gapLen}`}
-                          >
-                            <animate
-                              attributeName="stroke-dashoffset"
-                              from={`${totalLen}`}
-                              to="0"
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            />
-                          </polyline>
-                          {/* Main trail */}
-                          <polyline
-                            points={pts}
-                            fill="none"
-                            stroke="#00e5ff"
-                            strokeWidth={cellSize * 0.12}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            opacity="0.7"
-                            strokeDasharray={`${totalLen}`}
-                            strokeDashoffset={totalLen}
-                          >
-                            <animate
-                              attributeName="stroke-dashoffset"
-                              from={`${totalLen}`}
-                              to="0"
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            />
-                          </polyline>
-                          {/* Running particle */}
-                          <circle r={cellSize * 0.12} fill="#00e5ff" opacity="0.9">
-                            <animate
-                              attributeName="opacity"
-                              values="0;0.9;0.9;0"
-                              keyTimes="0;0.05;0.9;1"
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            />
-                            <animateMotion
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            >
-                              <mpath xlinkHref="#xray-motion-path" />
-                            </animateMotion>
-                          </circle>
-                          {/* Particle glow */}
-                          <circle r={cellSize * 0.3} fill="#00e5ff" opacity="0">
-                            <animate
-                              attributeName="opacity"
-                              values="0;0.15;0.15;0"
-                              keyTimes="0;0.05;0.9;1"
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            />
-                            <animateMotion
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            >
-                              <mpath xlinkHref="#xray-motion-path" />
-                            </animateMotion>
-                          </circle>
-                          {/* Hidden path for animateMotion */}
-                          <polyline
-                            id="xray-motion-path"
-                            points={pts}
-                            fill="none"
-                            stroke="none"
-                          />
-                          {/* Arrowhead at destination */}
-                          <polygon
-                            points={arrowPts}
-                            fill="#00e5ff"
-                            opacity="0"
-                          >
-                            <animate
-                              attributeName="opacity"
-                              values="0;0;0.8"
-                              keyTimes={`0;${Math.max(0, 1 - 0.15 / animDuration)};1`}
-                              dur={`${animDuration}s`}
-                              fill="freeze"
-                            />
-                          </polygon>
-                        </g>
-                      );
-                    })()}
+                          let rotate = 0;
+                          if (dr === -1) rotate = -90;      // 上
+                          else if (dr === 1) rotate = 90;   // 下
+                          else if (dc === -1) rotate = 180; // 左
+                          else if (dc === 1) rotate = 0;    // 右
 
+                          const cx = cell.col * cellSize + cellSize / 2;
+                          const cy = cell.row * cellSize + cellSize / 2;
+                          
+                          // 尺寸缩小：原来是 0.28，现在改为 0.15，更加精致和锐利
+                          const s = cellSize * 0.15; 
+                          const pathD = `M ${-s} ${-s * 1.1} L ${s} 0 L ${-s} ${s * 1.1}`;
+
+                          return (
+                            <motion.g
+                              key={`xray-arrow-${i}`}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              // 增加了关键帧控制：快速出现 -> 保持高亮 -> 最后渐变消失
+                              animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
+                              transition={{
+                                duration: 0.6, // 单个箭头的存活总时间
+                                times: [0, 0.15, 0.7, 1], // 15%时间达到最亮，保持到70%时间，最后30%渐隐
+                                delay: i * 0.025, // 核心修复：加快波浪传递速度，避免由于路径长导致道具提前失效
+                                ease: "easeOut",
+                              }}
+                            >
+                              <path
+                                d={pathD}
+                                fill="none"
+                                // 颜色修改：使用迷宫主题的主强调色，完全融入当前配色方案
+                                stroke="var(--pixel-accent)"
+                                strokeOpacity={0.9}
+                                strokeWidth={Math.max(1.5, cellSize * 0.12)}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                transform={`translate(${cx}, ${cy}) rotate(${rotate})`}
+                              />
+                            </motion.g>
+                          );
+                        })}
+                        
+                        {/* 终点爆裂圈 */}
+                        {(() => {
+                          const last = xrayPath[xrayPath.length - 1];
+                          const cx = last.col * cellSize + cellSize / 2;
+                          const cy = last.row * cellSize + cellSize / 2;
+                          return (
+                            <motion.circle
+                              cx={cx}
+                              cy={cy}
+                              r={cellSize * 0.15}
+                              fill="none"
+                              // 终点处用警告色/目标色（var(--pixel-warn)）作为完美收尾
+                              stroke="var(--pixel-warn)" 
+                              strokeWidth={Math.max(2, cellSize * 0.08)}
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: [0, 1, 0], scale: [0.5, 2.5, 3] }}
+                              transition={{
+                                duration: 0.8,
+                                delay: (xrayPath.length - 1) * 0.025, // 和波浪到达的时间精确匹配
+                                ease: "easeOut"
+                              }}
+                            />
+                          );
+                        })()}
+                      </g>
+                    )}
+                    
                     {/* Field items */}
                     {!isGenerating &&
                       settings.itemsEnabled &&
