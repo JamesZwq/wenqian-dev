@@ -489,6 +489,8 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     "Loading User Profile...",
     "wenqian@unsw:~$ whoami",
     "Wenqian Zhang",
+    "wenqian@unsw:~$ export MARITAL_STATUS=\"Married\"",
+    "wenqian@unsw:~$ export WIFE=\"Kino\"",
     "wenqian@unsw:~$ role",
     "Ph.D. Candidate @ UNSW (Computer Science)",
     "wenqian@unsw:~$ education",
