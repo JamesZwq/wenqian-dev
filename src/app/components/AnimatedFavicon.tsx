@@ -10,38 +10,34 @@ export default function AnimatedFavicon() {
     canvas.height = SIZE;
     const ctx = canvas.getContext("2d")!;
 
-    const CHARS = "wq";          // typed after prompt
+    const CHARS = "wq";
     const BG = "#0d0d1a";
-    const PROMPT_COLOR = "#4a9eff";  // blue >
-    const TEXT_COLOR = "#00e5ff";    // cyan wq
+    const PROMPT_COLOR = "#4a9eff";
+    const TEXT_COLOR = "#00e5ff";
     const CURSOR_COLOR = "#00e5ff";
 
-    const CHAR_DELAY = 180;      // ms per character
+    const CHAR_DELAY = 180;
     const BLINK_MS = 500;
-    const PAUSE_MS = 1400;       // hold when fully typed
-    const RESET_MS = 350;        // blank gap before restart
+    const PAUSE_MS = 1400;
+    const RESET_MS = 350;
 
     let typed = 0;
     let cursorOn = true;
     let phase: "typing" | "pausing" | "resetting" = "typing";
     let lastChar = Date.now();
     let lastBlink = Date.now();
-    let rafId: number;
+    let timerId: ReturnType<typeof setTimeout>;
 
     function draw() {
-      // Background with slight rounded feel (canvas is square, rounding is visual illusion via bg)
       ctx.fillStyle = BG;
       ctx.fillRect(0, 0, SIZE, SIZE);
 
-      // Thin border
       ctx.strokeStyle = "#1e2a3a";
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, SIZE - 1, SIZE - 1);
 
       const visibleText = CHARS.slice(0, typed);
 
-      // Layout: "> wq" centered
-      // Font sizes chosen so "> wq" fits comfortably at 32px
       const FONT_SIZE = 17;
       ctx.font = `bold ${FONT_SIZE}px monospace`;
       ctx.textBaseline = "middle";
@@ -51,20 +47,16 @@ export default function AnimatedFavicon() {
       const textW = ctx.measureText(visibleText).width;
       const cursorW = 7;
 
-      // Total width of "> " + typed chars + cursor
       const totalW = promptW + spaceW + textW + (cursorOn && phase !== "resetting" ? cursorW : 0);
       const startX = (SIZE - totalW) / 2;
       const midY = SIZE / 2 + 1;
 
-      // Draw ">"
       ctx.fillStyle = PROMPT_COLOR;
       ctx.fillText(">", startX, midY);
 
-      // Draw typed chars
       ctx.fillStyle = TEXT_COLOR;
       ctx.fillText(visibleText, startX + promptW + spaceW, midY);
 
-      // Draw cursor block
       if (cursorOn && phase !== "resetting") {
         const cursorX = startX + promptW + spaceW + textW + 2;
         ctx.fillStyle = CURSOR_COLOR;
@@ -75,7 +67,6 @@ export default function AnimatedFavicon() {
     function tick() {
       const now = Date.now();
 
-      // Blink
       if (now - lastBlink > BLINK_MS) {
         cursorOn = !cursorOn;
         lastBlink = now;
@@ -115,11 +106,12 @@ export default function AnimatedFavicon() {
       }
       link.href = canvas.toDataURL("image/png");
 
-      rafId = requestAnimationFrame(tick);
+      // 用 setTimeout 代替 RAF — favicon 不需要 60fps，4fps 足够
+      timerId = setTimeout(tick, 250);
     }
 
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    timerId = setTimeout(tick, 250);
+    return () => clearTimeout(timerId);
   }, []);
 
   return null;

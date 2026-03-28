@@ -17,7 +17,7 @@ export default function ThemeToggle() {
         boxShadow: "0 0 14px rgba(99,102,241,0.25)",
       }}
       whileTap={{ scale: 0.97 }}
-      className="pointer-events-auto fixed top-4 right-4 z-[140] flex items-center gap-2 px-2 py-1 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_90%,transparent)] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)] shadow-lg backdrop-blur-xl"
+      className="pointer-events-auto fixed top-4 right-4 z-[140] flex items-center gap-2 px-2 py-1 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_90%,transparent)] bg-[color-mix(in_oklab,var(--pixel-bg)_80%,transparent)] shadow-lg backdrop-blur-sm"
     >
       {/* 文本标签 */}
       <motion.span

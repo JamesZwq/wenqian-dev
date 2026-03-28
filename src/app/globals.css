@@ -8,7 +8,7 @@
   /* Light theme */
   --pixel-bg: #fafbfe;
   --pixel-bg-alt: #f1f3f9;
-  --pixel-card-bg: rgba(255,255,255,0.72);
+  --pixel-card-bg: rgba(255,255,255,0.92);
   --pixel-border: rgba(99,102,241,0.2);
   --pixel-text: #1e1b4b;
   --pixel-muted: #6b7280;
@@ -24,7 +24,7 @@
   /* Dark theme */
   --pixel-bg: #0c0a1d;
   --pixel-bg-alt: #13112b;
-  --pixel-card-bg: rgba(22,18,52,0.75);
+  --pixel-card-bg: rgba(22,18,52,0.92);
   --pixel-border: rgba(139,92,246,0.25);
   --pixel-text: #e8e5f5;
   --pixel-muted: #8b8fa3;
@@ -48,13 +48,11 @@ body {
   transition: background-color 0.6s ease, color 0.6s ease;
 }
 
-/* Glass card utility */
+/* Glass card utility — 92% opaque background makes blur invisible; drop it for GPU savings */
 .glass-card {
   border-radius: 1rem;
   border: 1px solid var(--pixel-border);
   background: var(--pixel-card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px var(--pixel-glow);
 }
 

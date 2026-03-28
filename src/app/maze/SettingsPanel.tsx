@@ -54,7 +54,7 @@ export default function SettingsPanel({ open, settings, onChange, onClose }: Pro
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mx-4 w-full max-w-[420px] rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl md:p-6"
+            className="mx-4 w-full max-w-[420px] rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm md:p-6"
           >
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)]">

@@ -6,7 +6,7 @@ import ExtraSections from "./ExtraSections";
 import MouseProvider from "./components/MouseProvider";
 import { ScrollLagProvider } from "./components/ScrollLagContext";
 import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
-import PetJailToggle from "./components/PetJailToggle";
+import PetBedToggle from "./components/PetBedToggle";
 import BackgroundModeToggle from "./components/BackgroundModeToggle";
 import ThemeToggle from "./components/ThemeToggle";
 import FpsCounter from "./components/FpsCounter";
@@ -34,34 +34,41 @@ function HeroSection() {
       {isMobile && <div className="h-28 flex-shrink-0" aria-hidden />}
 
       {/* CTA Buttons */}
-      <div className="absolute bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-3 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2">
+      <div className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-2.5 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2">
         <a
           href="#publications"
-          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 rounded-xl border border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] hover:shadow-lg transition-all touch-manipulation"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent)]/40 bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] hover:shadow-lg hover:shadow-[var(--pixel-glow)] transition-all touch-manipulation"
         >
-          View Publications
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Publications
         </a>
         <a
-          href="#"
-          className="min-h-[44px] flex items-center justify-center px-5 py-3 sm:px-6 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] hover:shadow-lg transition-all touch-manipulation"
+          href="/cv.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] hover:shadow-lg hover:shadow-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-all touch-manipulation"
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download CV
         </a>
         <a
           href="/papers"
-          className="min-h-[44px] flex items-center justify-center gap-2 px-5 py-3 sm:px-6 rounded-xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400 font-sans text-sm font-semibold tracking-tight hover:bg-emerald-400/20 hover:shadow-lg transition-all touch-manipulation"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-600 dark:text-emerald-400 font-sans text-sm font-semibold tracking-tight hover:bg-emerald-400/20 hover:shadow-lg hover:shadow-emerald-400/10 transition-all touch-manipulation"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           Paper Manager
         </a>
       </div>
 
       {/* Scroll 提示 - 手机端不显示 */}
       {!isMobile && (
-        <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30">
-          <span className="animate-bounce text-[color-mix(in_oklab,var(--pixel-accent)_60%,transparent)] font-sans text-sm font-semibold tracking-tight">
-            Scroll
+        <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1 animate-bounce">
+          <span className="text-[color-mix(in_oklab,var(--pixel-accent)_50%,transparent)] font-mono text-[10px] tracking-[0.2em] uppercase">
+            scroll
           </span>
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none" className="text-[var(--pixel-accent)] opacity-50">
+            <path d="M8 0 L8 16 M2 10 L8 16 L14 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
       )}
     </section>
@@ -75,7 +82,7 @@ export default function Home() {
         <ScrollLagProvider>
           <main className="relative min-h-screen selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
             <CursorPet />
-            <PetJailToggle />
+            <PetBedToggle />
             <BackgroundModeToggle />
             <ThemeToggle />
             <FpsCounter />
@@ -83,7 +90,6 @@ export default function Home() {
 
             <div className="relative z-10">
               <HeroSection />
-
               <ExtraSections />
               <ResumeSections />
             </div>

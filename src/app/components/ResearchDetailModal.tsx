@@ -230,7 +230,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-[var(--pixel-text)]"
+                className="p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm text-[var(--pixel-text)]"
               >
                 {content.model}
               </motion.div>
@@ -254,7 +254,7 @@ export default function ResearchDetailModal({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
-                className="p-4 rounded-xl border-l-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-mono text-sm text-[var(--pixel-accent)]"
+                className="p-4 rounded-xl border-l-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm font-mono text-sm text-[var(--pixel-accent)]"
               >
                 {content.formula}
               </motion.div>

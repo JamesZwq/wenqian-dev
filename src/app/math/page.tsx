@@ -469,7 +469,7 @@ export default function MathSprintPage() {
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
                 {/* Operations */}
-                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
                   <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
                     OPERATIONS
                   </h3>
@@ -491,7 +491,7 @@ export default function MathSprintPage() {
                 </div>
 
                 {/* Question count */}
-                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
                   <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
                     QUESTIONS
                   </h3>
@@ -514,7 +514,7 @@ export default function MathSprintPage() {
 
                 {/* Best speed display */}
                 {bestSpeed !== null && (
-                  <div className="w-full rounded-xl border border-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] px-5 py-3 backdrop-blur-xl">
+                  <div className="w-full rounded-xl border border-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] px-5 py-3 backdrop-blur-sm">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs text-[var(--pixel-muted)]">
                         Best ({opsLabel(selectedOps)} / {totalQuestions}Q)
@@ -529,13 +529,13 @@ export default function MathSprintPage() {
                 {/* Start buttons */}
                 <button
                   onClick={startSolo}
-                  className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   SOLO
                 </button>
                 <button
                   onClick={() => setGameMode("p2p")}
-                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   P2P ONLINE
                 </button>
@@ -583,7 +583,7 @@ export default function MathSprintPage() {
                 exit={{ opacity: 0, scale: 0.92 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
-                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                   <p className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent-2)]">
                     CONNECTED
                   </p>
@@ -592,7 +592,7 @@ export default function MathSprintPage() {
                   </p>
                 </div>
 
-                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
                   <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
                     OPERATIONS
                   </h3>
@@ -613,7 +613,7 @@ export default function MathSprintPage() {
                   </div>
                 </div>
 
-                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
                   <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
                     QUESTIONS
                   </h3>
@@ -652,7 +652,7 @@ export default function MathSprintPage() {
                 exit={{ opacity: 0, scale: 0.92 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
-                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-6 backdrop-blur-xl text-center">
+                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-6 backdrop-blur-sm text-center">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
@@ -680,7 +680,7 @@ export default function MathSprintPage() {
                 {!result ? (
                   <>
                     {/* Progress bar + stats */}
-                    <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                    <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-mono text-sm text-[var(--pixel-text)]">
                           {currentIndex}/{questions.length}
@@ -727,7 +727,7 @@ export default function MathSprintPage() {
                     </div>
 
                     {/* Question display */}
-                    <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur-xl overflow-hidden transition-all duration-200 ${
+                    <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] p-6 md:p-10 backdrop-blur-sm overflow-hidden transition-all duration-200 ${
                       flashColor === "red"
                         ? "border-[#ef4444]/50 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
                         : flashColor === "green"
@@ -798,7 +798,7 @@ export default function MathSprintPage() {
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-xl"
+                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-sm"
                   >
                     <h2 className="mb-2 text-center font-sans font-semibold text-xl text-[var(--pixel-accent)] md:text-2xl">
                       {gameMode === "p2p" && opponentFinished

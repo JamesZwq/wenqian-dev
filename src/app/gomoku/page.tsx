@@ -598,7 +598,7 @@ export default function GomokuPage() {
                 exit={{ opacity: 0, scale: 0.92 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
-                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
                   <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
                     VS AI
                   </h3>
@@ -617,7 +617,7 @@ export default function GomokuPage() {
 
                 <button
                   onClick={() => setGameMode("p2p")}
-                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   P2P ONLINE
                 </button>
@@ -698,7 +698,7 @@ export default function GomokuPage() {
                   {/* ─── Desktop sidebar ─── */}
                   <div className="hidden lg:block lg:w-72 space-y-4">
                     {/* Players */}
-                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                       <h3 className="mb-3 font-sans font-semibold text-[10px] text-[var(--pixel-accent)]">
                         PLAYERS
                       </h3>
@@ -733,7 +733,7 @@ export default function GomokuPage() {
                     </div>
 
                     {/* Status */}
-                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                       <h3 className="mb-3 font-sans font-semibold text-[10px] text-[var(--pixel-accent)]">
                         STATUS
                       </h3>
@@ -762,7 +762,7 @@ export default function GomokuPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                    <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                       <h3 className="mb-3 font-sans font-semibold text-[10px] text-[var(--pixel-accent)]">
                         STATS
                       </h3>
@@ -803,7 +803,7 @@ export default function GomokuPage() {
 
                   {/* ─── Board ─── */}
                   <div className="flex-1 flex items-center justify-center">
-                    <div className="relative inline-block rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 md:p-4 backdrop-blur-xl">
+                    <div className="relative inline-block rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 md:p-4 backdrop-blur-sm">
                       {showExplosion && (
                         <GomokuExplosion
                           pieces={explosionPieces}

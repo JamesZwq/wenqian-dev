@@ -9,6 +9,10 @@ const Background = dynamic(() => import("../background/background"), {
   loading: () => <div className="fixed inset-0 z-0 bg-[var(--pixel-bg)]" />,
 });
 
+const ParticleField = dynamic(() => import("./ParticleField"), {
+  ssr: false,
+});
+
 interface ClientLayoutProps {
   children: ReactNode;
 }
@@ -17,6 +21,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <>
       <Background />
+      <ParticleField />
       <PageTransition>{children}</PageTransition>
     </>
   );

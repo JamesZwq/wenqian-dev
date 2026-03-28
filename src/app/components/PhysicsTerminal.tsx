@@ -66,21 +66,31 @@ function unpackKey(key: number): { cx: number; cy: number } {
   return { cx, cy };
 }
 
+// 复用 Map 和数组，避免每帧 GC
+const _shGrid = new Map<number, number[]>();
+const _shPool: number[][] = [];
+
 function buildSpatialHash(bodies: Body[], cell: number) {
-  const grid = new Map<number, number[]>();
+  // 回收旧数组到池
+  for (const arr of _shGrid.values()) {
+    arr.length = 0;
+    _shPool.push(arr);
+  }
+  _shGrid.clear();
+
   for (let i = 0; i < bodies.length; i++) {
     const b = bodies[i];
     const cx = Math.floor(b.x / cell);
     const cy = Math.floor(b.y / cell);
     const key = packKey(cx, cy);
-    let arr = grid.get(key);
+    let arr = _shGrid.get(key);
     if (!arr) {
-      arr = [];
-      grid.set(key, arr);
+      arr = _shPool.pop() || [];
+      _shGrid.set(key, arr);
     }
     arr.push(i);
   }
-  return grid;
+  return _shGrid;
 }
 
 function resolveCircleCircle(a: Body, b: Body, restitution: number, mu: number) {
@@ -705,9 +715,14 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   useEffect(() => {
     let raf = 0; let last = nowMs(); let acc = 0;
     const FIXED_DT = 1 / 60; const SPRING_MAX_STEP = 1 / 120; const MAX_BOX_V = 6000;
+    const cachedDpr = window.devicePixelRatio || 1;
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      // Skip physics & rendering when tab hidden or scrolled far past hero
+      if (document.hidden || window.scrollY > window.innerHeight * 1.3) {
+        last = nowMs(); return;
+      }
       const t = nowMs(); let dt = clamp((t - last) / 1000, 0, 0.033); last = t;
 
       const world = worldRef.current; const cvs = canvasRef.current;
@@ -766,7 +781,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
       const ctx = cvs.getContext("2d");
       if (!ctx) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = cachedDpr;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cvs.width, cvs.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

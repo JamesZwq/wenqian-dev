@@ -145,7 +145,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-center font-mono"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] text-center font-mono"
               >
                 <span className={`inline-block transition-transform duration-300 ease-out ${iconHover}`}>
                   <Icon className="mx-auto mb-2 text-[var(--pixel-accent)]" size={24} />
@@ -189,7 +189,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl hover:border-[var(--pixel-border)] transition-colors"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] hover:border-[var(--pixel-border)] transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)]">
@@ -243,7 +243,7 @@ export default function ExtraSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl cursor-pointer touch-manipulation"
+                className="group p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] cursor-pointer touch-manipulation"
               >
                 <div className="w-10 h-10 rounded-xl border border-[var(--pixel-border)] flex items-center justify-center mb-4">
                   <span
@@ -271,7 +271,7 @@ export default function ExtraSections() {
           </div>
         </motion.section>
 
-        {/* Fun Facts - Beyond Academia */}
+        {/* Beyond Academia — interactive personality cards */}
         <motion.section
           initial="hidden"
           whileInView="visible"
@@ -280,31 +280,82 @@ export default function ExtraSections() {
           className="mb-16 sm:mb-24"
         >
           <SectionTitle icon={Target}>Beyond Academia</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
-              { text: "Coffee-powered debugging", emoji: "☕" },
-              { text: "Lo-fi beats while writing", emoji: "🎵" },
-              { text: "Strategic games enthusiast", emoji: "🎮" },
-              { text: "Piano performance — just nailed my last piece", emoji: "🎹" },
+              {
+                emoji: "☕",
+                title: "Fuel",
+                desc: "Coffee-powered debugging sessions",
+                detail: "3+ cups/day",
+                accent: "var(--pixel-warn)",
+              },
+              {
+                emoji: "🎵",
+                title: "Focus",
+                desc: "Lo-fi beats while writing papers",
+                detail: "24/7 playlist",
+                accent: "var(--pixel-accent)",
+              },
+              {
+                emoji: "🎮",
+                title: "Strategy",
+                desc: "RTS & puzzle games enthusiast",
+                detail: "Weekend warrior",
+                accent: "var(--pixel-accent-2)",
+              },
+              {
+                emoji: "🎹",
+                title: "Music",
+                desc: "Piano performance & practice",
+                detail: "10+ years",
+                accent: "var(--pixel-accent)",
+              },
             ].map((fact, i) => (
               <DraggableFloat
-                key={fact.text}
+                key={fact.title}
                 variants={itemVariants}
-                whileHover={{ scale: 1.03, borderColor: "var(--pixel-border)" }}
-                className="group p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-mono touch-manipulation"
+                whileHover={{
+                  scale: 1.04,
+                  borderColor: fact.accent,
+                  boxShadow: `0 8px 28px color-mix(in oklab, ${fact.accent} 15%, transparent)`,
+                }}
+                className="group relative p-4 sm:p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] overflow-hidden touch-manipulation"
               >
-                <span className="text-xl block mb-2 transition-transform duration-300 ease-out group-hover:scale-125 group-hover:rotate-12">{fact.emoji}</span>
-                <p className="text-sm text-[var(--pixel-text)] font-medium">{fact.text}</p>
+                {/* 背景数字装饰 */}
+                <span
+                  className="absolute -right-2 -top-3 text-[48px] leading-none font-bold opacity-[0.04] select-none pointer-events-none transition-opacity duration-300 group-hover:opacity-[0.08]"
+                  style={{ color: fact.accent }}
+                >
+                  {fact.emoji}
+                </span>
+
+                <span className="text-2xl block mb-3 transition-transform duration-300 ease-out group-hover:scale-110 group-hover:-rotate-6">
+                  {fact.emoji}
+                </span>
+                <h4 className="font-sans text-xs font-bold uppercase tracking-wider mb-1" style={{ color: fact.accent }}>
+                  {fact.title}
+                </h4>
+                <p className="text-[13px] text-[var(--pixel-text)] font-mono leading-snug mb-2">
+                  {fact.desc}
+                </p>
+                <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border opacity-70 group-hover:opacity-100 transition-opacity"
+                  style={{ color: fact.accent, borderColor: `color-mix(in oklab, ${fact.accent} 30%, transparent)` }}>
+                  {fact.detail}
+                </span>
               </DraggableFloat>
             ))}
           </div>
         </motion.section>
 
-        {/* Parallax Divider */}
-        <motion.div
-          style={{ y: parallaxY }}
-          className="mb-16 sm:mb-24 h-px bg-gradient-to-r from-transparent via-[color-mix(in_oklab,var(--pixel-accent)_50%,transparent)] to-transparent"
-        />
+        {/* Section Divider */}
+        <div className="mb-16 sm:mb-24 flex items-center gap-4">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)]" />
+          <motion.div
+            style={{ y: parallaxY }}
+            className="w-1.5 h-1.5 rounded-full bg-[var(--pixel-accent)] opacity-40"
+          />
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)]" />
+        </div>
 
         {/* Contact */}
         <motion.section
@@ -314,23 +365,33 @@ export default function ExtraSections() {
           className="text-center"
         >
           <SectionTitle icon={Mail}>Get in Touch</SectionTitle>
-          <p className="text-[var(--pixel-text)] max-w-xl mx-auto mb-6 sm:mb-8 font-mono text-sm px-1">
+          <p className="text-[var(--pixel-text)] max-w-xl mx-auto mb-3 font-mono text-sm px-1">
             Interested in collaboration, research discussions, or just saying hi?
+          </p>
+          <p className="text-[var(--pixel-muted)] max-w-md mx-auto mb-8 font-mono text-xs px-1">
+            I typically respond within 24 hours.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {[
-              { href: "mailto:wenqian@example.com", icon: Mail, label: "Email" },
-              { href: "#", icon: Github, label: "GitHub" },
-              { href: "#", icon: Linkedin, label: "LinkedIn" },
-            ].map(({ href, icon: Icon, label }) => (
+              { href: "mailto:wenqian.zhang1@unsw.edu.au", icon: Mail, label: "Email", desc: "wenqian.zhang1@unsw.edu.au" },
+              { href: "https://github.com/Wenqian-Zhang", icon: Github, label: "GitHub", desc: "Wenqian-Zhang" },
+              { href: "https://www.linkedin.com/in/wenqian-zhang-0588a5218/", icon: Linkedin, label: "LinkedIn", desc: "Connect" },
+            ].map(({ href, icon: Icon, label, desc }) => (
               <motion.a
                 key={label}
                 href={href}
-                whileHover={{ scale: 1.05, boxShadow: "0 8px 32px var(--pixel-glow)" }}
-                whileTap={{ scale: 0.98 }}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl border border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] transition-colors touch-manipulation"
+                target={href.startsWith("mailto") ? undefined : "_blank"}
+                rel={href.startsWith("mailto") ? undefined : "noopener noreferrer"}
+                whileHover={{ scale: 1.04, y: -2, boxShadow: "0 12px 32px var(--pixel-glow)" }}
+                whileTap={{ scale: 0.97 }}
+                className="group min-h-[44px] min-w-[140px] px-5 py-3 rounded-xl border border-[var(--pixel-border)] bg-[color-mix(in_oklab,var(--pixel-accent)_8%,transparent)] text-[var(--pixel-accent)] font-sans flex flex-col items-center gap-1 hover:bg-[color-mix(in_oklab,var(--pixel-accent)_16%,transparent)] hover:border-[var(--pixel-accent)] transition-all touch-manipulation"
               >
-                <Icon size={16} /> {label}
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon size={16} className="transition-transform group-hover:-translate-y-0.5" /> {label}
+                </span>
+                <span className="text-[10px] font-mono text-[var(--pixel-muted)] group-hover:text-[var(--pixel-accent)] transition-colors">
+                  {desc}
+                </span>
               </motion.a>
             ))}
           </div>

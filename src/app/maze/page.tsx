@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateMaze, generateGoal, canMove, type Maze } from "./mazeGenerator";
@@ -169,6 +169,49 @@ export default function MazePage() {
   ]);
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
   const [xrayPath, setXrayPath] = useState<{ row: number; col: number }[]>([]);
+
+  // 星辰连线的稳定坐标 — 只在 xrayPath 变化时计算一次，不会因 re-render 抖动
+  const xrayStars = useMemo(() => {
+    if (xrayPath.length < 2) return [];
+    const half = cellSize / 2;
+    const jitter = cellSize * 0.28;
+    const totalDur = 1.8;
+    const pts: { x: number; y: number; isEnd: boolean; delay: number }[] = [];
+
+    // 用确定性随机 (基于 index 的伪随机) 代替 Math.random
+    const pseudo = (seed: number) => {
+      const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    // 起点
+    const first = xrayPath[0];
+    pts.push({ x: first.col * cellSize + half, y: first.row * cellSize + half, isEnd: false, delay: 0 });
+
+    // 沿路径每隔 2-4 格采样一颗星
+    let nextAt = 2 + Math.floor(pseudo(0) * 2);
+    for (let i = 1; i < xrayPath.length - 1; i++) {
+      if (i >= nextAt) {
+        const c = xrayPath[i];
+        const ox = (pseudo(i * 2) - 0.5) * jitter;
+        const oy = (pseudo(i * 2 + 1) - 0.5) * jitter;
+        pts.push({
+          x: c.col * cellSize + half + ox,
+          y: c.row * cellSize + half + oy,
+          isEnd: false,
+          delay: (i / xrayPath.length) * totalDur,
+        });
+        nextAt = i + 2 + Math.floor(pseudo(i * 3) * 2);
+      }
+    }
+
+    // 终点
+    const last = xrayPath[xrayPath.length - 1];
+    pts.push({ x: last.col * cellSize + half, y: last.row * cellSize + half, isEnd: true, delay: totalDur });
+
+    return pts;
+  }, [xrayPath, cellSize]);
+
   const [bombMode, setBombMode] = useState<{
     playerId: 1 | 2;
     active: boolean;
@@ -395,26 +438,17 @@ export default function MazePage() {
       const currentMaze = mazeRef.current;
       if (!currentMaze || gameEndTimeRef.current) return;
 
+      const isSolo = modeRef.current === "single";
       const newItem = spawnItem(
         currentMaze,
         fieldItemsRef.current,
         player1PosRef.current,
-        player2PosRef.current
+        player2PosRef.current,
+        isSolo
       );
 
       if (newItem) {
-        // --- 新增：单人模式废弃道具拦截与转换逻辑 ---
-        let finalItem = newItem;
-        if (modeRef.current === "single") {
-          const uselessInSingle = ["FREEZE", "SLOW_TRAP", "FOG"];
-          if (uselessInSingle.includes(finalItem.type)) {
-            // 将没用的道具随机替换为单人跑图神器：加速、X光、炸弹
-            const usefulItems: ItemType[] = ["SPEED_BOOST", "X_RAY", "BOMB"];
-            finalItem.type = usefulItems[Math.floor(Math.random() * usefulItems.length)];
-          }
-        }
-
-        setFieldItems((prev) => [...prev, finalItem]);
+        setFieldItems((prev) => [...prev, newItem]);
 
         // Sync in remote mode if we're host
         if (
@@ -423,7 +457,7 @@ export default function MazePage() {
         ) {
           sendRef.current?.({
             type: "item_spawn",
-            item: finalItem, // 同步转换后的道具
+            item: newItem,
             timestamp: Date.now(),
           });
         }
@@ -436,6 +470,11 @@ export default function MazePage() {
   const finalizeBuiltMaze = useCallback(
     (nextMaze: Maze, withPlayer2: boolean, precomputedGoal?: Position) => {
       const goal = precomputedGoal ?? generateGoal(nextMaze, settingsRef.current.difficulty);
+
+      // Don't clear revealCells yet — keep revealed SVG in DOM so AnimatePresence
+      // can fade the whole overlay out smoothly without a jank-inducing mass deletion.
+      setMazeGenerationProgress(1);
+
       setMaze(nextMaze);
       mazeRef.current = nextMaze;
       setGoalPos(goal);
@@ -447,11 +486,13 @@ export default function MazePage() {
       setGameStartTime(Date.now());
       setIsGenerating(false);
 
+      // Trigger overlay exit animation immediately (no 260ms dark-screen gap)
+      setGenerationMaze(null);
+
+      // Clean up reveal data after exit animation completes
       buildCleanupTimeoutRef.current = setTimeout(() => {
-        setGenerationMaze(null);
         setRevealCells([]);
-        setMazeGenerationProgress(1);
-      }, 260);
+      }, 300);
 
       // Start item spawning if enabled and not remote guest
       if (
@@ -498,6 +539,7 @@ export default function MazePage() {
       const startedAt = performance.now();
       const totalC = rows * cols;
 
+      // 每 50ms 更新一次（而非 16ms），减少 React re-render 次数 3 倍
       generationIntervalRef.current = setInterval(() => {
         const elapsed = performance.now() - startedAt;
         const progress = Math.min(elapsed / totalDuration, 1);
@@ -516,7 +558,7 @@ export default function MazePage() {
           }
           finalizeBuiltMaze(nextMaze, withPlayer2, precomputedGoal);
         }
-      }, 16);
+      }, 50);
 
       generationTimeoutRef.current = setTimeout(() => {
         if (generationIntervalRef.current) {
@@ -587,14 +629,11 @@ export default function MazePage() {
               goalPosRef.current.col
             );
             setXrayPath(path);
-            
-            // 精准计算动画总时长：每个格子延迟 25ms + 单个箭头持续 600ms + 终点爆裂 800ms
-            const totalAnimationTime = path.length * 25 + 1400; 
-            
-            // 动画彻底播放完毕后再清空路径
+
+            // 星辰连线动画总时长：totalDur(1.8s) + 最后一颗星动画(1.4s) + 终点光环(0.9s)
             setTimeout(() => {
               setXrayPath([]);
-            }, totalAnimationTime);
+            }, 4200);
           }
           
           // X-Ray 是一次性视觉特效，不作为持续性状态加入 ActiveEffects
@@ -912,6 +951,8 @@ export default function MazePage() {
       setRemotePeerLabel(null);
       setLatencyMs(null);
       setLastRemoteMessageAt(null);
+      setTrail([]);
+      setXrayPath([]);
       if (modeRef.current === "remote") {
         setMode("menu");
       }
@@ -1284,6 +1325,12 @@ export default function MazePage() {
 
   const handleTouchMove = useCallback(
     (direction: Direction) => {
+      // Bomb mode: D-pad picks wall direction instead of moving
+      if (bombMode?.active) {
+        executeBomb(bombMode.playerId, direction);
+        return;
+      }
+
       if (mode === "remote") {
         if (myRemotePlayerIdRef.current) {
           queueMove(myRemotePlayerIdRef.current, direction);
@@ -1293,7 +1340,7 @@ export default function MazePage() {
 
       queueMove(1, direction);
     },
-    [mode, queueMove]
+    [mode, queueMove, bombMode, executeBomb]
   );
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
@@ -1407,6 +1454,27 @@ export default function MazePage() {
         }
       }
 
+      // 作弊键：分号触发 X-Ray（所有模式、任意玩家）
+      // 用 e.code 兼容中文输入法（e.key 在中文模式下可能是 "；" 或 "Process"）
+      if (e.code === "Semicolon" || e.key === ";" || e.key === "；") {
+        e.preventDefault();
+        const currentMaze = mazeRef.current;
+        // remote 模式用自己的 playerId，其他模式默认 player1
+        const myId = mode === "remote" ? myRemotePlayerIdRef.current : 1;
+        const pos = myId === 2 ? player2PosRef.current : player1PosRef.current;
+        if (currentMaze && pos && xrayPath.length === 0) {
+          const path = bfsShortestPath(
+            currentMaze,
+            pos.row, pos.col,
+            goalPosRef.current.row,
+            goalPosRef.current.col
+          );
+          setXrayPath(path);
+          setTimeout(() => setXrayPath([]), 4200);
+        }
+        return;
+      }
+
       if (mode === "remote") {
         if (!localRemotePlayer) return;
 
@@ -1466,7 +1534,7 @@ export default function MazePage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGenerating, mode, queueMove, useItem, bombMode, executeBomb]);
+  }, [isGenerating, mode, queueMove, useItem, bombMode, executeBomb, xrayPath]);
 
   const startSingleGame = useCallback(() => {
     const s = settingsRef.current;
@@ -1713,10 +1781,13 @@ export default function MazePage() {
   const SettingsGearButton = (
     <button
       onClick={() => setSettingsOpen(true)}
-      className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
+      className="group rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 text-[var(--pixel-muted)] backdrop-blur-sm transition-colors hover:text-[var(--pixel-accent)]"
       title="Settings"
     >
-      CFG
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:rotate-90">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
     </button>
   );
 
@@ -1827,25 +1898,25 @@ export default function MazePage() {
             >
               <button
                 onClick={startSingleGame}
-                className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 SINGLE PLAYER
               </button>
               <button
                 onClick={startAiGame}
-                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 VS AI
               </button>
               <button
                 onClick={startLocalGame}
-                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 LOCAL VS
               </button>
               <button
                 onClick={() => setMode("remote")}
-                className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 REMOTE P2P
               </button>
@@ -1896,7 +1967,7 @@ export default function MazePage() {
                 className="flex flex-col items-center gap-4"
               >
                 <div className="flex w-full max-w-[900px] flex-wrap items-center justify-center gap-2 md:gap-4">
-                  <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-xs text-[var(--pixel-accent)] backdrop-blur-xl md:px-4 md:text-sm">
+                  <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-xs text-[var(--pixel-accent)] backdrop-blur-sm md:px-4 md:text-sm">
                     {isGenerating
                       ? `BUILD ${Math.round((revealedCellCount / totalCells) * 100)}%`
                       : formatTime(elapsedTime)}
@@ -1904,14 +1975,14 @@ export default function MazePage() {
 
 
                   {mode === "remote" && (
-                    <div className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-accent-2)] backdrop-blur-xl">
+                    <div className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-mono text-[10px] uppercase text-[var(--pixel-accent-2)] backdrop-blur-sm">
                       {remoteStatusLabel}
                     </div>
                   )}
 
                   <button
                     onClick={exitToMenu}
-                    className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] backdrop-blur-xl transition-colors hover:text-[var(--pixel-accent)]"
+                    className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] backdrop-blur-sm transition-colors hover:text-[var(--pixel-accent)]"
                   >
                     MENU
                   </button>
@@ -1923,7 +1994,7 @@ export default function MazePage() {
                       else if (mode === "remote") startRemoteRound();
                     }}
                     disabled={mode === "remote" && myRemotePlayerId !== 1}
-                    className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-accent-2)] backdrop-blur-xl transition-colors hover:bg-[var(--pixel-bg-alt)] disabled:opacity-40"
+                    className="rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-accent-2)] backdrop-blur-sm transition-colors hover:bg-[var(--pixel-bg-alt)] disabled:opacity-40"
                   >
                     NEW_MAZE
                   </button>
@@ -1931,7 +2002,7 @@ export default function MazePage() {
                   {SettingsGearButton}
                 </div>
 
-                <div className="relative max-w-full overflow-auto rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 backdrop-blur-xl md:p-4">
+                <div className="relative max-w-full overflow-auto rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-2 backdrop-blur-sm md:p-4" style={{ minHeight: displayRows * cellSize + 16 }}>
                   <svg
                     width={displayCols * cellSize}
                     height={displayRows * cellSize}
@@ -2014,44 +2085,22 @@ export default function MazePage() {
                               if (!isRevealed) return null;
 
                               return (
-                                <motion.g
-                                  key={`visible-${r}-${c}`}
-                                  initial={{ opacity: 0, scale: 0.82 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{
-                                    duration: 0.13,
-                                    ease: "easeOut",
-                                  }}
-                                  style={{
-                                    transformOrigin: `${c * cellSize + cellSize / 2}px ${r * cellSize + cellSize / 2}px`,
-                                  }}
-                                >
-                                  <motion.rect
+                                <g key={`visible-${r}-${c}`}>
+                                  <rect
                                     x={c * cellSize + 2}
                                     y={r * cellSize + 2}
                                     width={cellSize - 4}
                                     height={cellSize - 4}
                                     fill="var(--pixel-bg)"
                                     opacity={0.96}
-                                    initial={{ opacity: 0, scale: 0.65 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{
-                                      duration: 0.13,
-                                      ease: "easeOut",
-                                    }}
                                   />
-                                  <motion.rect
+                                  <rect
                                     x={c * cellSize + 4}
                                     y={r * cellSize + 4}
                                     width={cellSize - 8}
                                     height={cellSize - 8}
                                     fill="var(--pixel-accent)"
-                                    initial={{ opacity: 0, scale: 0.45 }}
-                                    animate={{ opacity: 0.05, scale: 1 }}
-                                    transition={{
-                                      duration: 0.14,
-                                      ease: "easeOut",
-                                    }}
+                                    opacity={0.05}
                                   />
                                   {cell.walls.top && (
                                     <line
@@ -2093,7 +2142,7 @@ export default function MazePage() {
                                       strokeWidth="2"
                                     />
                                   )}
-                                </motion.g>
+                                </g>
                               );
                             })
                           )}
@@ -2181,76 +2230,70 @@ export default function MazePage() {
                       fill="var(--pixel-warn)"
                       opacity="0.3"
                     />
-{/* X-Ray path — Sequential Arrow Wave (Plays Once) */}
-                    {xrayPath.length > 1 && (
+{/* X-Ray — 星辰连线指引 */}
+                    {xrayStars.length > 0 && (
                       <g>
-                        {xrayPath.slice(0, -1).map((cell, i) => {
-                          const nextCell = xrayPath[i + 1];
-                          const dr = nextCell.row - cell.row;
-                          const dc = nextCell.col - cell.col;
+                        <defs>
+                          <filter id="xstar-glow" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation={Math.max(2, cellSize * 0.07)} result="b" />
+                            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                          </filter>
+                        </defs>
 
-                          let rotate = 0;
-                          if (dr === -1) rotate = -90;      // 上
-                          else if (dr === 1) rotate = 90;   // 下
-                          else if (dc === -1) rotate = 180; // 左
-                          else if (dc === 1) rotate = 0;    // 右
-
-                          const cx = cell.col * cellSize + cellSize / 2;
-                          const cy = cell.row * cellSize + cellSize / 2;
-                          
-                          // 尺寸缩小：原来是 0.28，现在改为 0.15，更加精致和锐利
-                          const s = cellSize * 0.15; 
-                          const pathD = `M ${-s} ${-s * 1.1} L ${s} 0 L ${-s} ${s * 1.1}`;
-
+                        {/* 连线：每颗星只连下一颗 */}
+                        {xrayStars.slice(0, -1).map((a, i) => {
+                          const b = xrayStars[i + 1];
                           return (
-                            <motion.g
-                              key={`xray-arrow-${i}`}
-                              initial={{ opacity: 0, scale: 0.8 }}
-                              // 增加了关键帧控制：快速出现 -> 保持高亮 -> 最后渐变消失
-                              animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 0.9] }}
-                              transition={{
-                                duration: 0.6, // 单个箭头的存活总时间
-                                times: [0, 0.15, 0.7, 1], // 15%时间达到最亮，保持到70%时间，最后30%渐隐
-                                delay: i * 0.025, // 核心修复：加快波浪传递速度，避免由于路径长导致道具提前失效
-                                ease: "easeOut",
-                              }}
-                            >
-                              <path
-                                d={pathD}
-                                fill="none"
-                                // 颜色修改：使用迷宫主题的主强调色，完全融入当前配色方案
-                                stroke="var(--pixel-accent)"
-                                strokeOpacity={0.9}
-                                strokeWidth={Math.max(1.5, cellSize * 0.12)}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                transform={`translate(${cx}, ${cy}) rotate(${rotate})`}
-                              />
-                            </motion.g>
+                            <motion.line
+                              key={`xl-${i}`}
+                              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                              stroke="var(--pixel-accent)"
+                              strokeWidth={Math.max(1, cellSize * 0.04)}
+                              strokeLinecap="round"
+                              initial={{ pathLength: 0, opacity: 0 }}
+                              animate={{ pathLength: [0, 1, 1], opacity: [0, 0.6, 0] }}
+                              transition={{ duration: 1.2, times: [0, 0.35, 1], delay: a.delay, ease: "easeOut" }}
+                            />
                           );
                         })}
-                        
-                        {/* 终点爆裂圈 */}
+
+                        {/* 星星 */}
+                        {xrayStars.map((s, i) => {
+                          const r = s.isEnd ? Math.max(2.5, cellSize * 0.14) : Math.max(1.5, cellSize * 0.08);
+                          return (
+                            <Fragment key={`xs-${i}`}>
+                              <motion.circle
+                                cx={s.x} cy={s.y} r={r * 3}
+                                fill="var(--pixel-accent)"
+                                filter="url(#xstar-glow)"
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: [0, 0.35, 0.2, 0], scale: [0, 1, 0.8, 0] }}
+                                transition={{ duration: 1.4, times: [0, 0.15, 0.6, 1], delay: s.delay, ease: "easeOut" }}
+                              />
+                              <motion.circle
+                                cx={s.x} cy={s.y} r={r}
+                                fill={s.isEnd ? "var(--pixel-warn)" : "#fff"}
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: [0, 1, 0.8, 0], scale: [0, 1.2, 1, 0] }}
+                                transition={{ duration: 1.2, times: [0, 0.12, 0.6, 1], delay: s.delay, ease: "easeOut" }}
+                              />
+                            </Fragment>
+                          );
+                        })}
+
+                        {/* 终点光环 */}
                         {(() => {
-                          const last = xrayPath[xrayPath.length - 1];
-                          const cx = last.col * cellSize + cellSize / 2;
-                          const cy = last.row * cellSize + cellSize / 2;
+                          const last = xrayStars[xrayStars.length - 1];
                           return (
                             <motion.circle
-                              cx={cx}
-                              cy={cy}
-                              r={cellSize * 0.15}
+                              cx={last.x} cy={last.y}
+                              r={cellSize * 0.12}
                               fill="none"
-                              // 终点处用警告色/目标色（var(--pixel-warn)）作为完美收尾
-                              stroke="var(--pixel-warn)" 
-                              strokeWidth={Math.max(2, cellSize * 0.08)}
+                              stroke="var(--pixel-warn)"
+                              strokeWidth={Math.max(1.5, cellSize * 0.06)}
                               initial={{ opacity: 0, scale: 0 }}
-                              animate={{ opacity: [0, 1, 0], scale: [0.5, 2.5, 3] }}
-                              transition={{
-                                duration: 0.8,
-                                delay: (xrayPath.length - 1) * 0.025, // 和波浪到达的时间精确匹配
-                                ease: "easeOut"
-                              }}
+                              animate={{ opacity: [0, 1, 0], scale: [0.5, 2.5, 3.5] }}
+                              transition={{ duration: 0.9, delay: last.delay + 0.2, ease: "easeOut" }}
                             />
                           );
                         })()}
@@ -2358,79 +2401,110 @@ export default function MazePage() {
                       />
                     )}
                   </svg>
+
+                  {/* P2P 输赢闪光 */}
+                  {winner !== null && mode !== "single" && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: [0, 0.35, 0.2, 0] }}
+                      transition={{ duration: 1.5, times: [0, 0.15, 0.5, 1], ease: "easeOut" }}
+                      style={{
+                        background: (() => {
+                          // 判断当前玩家是否赢了
+                          const myId = mode === "remote" ? myRemotePlayerId : 1;
+                          const won = winner === myId;
+                          return won
+                            ? "radial-gradient(ellipse at center, rgba(34,197,94,0.5) 0%, rgba(34,197,94,0) 70%)"
+                            : "radial-gradient(ellipse at center, rgba(239,68,68,0.5) 0%, rgba(239,68,68,0) 70%)";
+                        })(),
+                      }}
+                    />
+                  )}
                 </div>
 
-                {/* Controls info + inventory */}
-                <div className="flex flex-wrap justify-center gap-4 text-xs font-mono text-[var(--pixel-muted)]">
-                  {mode === "single" && (
-                    <div>
-                      <span className="text-[var(--pixel-accent)]">P1:</span>{" "}
-                      WASD
-                    </div>
-                  )}
-                  {mode === "local" && (
-                    <>
+                {/* 底部信息区 — 固定最小高度，避免显隐导致迷宫位置抖动 */}
+                <div className="flex min-h-[72px] flex-col items-center justify-start gap-2">
+                  <div className="flex flex-wrap justify-center gap-4 text-xs font-mono text-[var(--pixel-muted)]">
+                    {mode === "single" && (
                       <div>
-                        <span className="text-[var(--pixel-accent)]">
-                          P1:
-                        </span>{" "}
+                        <span className="text-[var(--pixel-accent)]">P1:</span>{" "}
                         WASD
                       </div>
+                    )}
+                    {mode === "local" && (
+                      <>
+                        <div>
+                          <span className="text-[var(--pixel-accent)]">
+                            P1:
+                          </span>{" "}
+                          WASD
+                        </div>
+                        <div>
+                          <span className="text-[var(--pixel-accent-2)]">
+                            P2:
+                          </span>{" "}
+                          Arrows
+                        </div>
+                      </>
+                    )}
+                    {mode === "remote" && (
                       <div>
                         <span className="text-[var(--pixel-accent-2)]">
-                          P2:
+                          REMOTE:
                         </span>{" "}
-                        Arrows
+                        WASD/Arrows
                       </div>
-                    </>
+                    )}
+                  </div>
+
+                  {/* Bomb mode indicator */}
+                  {bombMode?.active && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex items-center gap-2 rounded-xl border border-[#FF4500] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[9px] text-[#FF4500]"
+                    >
+                      <span className="hidden md:inline">BOMB: Press arrow key to choose wall direction (ESC to cancel)</span>
+                      <span className="md:hidden">BOMB: Swipe or D-pad to pick direction</span>
+                      <button
+                        onClick={() => setBombMode(null)}
+                        className="ml-1 rounded-lg border border-[#FF4500]/40 px-2 py-0.5 text-[9px] transition-colors hover:bg-[#FF4500]/10 md:hidden"
+                      >
+                        CANCEL
+                      </button>
+                    </motion.div>
                   )}
-                  {mode === "remote" && (
-                    <div>
-                      <span className="text-[var(--pixel-accent-2)]">
-                        REMOTE:
-                      </span>{" "}
-                      WASD/Arrows
+
+                  {/* Active effects display */}
+                  {activeEffects.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {activeEffects.map((e, i) => {
+                        const meta = ITEM_META[e.type];
+                        const remaining = Math.max(
+                          0,
+                          Math.ceil((e.expiresAt - Date.now()) / 1000)
+                        );
+                        return (
+                          <div
+                            key={i}
+                            className="border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-2 py-1 font-mono text-[9px]"
+                            style={{ color: meta.color }}
+                          >
+                            {meta.emoji} P{e.targetPlayer} {remaining}s
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
-                {/* Bomb mode indicator */}
-                {bombMode?.active && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-xl border border-[#FF4500] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[9px] text-[#FF4500]"
+                {/* Backpack UI — 生成时隐藏但保留占位，避免布局跳动 */}
+                {settings.itemsEnabled && (
+                  <div
+                    className="flex flex-wrap items-center justify-center gap-4 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 backdrop-blur-sm"
+                    style={{ visibility: isGenerating ? "hidden" : "visible" }}
                   >
-                    BOMB: Press arrow key to choose wall direction (ESC to
-                    cancel)
-                  </motion.div>
-                )}
-
-                {/* Active effects display */}
-                {activeEffects.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {activeEffects.map((e, i) => {
-                      const meta = ITEM_META[e.type];
-                      const remaining = Math.max(
-                        0,
-                        Math.ceil((e.expiresAt - Date.now()) / 1000)
-                      );
-                      return (
-                        <div
-                          key={i}
-                          className="border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-2 py-1 font-mono text-[9px]"
-                          style={{ color: meta.color }}
-                        >
-                          {meta.emoji} P{e.targetPlayer} {remaining}s
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Backpack UI */}
-                {settings.itemsEnabled && !isGenerating && (
-                  <div className="flex flex-wrap items-center justify-center gap-4 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 backdrop-blur-xl">
                     <InventoryUI playerId={1} inventory={p1Inventory} />
                     {player2Pos !== null && (
                       <InventoryUI playerId={2} inventory={p2Inventory} />
@@ -2439,17 +2513,18 @@ export default function MazePage() {
                 )}
 
                 {/* Mobile: double-tap hint */}
-                {(mode === "single" || mode === "local" || mode === "remote") && (
-                  <div className="mt-1 text-center font-mono text-[9px] text-[var(--pixel-muted)] md:hidden">
-                    Double-tap anywhere to {dpadVisible ? "hide" : "show"} D-pad
-                  </div>
-                )}
+                <div
+                  className="mt-1 text-center font-mono text-[9px] text-[var(--pixel-muted)] md:hidden"
+                  style={{ visibility: isGenerating ? "hidden" : "visible" }}
+                >
+                  Double-tap anywhere to {dpadVisible ? "hide" : "show"} D-pad
+                </div>
 
                 {winner && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.82 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-6 py-4 text-center backdrop-blur-xl"
+                    className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-6 py-4 text-center backdrop-blur-sm"
                   >
                     <div className="mb-2 font-sans font-semibold text-lg text-[var(--pixel-accent)]">
                       {mode === "single"

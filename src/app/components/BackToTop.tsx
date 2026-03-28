@@ -32,10 +32,11 @@ export default function BackToTop() {
   return (
     <motion.button
       style={{ opacity, scale, pointerEvents: show ? "auto" : "none" }}
+      aria-label="Scroll to top"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       whileHover={{ scale: 1.1, boxShadow: "0 8px 32px var(--pixel-glow)" }}
       whileTap={{ scale: 0.95 }}
-      className="fixed bottom-16 right-4 sm:bottom-20 sm:right-8 z-50 min-h-[44px] min-w-[44px] flex items-center justify-center p-3 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl text-[var(--pixel-accent)] shadow-lg touch-manipulation"
+      className="fixed bottom-16 right-4 sm:bottom-20 sm:right-8 z-50 min-h-[44px] min-w-[44px] flex items-center justify-center p-3 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-sm text-[var(--pixel-accent)] shadow-lg touch-manipulation"
     >
       <ArrowUp size={20} />
     </motion.button>

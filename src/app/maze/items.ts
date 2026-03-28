@@ -48,13 +48,28 @@ const ALL_ITEM_TYPES: ItemType[] = [
   "FREEZE",
 ];
 
+/** 单人模式可用道具 — 不含任何以对手为目标的道具 */
+const SOLO_ITEM_TYPES: ItemType[] = [
+  "SPEED_BOOST",
+  "X_RAY",
+  "BOMB",
+];
+
 const FREQUENCY_INTERVAL: Record<ItemFrequency, [number, number]> = {
   low: [7000, 9000],
   medium: [5000, 8000],
   high: [3000, 5000],
 };
 
-export const MAX_FIELD_ITEMS = 3;
+/** 场上最大道具数根据迷宫面积动态计算 */
+export function getMaxFieldItems(rows: number, cols: number): number {
+  const area = rows * cols;
+  if (area <= 100) return 2;    // 10x10 及以下
+  if (area <= 225) return 3;    // 15x15
+  if (area <= 400) return 4;    // 20x20
+  return 5;                      // 更大的迷宫
+}
+
 export const MAX_INVENTORY = 2;
 
 let itemIdCounter = 0;
@@ -68,9 +83,11 @@ export function spawnItem(
   maze: Maze,
   existingItems: MazeItem[],
   p1: { row: number; col: number },
-  p2: { row: number; col: number } | null
+  p2: { row: number; col: number } | null,
+  solo?: boolean
 ): MazeItem | null {
-  if (existingItems.length >= MAX_FIELD_ITEMS) return null;
+  const maxItems = getMaxFieldItems(maze.length, maze[0].length);
+  if (existingItems.length >= maxItems) return null;
 
   const rows = maze.length;
   const cols = maze[0].length;
@@ -97,7 +114,8 @@ export function spawnItem(
   if (candidates.length === 0) return null;
 
   const pos = candidates[Math.floor(Math.random() * candidates.length)];
-  const type = ALL_ITEM_TYPES[Math.floor(Math.random() * ALL_ITEM_TYPES.length)];
+  const pool = solo ? SOLO_ITEM_TYPES : ALL_ITEM_TYPES;
+  const type = pool[Math.floor(Math.random() * pool.length)];
 
   return {
     id: `item-${itemIdCounter++}`,

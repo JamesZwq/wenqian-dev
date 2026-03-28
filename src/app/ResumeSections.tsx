@@ -16,7 +16,7 @@ import DraggableFloat from "./components/DraggableFloat";
 
 function MiniBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center justify-center h-5 px-2 rounded-md border border-[color-mix(in_oklab,var(--pixel-border)_45%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm text-[10px] font-mono text-[var(--pixel-text)]">
+    <span className="inline-flex items-center justify-center h-5 px-2 rounded-md border border-[color-mix(in_oklab,var(--pixel-border)_45%,transparent)] bg-[var(--pixel-card-bg)] text-[10px] font-mono text-[var(--pixel-text)]">
       {children}
     </span>
   );
@@ -183,11 +183,13 @@ const PublicationCard = ({
   title,
   meta,
   desc,
+  href,
 }: {
   status: string;
   title: string;
   meta: string;
   desc: string;
+  href?: string;
 }) => {
   const statusColors: Record<string, string> = {
     Accepted:
@@ -207,22 +209,32 @@ const PublicationCard = ({
         borderColor: "var(--pixel-border)",
         boxShadow: "0 8px 32px var(--pixel-glow)",
       }}
-      className="p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
+      className="p-5 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)]"
     >
-      <div className="flex justify-between items-start mb-3">
-        <span
-          className={`px-2 py-1 rounded-md border text-[10px] font-mono ${statusColors[statusKey] || "border-[var(--pixel-border)] text-[var(--pixel-text)]"}`}
-        >
-          {status}
-        </span>
-      </div>
-      <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)] mb-2 leading-tight">
-        {title}
-      </h3>
-      <p className="text-xs text-[var(--pixel-text)] font-mono mb-3">{meta}</p>
-      <p className="text-sm text-[var(--pixel-text)] font-mono border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">
-        {desc}
-      </p>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="block cursor-pointer">
+          <div className="flex justify-between items-start mb-3">
+            <span className={`px-2 py-1 rounded-md border text-[10px] font-mono ${statusColors[statusKey] || "border-[var(--pixel-border)] text-[var(--pixel-text)]"}`}>
+              {status}
+            </span>
+            <span className="text-[10px] text-[var(--pixel-muted)]">&#x2197;</span>
+          </div>
+          <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)] mb-2 leading-tight">{title}</h3>
+          <p className="text-xs text-[var(--pixel-text)] font-mono mb-3">{meta}</p>
+          <p className="text-sm text-[var(--pixel-text)] font-mono border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">{desc}</p>
+        </a>
+      ) : (
+        <>
+          <div className="flex justify-between items-start mb-3">
+            <span className={`px-2 py-1 rounded-md border text-[10px] font-mono ${statusColors[statusKey] || "border-[var(--pixel-border)] text-[var(--pixel-text)]"}`}>
+              {status}
+            </span>
+          </div>
+          <h3 className="font-sans text-sm font-semibold text-[var(--pixel-accent)] mb-2 leading-tight">{title}</h3>
+          <p className="text-xs text-[var(--pixel-text)] font-mono mb-3">{meta}</p>
+          <p className="text-sm text-[var(--pixel-text)] font-mono border-l-2 border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] pl-4">{desc}</p>
+        </>
+      )}
     </DraggableFloat>
   );
 };
@@ -253,7 +265,7 @@ const SkillBar = ({
       </div>
       <span className="text-xs sm:text-sm font-mono text-[var(--pixel-text)]">{level}%</span>
     </div>
-    <div className="h-2 w-full rounded-full bg-[var(--pixel-card-bg)] backdrop-blur-sm border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
+    <div className="h-2 w-full rounded-full bg-[var(--pixel-card-bg)] border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         whileInView={{ width: `${level}%` }}
@@ -295,7 +307,7 @@ function SetupCommandBlock() {
       <p className="text-sm text-[var(--pixel-muted)] font-mono mb-4">
         One command to bootstrap my dev environment — Oh My Zsh, plugins, and a tuned .zshrc.
       </p>
-      <div className="group relative rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl overflow-hidden">
+      <div className="group relative rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] overflow-hidden">
         {/* Top bar */}
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[color-mix(in_oklab,var(--pixel-bg-alt)_60%,transparent)]">
           <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -407,12 +419,14 @@ export default function ResumeSections() {
             title="Accelerating Core Decomposition in Billion-Scale Hypergraphs"
             meta="First Author"
             desc="Improved efficiency by 7x and reduced memory by 36x compared to state-of-the-art."
+            href="https://dl.acm.org/doi/epdf/10.1145/3709656"
           />
           <PublicationCard
             status="Published - ICDM Workshop 2023"
             title="Efficient Distributed Core Graph Decomposition"
             meta="First Author"
             desc="Optimized algorithms deployed on Spark/Flink via Kubernetes clusters."
+            href="https://ieeexplore.ieee.org/document/10411576/"
           />
         </div>
       </motion.section>
@@ -431,7 +445,7 @@ export default function ResumeSections() {
           <p className="text-[var(--pixel-text)] text-sm mb-4 sm:mb-6 -mt-4 font-mono">
             Languages & Systems — C++/Rust for low-level performance.
           </p>
-          <DraggableFloat className="group p-4 sm:p-6 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl">
+          <DraggableFloat className="group p-4 sm:p-6 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_40%,transparent)] bg-[var(--pixel-card-bg)]">
             <h4 className="text-[10px] font-mono text-[var(--pixel-text)] uppercase tracking-wider mb-5">
               Languages
             </h4>
@@ -462,7 +476,7 @@ export default function ResumeSections() {
                   borderColor: "var(--pixel-border)",
                   boxShadow: "0 8px 32px var(--pixel-glow)",
                 }}
-                className="group px-3 py-3 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl font-mono text-sm sm:text-base text-[var(--pixel-text)] min-w-0"
+                className="group px-3 py-3 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_35%,transparent)] bg-[var(--pixel-card-bg)] font-mono text-sm sm:text-base text-[var(--pixel-text)] min-w-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[color-mix(in_oklab,var(--pixel-text)_85%,transparent)] flex-shrink-0">
@@ -481,7 +495,7 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="group flex items-start gap-4 p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)]"
               >
                 <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-accent-2)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-accent-2)]" />
                 <div>
@@ -497,7 +511,7 @@ export default function ResumeSections() {
             <li>
               <DraggableFloat
                 variants={itemVariants}
-                className="group flex items-start gap-4 p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-xl"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_30%,transparent)] bg-[var(--pixel-card-bg)]"
               >
                 <div className="mt-1 w-2 h-2 rounded-full bg-[var(--pixel-warn)] flex-shrink-0 transition-transform duration-300 ease-out group-hover:scale-150 group-hover:shadow-[0_0_8px_var(--pixel-warn)]" />
                 <div>

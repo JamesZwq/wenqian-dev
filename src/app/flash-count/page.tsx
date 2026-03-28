@@ -173,25 +173,29 @@ function IsometricBlocks({ puzzle, tileW, tileH }: { puzzle: BlockPuzzle; tileW:
   );
 }
 
-// ─── Reveal animation ───
+// ─── Reveal animation (layer-by-layer verification) ───
 
-function getBlockTraversal(puzzle: BlockPuzzle): { r: number; c: number; l: number }[] {
-  const blocks: { r: number; c: number; l: number }[] = [];
+/** 按层分组：layer 0 (底层) 先显示，同层内按 row+col 排序 */
+function getLayeredTraversal(puzzle: BlockPuzzle): { r: number; c: number; l: number }[][] {
   const { grid, rows, cols } = puzzle;
   const maxH = Math.max(...grid.flat());
+  const layers: { r: number; c: number; l: number }[][] = [];
   for (let l = 0; l < maxH; l++) {
+    const layer: { r: number; c: number; l: number }[] = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (grid[r][c] > l) {
-          blocks.push({ r, c, l });
+          layer.push({ r, c, l });
         }
       }
     }
+    if (layer.length > 0) layers.push(layer);
   }
-  return blocks;
+  return layers;
 }
 
-const REVEAL_INTERVAL = 80;
+const BLOCK_INTERVAL = 60;   // ms per block within a layer
+const LAYER_PAUSE = 300;      // ms pause between layers
 
 function RevealBlocks({
   puzzle,
@@ -204,32 +208,80 @@ function RevealBlocks({
   tileH: number;
   onComplete: () => void;
 }) {
-  const traversal = useMemo(() => getBlockTraversal(puzzle), [puzzle]);
-  const [visibleCount, setVisibleCount] = useState(0);
+  const layers = useMemo(() => getLayeredTraversal(puzzle), [puzzle]);
+  const totalBlocks = useMemo(() => layers.reduce((s, l) => s + l.length, 0), [layers]);
+
+  // State: which layer, how many blocks within that layer
+  const [currentLayer, setCurrentLayer] = useState(0);
+  const [blocksInLayer, setBlocksInLayer] = useState(0);
+  const [layerPausing, setLayerPausing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doneRef = useRef(false);
+
+  // Count all visible blocks across completed layers + current partial
+  const visibleTotal = useMemo(() => {
+    let count = 0;
+    for (let i = 0; i < currentLayer && i < layers.length; i++) {
+      count += layers[i].length;
+    }
+    if (currentLayer < layers.length) {
+      count += Math.min(blocksInLayer, layers[currentLayer].length);
+    }
+    return count;
+  }, [currentLayer, blocksInLayer, layers]);
 
   useEffect(() => {
-    setVisibleCount(0);
-    intervalRef.current = setInterval(() => {
-      setVisibleCount(prev => {
-        const next = prev + 1;
-        if (next >= traversal.length) {
+    setCurrentLayer(0);
+    setBlocksInLayer(0);
+    setLayerPausing(false);
+    doneRef.current = false;
+
+    const advanceLayer = (layerIdx: number) => {
+      if (layerIdx >= layers.length) {
+        // All done
+        doneRef.current = true;
+        return;
+      }
+      setCurrentLayer(layerIdx);
+      setBlocksInLayer(0);
+      setLayerPausing(false);
+
+      const layerSize = layers[layerIdx].length;
+      let count = 0;
+
+      intervalRef.current = setInterval(() => {
+        count++;
+        setBlocksInLayer(count);
+        if (count >= layerSize) {
           if (intervalRef.current) clearInterval(intervalRef.current);
-          return traversal.length;
+          intervalRef.current = null;
+          // Pause between layers
+          setLayerPausing(true);
+          timeoutRef.current = setTimeout(() => {
+            advanceLayer(layerIdx + 1);
+          }, LAYER_PAUSE);
         }
-        return next;
-      });
-    }, REVEAL_INTERVAL);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [traversal]);
+      }, BLOCK_INTERVAL);
+    };
 
+    advanceLayer(0);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [layers]);
+
+  // Complete callback
   useEffect(() => {
-    if (visibleCount >= traversal.length && traversal.length > 0) {
-      const t = setTimeout(onComplete, 400);
+    if (doneRef.current && visibleTotal >= totalBlocks && totalBlocks > 0) {
+      const t = setTimeout(onComplete, 500);
       return () => clearTimeout(t);
     }
-  }, [visibleCount, traversal.length, onComplete]);
+  }, [visibleTotal, totalBlocks, onComplete]);
 
+  // ─── SVG rendering ───
   const { rows, cols, grid } = puzzle;
   const allPoints: { x: number; y: number }[] = [];
   for (let r = 0; r < rows; r++) {
@@ -261,9 +313,25 @@ function RevealBlocks({
   const offX = -minX + pad;
   const offY = -minY + pad;
 
-  const visibleSet = new Set(
-    traversal.slice(0, visibleCount).map(b => `${b.r}-${b.c}-${b.l}`)
-  );
+  // Build visible set: all completed layers + partial current layer
+  const visibleSet = new Set<string>();
+  for (let li = 0; li < layers.length; li++) {
+    const layer = layers[li];
+    const limit = li < currentLayer ? layer.length : li === currentLayer ? blocksInLayer : 0;
+    for (let bi = 0; bi < limit; bi++) {
+      const b = layer[bi];
+      visibleSet.add(`${b.r}-${b.c}-${b.l}`);
+    }
+  }
+
+  // Layer colors: each layer gets a distinct tint so you can see the stacking
+  const layerColors = [
+    { left: "#4a9", right: "#37a", top: "#6dc" },   // layer 0
+    { left: "#5ab", right: "#48b", top: "#7ed" },   // layer 1
+    { left: "#6bc", right: "#59c", top: "#8fe" },   // layer 2
+    { left: "#7cd", right: "#6ad", top: "#9ff" },   // layer 3
+    { left: "#8de", right: "#7be", top: "#aff" },   // layer 4
+  ];
 
   const cubes: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
@@ -275,19 +343,28 @@ function RevealBlocks({
         const { x, y } = toIsometric(r, c, l, tileW, tileH);
         const cx = x + offX;
         const cy = y + offY;
+        const clr = layerColors[Math.min(l, layerColors.length - 1)];
         cubes.push(
           <g key={key}>
-            <polygon points={cubeLeftFace(cx, cy, tileW, tileH)} fill="#4a8" stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
-            <polygon points={cubeRightFace(cx, cy, tileW, tileH)} fill="#37a" stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
-            <polygon points={cubeTopFace(cx, cy, tileW, tileH)} fill="#6dc" stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
+            <polygon points={cubeLeftFace(cx, cy, tileW, tileH)} fill={clr.left} stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
+            <polygon points={cubeRightFace(cx, cy, tileW, tileH)} fill={clr.right} stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
+            <polygon points={cubeTopFace(cx, cy, tileW, tileH)} fill={clr.top} stroke="#111" strokeWidth={0.8} strokeLinejoin="round" />
           </g>,
         );
       }
     }
   }
 
+  // Layer info for display
+  const currentLayerLabel = currentLayer < layers.length
+    ? `Layer ${currentLayer + 1}/${layers.length}`
+    : `All ${layers.length} layers`;
+
+  const currentLayerCount = currentLayer < layers.length ? layers[currentLayer].length : 0;
+  const currentLayerVisible = currentLayer < layers.length ? Math.min(blocksInLayer, currentLayerCount) : 0;
+
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
       <svg
         width={svgW}
         height={svgH}
@@ -296,9 +373,22 @@ function RevealBlocks({
       >
         {cubes}
       </svg>
-      <span className="font-mono text-2xl md:text-3xl font-bold text-[var(--pixel-accent)]">
-        {visibleCount} / {traversal.length}
-      </span>
+      {/* 计数器 */}
+      <div className="flex flex-col items-center gap-1">
+        <span className="font-mono text-2xl md:text-3xl font-bold text-[var(--pixel-accent)]">
+          {visibleTotal} <span className="text-[var(--pixel-muted)] text-lg md:text-xl">/ {totalBlocks}</span>
+        </span>
+        <span className="font-mono text-[10px] md:text-xs text-[var(--pixel-muted)]">
+          {currentLayer < layers.length ? (
+            <>
+              {currentLayerLabel}: {currentLayerVisible}/{currentLayerCount}
+              {layerPausing && " ✓"}
+            </>
+          ) : (
+            <span className="text-[var(--pixel-accent)]">✓ Verified</span>
+          )}
+        </span>
+      </div>
     </div>
   );
 }
@@ -462,6 +552,36 @@ export default function FlashCountPage() {
     opponentAnswerRef.current = null;
   }, []);
 
+  // ─── P2P: process question result locally (used by both host & guest) ───
+
+  const processQuestionResult = useCallback((qIdx: number, myAns: number, oppAns: number, correct: number) => {
+    const myCorrect = myAns === correct;
+    const oppCorrect = oppAns === correct;
+    setQuestionResult({ myAnswer: myAns, opponentAnswer: oppAns, correct, myCorrect, opponentCorrect: oppCorrect });
+    setMyScore(prev => prev + (myCorrect ? 1 : 0));
+    setOpponentScore(prev => prev + (oppCorrect ? 1 : 0));
+    // Auto-advance after 2.5s
+    setTimeout(() => {
+      const pz = puzzlesRef.current;
+      const nextIdx = qIdx + 1;
+      setCurrentIndex(nextIdx);
+      resetP2pQuestion();
+      if (nextIdx >= pz.length) {
+        stopTimer();
+        setGamePhase("done");
+        setMyScore(ms => {
+          setOpponentScore(os => {
+            setP2pGameResult({ myScore: ms, opponentScore: os, totalQuestions: pz.length });
+            return os;
+          });
+          return ms;
+        });
+      } else {
+        startFlash(pz[nextIdx]);
+      }
+    }, 2500);
+  }, [resetP2pQuestion, stopTimer, startFlash]);
+
   // ─── P2P: after both submitted, host computes & broadcasts result ───
 
   const broadcastResult = useCallback((qIdx: number, myAns: number, oppAns: number, send: (p: FlashPacket) => void) => {
@@ -476,7 +596,9 @@ export default function FlashCountPage() {
       correct,
       timestamp: Date.now(),
     });
-  }, []);
+    // Host also processes the result locally
+    processQuestionResult(qIdx, myAns, oppAns, correct);
+  }, [processQuestionResult]);
 
   // ─── P2P incoming data ───
 
@@ -529,37 +651,10 @@ export default function FlashCountPage() {
           break;
         }
         case "question_result": {
-          const isHost = directionRef.current === "outgoing";
-          const myAns = isHost ? payload.p1Answer : payload.p2Answer;
-          const oppAns = isHost ? payload.p2Answer : payload.p1Answer;
-          const correct = payload.correct;
-          const myCorrect = myAns === correct;
-          const oppCorrect = oppAns === correct;
-          setQuestionResult({ myAnswer: myAns, opponentAnswer: oppAns, correct, myCorrect, opponentCorrect: oppCorrect });
-          setMyScore(prev => prev + (myCorrect ? 1 : 0));
-          setOpponentScore(prev => prev + (oppCorrect ? 1 : 0));
-          // Auto-advance after 2.5s
-          const qIdx = payload.questionIndex;
-          setTimeout(() => {
-            const pz = puzzlesRef.current;
-            const nextIdx = qIdx + 1;
-            setCurrentIndex(nextIdx);
-            resetP2pQuestion();
-            if (nextIdx >= pz.length) {
-              stopTimer();
-              setGamePhase("done");
-              // compute final result via setState updater to get latest scores
-              setMyScore(ms => {
-                setOpponentScore(os => {
-                  setP2pGameResult({ myScore: ms, opponentScore: os, totalQuestions: pz.length });
-                  return os;
-                });
-                return ms;
-              });
-            } else {
-              startFlash(pz[nextIdx]);
-            }
-          }, 2500);
+          // Guest receives result from host (host already processed locally)
+          const myAns = payload.p2Answer;  // guest = p2
+          const oppAns = payload.p1Answer; // host = p1
+          processQuestionResult(payload.questionIndex, myAns, oppAns, payload.correct);
           break;
         }
         case "rematch": {
@@ -578,7 +673,7 @@ export default function FlashCountPage() {
         }
       }
     },
-    [broadcastResult, resetP2pQuestion, startFlash, stopTimer],
+    [broadcastResult, resetP2pQuestion, startFlash, stopTimer, processQuestionResult],
   );
 
   const {
@@ -592,7 +687,7 @@ export default function FlashCountPage() {
       if (dir === "outgoing") { setP2pSettingsReady(false); setWaitingForConfig(false); }
       else { setWaitingForConfig(true); setP2pSettingsReady(false); }
     },
-    onDisconnected: () => { setDirection(null); setWaitingForConfig(false); setP2pSettingsReady(false); stopTimer(); },
+    onDisconnected: () => { setDirection(null); setWaitingForConfig(false); setP2pSettingsReady(false); stopTimer(); setRevealPuzzle(null); resetP2pQuestion(); },
   });
 
   // Keep sendRef in sync
@@ -777,7 +872,7 @@ export default function FlashCountPage() {
 
   const settingsPanel = (
     <>
-      <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+      <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
         <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
           DIFFICULTY
         </h3>
@@ -798,7 +893,7 @@ export default function FlashCountPage() {
         </div>
       </div>
 
-      <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-xl">
+      <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 backdrop-blur-sm">
         <h3 className="mb-4 font-sans font-semibold text-xs text-[var(--pixel-accent)]">
           QUESTIONS
         </h3>
@@ -868,7 +963,7 @@ export default function FlashCountPage() {
                 {settingsPanel}
 
                 {bestSpeed !== null && (
-                  <div className="w-full rounded-xl border border-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] px-5 py-3 backdrop-blur-xl">
+                  <div className="w-full rounded-xl border border-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] px-5 py-3 backdrop-blur-sm">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs text-[var(--pixel-muted)]">
                         Best ({difficulty} / {totalQuestions}Q)
@@ -882,13 +977,13 @@ export default function FlashCountPage() {
 
                 <button
                   onClick={startSolo}
-                  className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   SOLO
                 </button>
                 <button
                   onClick={() => setGameMode("p2p")}
-                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   P2P ONLINE
                 </button>
@@ -933,7 +1028,7 @@ export default function FlashCountPage() {
                 exit={{ opacity: 0, scale: 0.92 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
-                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                   <p className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent-2)]">CONNECTED</p>
                   <p className="font-mono text-xs text-[var(--pixel-muted)]">&gt; You are the host. Choose settings and start!</p>
                 </div>
@@ -956,7 +1051,7 @@ export default function FlashCountPage() {
                 exit={{ opacity: 0, scale: 0.92 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
-                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-6 backdrop-blur-xl text-center">
+                <div className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] p-6 backdrop-blur-sm text-center">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
@@ -991,7 +1086,7 @@ export default function FlashCountPage() {
                 {!soloResult && !p2pGameResult ? (
                   <>
                     {/* Progress bar + stats */}
-                    <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-xl">
+                    <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 backdrop-blur-sm">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-mono text-sm text-[var(--pixel-text)]">
                           {currentIndex}/{puzzles.length}
@@ -1023,7 +1118,7 @@ export default function FlashCountPage() {
                     </div>
 
                     {/* Main game card */}
-                    <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] backdrop-blur-xl overflow-hidden transition-all duration-200 ${
+                    <div className={`relative w-full rounded-xl border bg-[var(--pixel-card-bg)] backdrop-blur-sm overflow-hidden transition-all duration-200 ${
                       flashColor === "red"
                         ? "border-[#ef4444]/50 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
                         : flashColor === "green"
@@ -1217,7 +1312,7 @@ export default function FlashCountPage() {
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-xl"
+                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-sm"
                   >
                     <h2 className="mb-2 text-center font-sans font-semibold text-xl text-[var(--pixel-accent)] md:text-2xl">
                       COMPLETE!
@@ -1282,7 +1377,7 @@ export default function FlashCountPage() {
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-xl"
+                    className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] p-6 md:p-8 backdrop-blur-sm"
                   >
                     <h2 className="mb-6 text-center font-sans font-semibold text-xl md:text-2xl">
                       {p2pGameResult.myScore > p2pGameResult.opponentScore ? (

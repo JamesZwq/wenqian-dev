@@ -83,6 +83,7 @@ export function Scene({ isFullscreen, theme }) {
   const randomRotationsYRef = useRef(null);
   // Reusable THREE.Color for theme ripple (avoid per-frame allocation)
   const tempBgColorRef = useRef(new THREE.Color());
+  const themeStrRef = useRef(theme);
 
   // --- Responsive LOD (reduce instance count & render resolution on small/slow devices) ---
   const [gridSize, setGridSize] = useState(BASE_GRID_SIZE);
@@ -150,29 +151,39 @@ export function Scene({ isFullscreen, theme }) {
   }, [gridSize]);
   const instanceCount = basePositions.length;
 
+  // 每个实例的空间参数 (用于颜色波动动画)
+  const instanceSpatial = useMemo(() => {
+    const arr = [];
+    const size = gridSize;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (r % 2) {
+          const tRow = r / (size - 1 || 1);
+          const tCol = c / (size - 1 || 1);
+          arr.push({ tRow, tCol, diag: (tRow + tCol) * 0.5 });
+        }
+      }
+    }
+    return arr;
+  }, [gridSize]);
+
   const { lightColors, darkColors } = useMemo(() => {
     const lc = [];
     const dc = [];
     const size = gridSize;
 
-    // 高级感调色：纯白至浅灰 vs 深邃黑蓝至暗紫
-    const dayStart = new THREE.Color("#ffffff"); 
-    const dayEnd = new THREE.Color("#e2e8f0"); 
-    const nightStart = new THREE.Color("#0f172a"); 
-    const nightEnd = new THREE.Color("#312e81"); 
+    const dayStart = new THREE.Color("#ffffff");
+    const dayEnd = new THREE.Color("#e2e8f0");
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         if (r % 2) {
           const tRow = r / (size - 1 || 1);
           const tCol = c / (size - 1 || 1);
-          const t = (tRow * 0.5 + tCol * 0.5); 
-
-          const day = dayStart.clone().lerp(dayEnd, t);
-          const night = nightStart.clone().lerp(nightEnd, t);
-
-          lc.push(day);
-          dc.push(night);
+          const t = (tRow * 0.5 + tCol * 0.5);
+          lc.push(dayStart.clone().lerp(dayEnd, t));
+          // Dark 初始色 — 运行时会被动画覆盖
+          dc.push(new THREE.Color().setHSL(0.65 + t * 0.15, 0.6, 0.18));
         }
       }
     }
@@ -254,12 +265,11 @@ export function Scene({ isFullscreen, theme }) {
       return;
     }
 
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false }); // 关闭 alpha 配合后期处理
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
     renderer.setPixelRatio(lod0.pixelRatio);
     renderer.setSize(container.clientWidth, container.clientHeight);
-    
+
     const initialIsDark = theme === "dark";
-    // 初始背景色
     renderer.setClearColor(initialIsDark ? 0x05050a : 0xf4f5f7, 1);
     container.appendChild(renderer.domElement);
     renderer.domElement.style.pointerEvents = "none";
@@ -267,6 +277,51 @@ export function Scene({ isFullscreen, theme }) {
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
+
+    // --- 宇宙星云渐变背景纹理 ---
+    const bgCanvas = document.createElement("canvas");
+    bgCanvas.width = 512;
+    bgCanvas.height = 512;
+    const bgCtx = bgCanvas.getContext("2d");
+    const bgTexture = new THREE.CanvasTexture(bgCanvas);
+    bgTexture.colorSpace = THREE.SRGBColorSpace;
+
+    const paintBgGradient = (isDark, time) => {
+      if (!bgCtx) return;
+      const W = 512, H = 512;
+      // Base fill
+      bgCtx.fillStyle = isDark ? "#06050f" : "#f5f6fc";
+      bgCtx.fillRect(0, 0, W, H);
+
+      // Nebula blobs — 仅 indigo/violet 色域，与主题一致
+      const blobs = isDark ? [
+        { x: 0.15, y: 0.2, r: 0.55, h: 238, s: 65, l: 18, a: 0.8 },   // indigo
+        { x: 0.8, y: 0.35, r: 0.5, h: 258, s: 55, l: 16, a: 0.55 },   // indigo-violet
+        { x: 0.25, y: 0.78, r: 0.45, h: 248, s: 60, l: 14, a: 0.5 },  // deep indigo
+        { x: 0.5, y: 0.5, r: 0.6, h: 243, s: 70, l: 12, a: 0.7 },    // core
+        { x: 0.75, y: 0.1, r: 0.38, h: 265, s: 50, l: 15, a: 0.35 },  // violet
+      ] : [
+        { x: 0.2, y: 0.2, r: 0.5, h: 238, s: 55, l: 93, a: 0.25 },
+        { x: 0.8, y: 0.4, r: 0.5, h: 258, s: 45, l: 94, a: 0.18 },
+        { x: 0.5, y: 0.5, r: 0.55, h: 243, s: 50, l: 95, a: 0.2 },
+      ];
+
+      for (const b of blobs) {
+        const pulse = Math.sin(time * 0.0004 + b.h) * 0.08 + 1;
+        const radius = b.r * Math.max(W, H) * pulse;
+        const cx = b.x * W;
+        const cy = b.y * H;
+        const grd = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grd.addColorStop(0, `hsla(${b.h}, ${b.s}%, ${b.l}%, ${b.a})`);
+        grd.addColorStop(0.5, `hsla(${b.h}, ${b.s}%, ${b.l}%, ${b.a * 0.35})`);
+        grd.addColorStop(1, `hsla(${b.h}, ${b.s}%, ${b.l}%, 0)`);
+        bgCtx.fillStyle = grd;
+        bgCtx.fillRect(0, 0, W, H);
+      }
+    };
+    paintBgGradient(initialIsDark, 0);
+    bgTexture.needsUpdate = true;
+    scene.background = bgTexture;
 
     const aspect = container.clientWidth / container.clientHeight || 1;
     const frustumSize = VIEW_SIZE * 0.2;
@@ -284,15 +339,32 @@ export function Scene({ isFullscreen, theme }) {
     camera.updateProjectionMatrix();
     cameraRef.current = camera;
 
-    // --- 高级感灯光 ---
-    const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+    // --- 灯光：基础光 + 彩色点光源 ---
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambient);
-    const dir = new THREE.DirectionalLight(0xfff5e6, 1.2);
+    const dir = new THREE.DirectionalLight(0xfff5e6, 1.0);
     dir.position.set(15, 20, 10);
     scene.add(dir);
     const fillLight = new THREE.DirectionalLight(0x88bbff, 0.3);
     fillLight.position.set(-15, -5, -15);
     scene.add(fillLight);
+
+    // 彩色点光源 — 给方块网格染上多彩光晕
+    const colorLights = [];
+    if (initialIsDark) {
+      const lightDefs = [
+        { color: 0x6366f1, x: -8, y: 10, z: 6, intensity: 25, dist: 35 },   // indigo
+        { color: 0x818cf8, x: 12, y: -5, z: 8, intensity: 20, dist: 32 },   // lighter indigo
+        { color: 0xa78bfa, x: -5, y: -10, z: 5, intensity: 16, dist: 30 },  // violet
+        { color: 0x8b5cf6, x: 8, y: 8, z: 7, intensity: 14, dist: 28 },    // deeper violet
+      ];
+      for (const ld of lightDefs) {
+        const pl = new THREE.PointLight(ld.color, ld.intensity, ld.dist);
+        pl.position.set(ld.x, ld.y, ld.z);
+        scene.add(pl);
+        colorLights.push(pl);
+      }
+    }
 
     const root = new THREE.Group();
     const gridScale = lodRef.current?.scale ?? 1;
@@ -310,11 +382,13 @@ export function Scene({ isFullscreen, theme }) {
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
 
-    // --- 高级感磨砂材质 ---
+    // --- 材质：暗色模式微自发光让颜色可见 ---
     const material = new THREE.MeshStandardMaterial({
-      color: theme === "dark" ? 0x1e293b : 0xffffff,
-      metalness: 0.1,
-      roughness: 0.8,
+      color: initialIsDark ? 0x666666 : 0xffffff,
+      metalness: initialIsDark ? 0.2 : 0.1,
+      roughness: initialIsDark ? 0.65 : 0.8,
+      emissive: initialIsDark ? 0x1a1a2e : 0x000000,
+      emissiveIntensity: initialIsDark ? 0.4 : 0,
     });
 
     const mesh = new THREE.InstancedMesh(geometry, material, instanceCount);
@@ -322,6 +396,7 @@ export function Scene({ isFullscreen, theme }) {
     root.add(mesh);
 
     const dummy = new THREE.Object3D();
+    const auroraColor = new THREE.Color(); // 复用颜色对象避免每帧分配
     for (let i = 0; i < instanceCount; i++) {
       const p = basePositions[i];
       dummy.position.copy(p);
@@ -344,9 +419,9 @@ export function Scene({ isFullscreen, theme }) {
     const renderScene = new RenderPass(scene, camera);
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(container.clientWidth, container.clientHeight),
-      initialIsDark ? 0.35 : 0.0, // 初始辉光强度
-      0.8, 
-      0.6 
+      initialIsDark ? 0.45 : 0.0,
+      0.7,
+      0.55
     );
     bloomPassRef.current = bloomPass;
     bloomPass.enabled = lod0.enableBloom;
@@ -359,7 +434,32 @@ export function Scene({ isFullscreen, theme }) {
     const duration = INTRO_DURATION;
     const targetRotation = { x: THREE.MathUtils.degToRad(-40), y: THREE.MathUtils.degToRad(40) };
 
+    // Scroll-throttle: halve framerate during active scroll to free GPU for compositing
+    let scrolling = false;
+    let scrollTimer = null;
+    let scrollSkip = false;
+    const onScroll = () => {
+      scrolling = true;
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => { scrolling = false; }, 150);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
     const animate = () => {
+      // Skip all work when tab is hidden — saves GPU & battery
+      if (document.hidden) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      // During active scroll, render at half framerate (~30fps)
+      if (scrolling) {
+        scrollSkip = !scrollSkip;
+        if (scrollSkip) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+          return;
+        }
+      }
+
       const currentCamera = cameraRef.current;
       const currentRoot = rootRef.current;
 
@@ -374,6 +474,22 @@ export function Scene({ isFullscreen, theme }) {
         const baseY = startRotation.y + (targetRotation.y - startRotation.y) * easeOut;
         currentRoot.rotation.x = baseX;
         currentRoot.rotation.y = baseY;
+
+        // 每 ~2s 刷新一次星云背景纹理（缓慢脉动）
+        if (bgTexture && bgCtx && Math.floor(tNow * 0.5) !== Math.floor((tNow - 0.017) * 0.5)) {
+          const currentIsDark = themeStrRef.current === "dark";
+          paintBgGradient(currentIsDark, tNow * 1000);
+          bgTexture.needsUpdate = true;
+        }
+
+        // 彩色点光源缓慢轨道运动
+        for (let li = 0; li < colorLights.length; li++) {
+          const pl = colorLights[li];
+          const angle = tNow * 0.15 + li * Math.PI * 0.5;
+          const baseR = 10 + li * 2;
+          pl.position.x += Math.sin(angle) * 0.02;
+          pl.position.y += Math.cos(angle * 0.7) * 0.02;
+        }
 
         if (meshRef.current) {
           const mesh = meshRef.current;
@@ -467,8 +583,10 @@ export function Scene({ isFullscreen, theme }) {
 
               mesh.material.color.copy(ripple.fromColor).lerp(ripple.toColor, globalEase);
 
-              const tempBg = tempBgColorRef.current.copy(ripple.fromBg).lerp(ripple.toBg, globalEase);
-              renderer.setClearColor(tempBg, 1);
+              // 更新星云背景纹理（主题过渡中平滑切换）
+              const transIsDark = globalEase < 0.5 ? (ripple.fromBg.r < 0.1) : (ripple.toBg.r < 0.1);
+              paintBgGradient(transIsDark, tNow * 1000);
+              bgTexture.needsUpdate = true;
 
               if (bloomPassRef.current) {
                 bloomPassRef.current.strength = ripple.fromBloom + (ripple.toBloom - ripple.fromBloom) * globalEase;
@@ -613,6 +731,30 @@ export function Scene({ isFullscreen, theme }) {
           }
         }
 
+        // --- 实时颜色波动（极光效果）---
+        if (meshRef.current && themeStrRef.current === "dark") {
+          const mesh = meshRef.current;
+          const spatials = instanceSpatial;
+          // 每 6 帧更新一次颜色（~10fps 足够流畅，大幅节省 GPU upload）
+          const frameCount = Math.floor(tNow * 60);
+          if (frameCount % 6 === 0 && spatials.length === instanceCount) {
+            for (let i = 0; i < instanceCount; i++) {
+              const s = spatials[i];
+              // 色相仅在 indigo(0.66) ↔ violet(0.74) 间缓慢流动
+              const hue = 0.66
+                + s.diag * 0.06
+                + Math.sin(tNow * 0.08 + s.tRow * 3.0) * 0.03
+                + Math.sin(tNow * 0.06 + s.tCol * 4.0) * 0.025
+                + Math.sin(tNow * 0.04 + s.diag * 5.0) * 0.02;
+              const sat = 0.45 + Math.sin(tNow * 0.1 + s.diag * 2.5) * 0.1;
+              const lit = 0.16 + Math.sin(tNow * 0.07 + s.tRow * 2.0) * 0.05;
+              auroraColor.setHSL(hue, sat, lit);
+              mesh.setColorAt(i, auroraColor);
+            }
+            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+          }
+        }
+
         // 使用 composer 代替原生的 renderer 渲染
         if (composerRef.current) {
           composerRef.current.render();
@@ -717,17 +859,20 @@ export function Scene({ isFullscreen, theme }) {
       }
       if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
       if (resizeDebounceRef.current) clearTimeout(resizeDebounceRef.current);
+      window.removeEventListener("scroll", onScroll);
+      if (scrollTimer) clearTimeout(scrollTimer);
       window.removeEventListener("resize", handleResize);
       if (rendererRef.current) rendererRef.current.dispose();
       if (meshRef.current) {
         meshRef.current.geometry.dispose();
         meshRef.current.material.dispose();
       }
+      if (bgTexture) bgTexture.dispose();
       if (container && renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [basePositions, instanceCount, lightColors, darkColors, introDropData]);
+  }, [basePositions, instanceCount, instanceSpatial, lightColors, darkColors, introDropData]);
 
   // --- 🚀 新增：CSS 蒙版的鼠标视差动画 ---
   useEffect(() => {
@@ -761,6 +906,7 @@ export function Scene({ isFullscreen, theme }) {
 
   // --- 主题触发器：只记录目标状态，由 animate 循环处理平滑渐变 ---
   useEffect(() => {
+    themeStrRef.current = theme;
     const mesh = meshRef.current;
     const renderer = rendererRef.current;
     if (!mesh || !renderer) return;
@@ -773,31 +919,49 @@ export function Scene({ isFullscreen, theme }) {
     
     if (mesh.material && "color" in mesh.material) {
       ripple.fromColor.copy(mesh.material.color);
-      ripple.toColor.set(isDark ? 0x1e293b : 0xffffff);
+      ripple.toColor.set(isDark ? 0x666666 : 0xffffff);
     }
 
-    ripple.fromBg.copy(renderer.getClearColor(new THREE.Color()));
+    ripple.fromBg.set(isDark ? 0xf4f5f7 : 0x05050a);
     ripple.toBg.set(isDark ? 0x05050a : 0xf4f5f7);
+
+    // 材质属性随主题切换
+    if (mesh.material) {
+      mesh.material.metalness = isDark ? 0.2 : 0.1;
+      mesh.material.roughness = isDark ? 0.65 : 0.8;
+      mesh.material.emissive.set(isDark ? 0x1a1a2e : 0x000000);
+      mesh.material.emissiveIntensity = isDark ? 0.4 : 0;
+    }
+
+    // Light mode: 恢复静态颜色
+    if (!isDark) {
+      const color = new THREE.Color();
+      for (let i = 0; i < instanceCount; i++) {
+        color.copy(lightColors[i] ?? new THREE.Color(0xffffff));
+        mesh.setColorAt(i, color);
+      }
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
 
     if (bloomPassRef.current) {
       bloomPassRef.current.enabled = lodRef.current.enableBloom;
       ripple.fromBloom = bloomPassRef.current.strength;
-      ripple.toBloom = isDark ? 0.35 : 0.0;
+      ripple.toBloom = isDark ? 0.45 : 0.0;
     }
 
-  }, [theme]);
+  }, [theme, instanceCount, lightColors]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden">
 
-      {/* 底色层 (移动较慢) */}
+      {/* 底色层 (移动较慢) — 极轻薄遮盖，保留星云色彩 */}
       <div
         ref={maskLayer1Ref}
         className="absolute inset-[-30px] pointer-events-none transition-colors duration-1000 ease-in-out"
         style={{
           backgroundColor: theme === "dark"
-            ? "rgba(2, 6, 23, 0.35)"
-            : "rgba(244, 245, 247, 0.5)",
+            ? "rgba(2, 6, 23, 0.08)"
+            : "rgba(244, 245, 247, 0.2)",
           zIndex: 1,
           willChange: "transform"
         }}
