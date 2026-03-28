@@ -98,6 +98,14 @@ body {
   animation: shake 0.35s ease;
 }
 
+@keyframes drag-wiggle {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20%      { transform: translateX(-3px) rotate(-8deg); }
+  40%      { transform: translateX(3px) rotate(8deg); }
+  60%      { transform: translateX(-2px) rotate(-4deg); }
+  80%      { transform: translateX(2px) rotate(4deg); }
+}
+
 html {
   scroll-behavior: smooth;
 }

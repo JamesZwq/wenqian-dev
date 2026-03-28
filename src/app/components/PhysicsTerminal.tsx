@@ -491,7 +491,9 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [uiDragging, setUiDragging] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false); 
+  const [hasDragged, setHasDragged] = useState(false);
+  const [dragHintVisible, setDragHintVisible] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [cwd, setCwd] = useState("~");
   
   const [history, setHistory] = useState<string[]>([
@@ -816,11 +818,18 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Show drag hint after a delay (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
+    const t = setTimeout(() => setDragHintVisible(true), 3500);
+    return () => clearTimeout(t);
+  }, [isMobile]);
+
   const onTerminalPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault(); if (e.button !== 0) return;
     const pid = e.pointerId; (e.currentTarget as HTMLElement).setPointerCapture(pid);
     const pos = boxPosRef.current; boxTargetRef.current = { x: pos.x, y: pos.y };
-    setUiDragging(true); dragRef.current = { active: true, pid, sx: e.clientX, sy: e.clientY, tx: pos.x, ty: pos.y };
+    setUiDragging(true); setHasDragged(true); dragRef.current = { active: true, pid, sx: e.clientX, sy: e.clientY, tx: pos.x, ty: pos.y };
   };
 
   const onTerminalPointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
@@ -837,6 +846,25 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   return (
     <div ref={outerRef} className={["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ")} style={{willChange: "transform" ,  zIndex: 1}}>
+      {/* Drag hint — floats above terminal, fades in after delay, vanishes on first drag */}
+      {!isMobile && (
+        <div
+          className={`pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-lg transition-all duration-700 ease-out ${
+            dragHintVisible && !hasDragged
+              ? "opacity-70 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {/* Grab-hand SVG icon */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[var(--pixel-accent)] animate-[drag-wiggle_2.4s_ease-in-out_infinite]">
+            <path d="M18 11V6.5a1.5 1.5 0 0 0-3 0V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M15 9.5V5.5a1.5 1.5 0 0 0-3 0v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M12 11.5V4a1.5 1.5 0 0 0-3 0v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M9 11V7.5a1.5 1.5 0 0 0-3 0v5.8c0 3.6 2.4 6.7 6 6.7h1c3.3 0 6-2.7 6-6v-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-mono text-[10px] text-[var(--pixel-muted)] tracking-wider">drag me</span>
+        </div>
+      )}
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
             className="rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-xl shadow-[var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"

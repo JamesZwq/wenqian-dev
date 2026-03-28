@@ -129,6 +129,8 @@ function AnimatedCircle({ x, y, radius, fill }: AnimatedCircleProps) {
 
 export default function MazePage() {
   const [cellSize, setCellSize] = useState(30);
+  const cellSizeRef = useRef(30);
+  useEffect(() => { cellSizeRef.current = cellSize; }, [cellSize]);
   const joinPeerId = useJoinParam();
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -216,6 +218,11 @@ export default function MazePage() {
     playerId: 1 | 2;
     active: boolean;
   } | null>(null);
+
+  // Bomb blast animation
+  type BombBlast = { x: number; y: number; id: number };
+  const [bombBlasts, setBombBlasts] = useState<BombBlast[]>([]);
+  const bombBlastIdRef = useRef(0);
 
   // D-pad state (mobile)
   const [dpadVisible, setDpadVisible] = useState(false);
@@ -702,7 +709,7 @@ export default function MazePage() {
     [applyItemEffect, isGenerating]
   );
 
-  // Bomb wall break
+  // Bomb wall break — scans in direction to find the first wall, then breaks it
   const executeBomb = useCallback(
     (playerId: 1 | 2, direction: Direction) => {
       const currentMaze = mazeRef.current;
@@ -714,72 +721,75 @@ export default function MazePage() {
           : player2PosRef.current;
       if (!pos) return;
 
-      const cell = currentMaze[pos.row][pos.col];
       const wallMap: Record<Direction, "top" | "bottom" | "left" | "right"> = {
-        up: "top",
-        down: "bottom",
-        left: "left",
-        right: "right",
+        up: "top", down: "bottom", left: "left", right: "right",
       };
       const oppositeWall: Record<Direction, "top" | "bottom" | "left" | "right"> = {
-        up: "bottom",
-        down: "top",
-        left: "right",
-        right: "left",
+        up: "bottom", down: "top", left: "right", right: "left",
       };
-      const dr: Record<Direction, number> = {
-        up: -1,
-        down: 1,
-        left: 0,
-        right: 0,
-      };
-      const dc: Record<Direction, number> = {
-        up: 0,
-        down: 0,
-        left: -1,
-        right: 1,
-      };
+      const drMap: Record<Direction, number> = { up: -1, down: 1, left: 0, right: 0 };
+      const dcMap: Record<Direction, number> = { up: 0, down: 0, left: -1, right: 1 };
 
       const wall = wallMap[direction];
-      if (!cell.walls[wall]) {
-        setBombMode(null);
-        return; // No wall to break
-      }
-
-      const nr = pos.row + dr[direction];
-      const nc = pos.col + dc[direction];
       const rows = currentMaze.length;
       const cols = currentMaze[0].length;
 
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) {
-        setBombMode(null);
-        return; // Can't break outer wall
+      // Scan from player position outward to find the first wall in this direction
+      let r = pos.row;
+      let c = pos.col;
+      while (r >= 0 && r < rows && c >= 0 && c < cols) {
+        if (currentMaze[r][c].walls[wall]) {
+          // Found a wall — check if neighbor is in bounds (outer walls can't be broken)
+          const nr = r + drMap[direction];
+          const nc = c + dcMap[direction];
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) {
+            // Outer wall — keep scanning is impossible, bomb fizzles
+            setBombMode(null);
+            return;
+          }
+
+          // Break the wall
+          const newMaze = currentMaze.map((row) =>
+            row.map((cl) => ({ ...cl, walls: { ...cl.walls } }))
+          );
+          newMaze[r][c].walls[wall] = false;
+          newMaze[nr][nc].walls[oppositeWall[direction]] = false;
+          setMaze(newMaze);
+          mazeRef.current = newMaze;
+          setBombMode(null);
+
+          // Blast animation at the wall midpoint
+          const cs = cellSizeRef.current;
+          let bx: number, by: number;
+          if (direction === "right") { bx = (c + 1) * cs; by = r * cs + cs / 2; }
+          else if (direction === "left") { bx = c * cs; by = r * cs + cs / 2; }
+          else if (direction === "down") { bx = c * cs + cs / 2; by = (r + 1) * cs; }
+          else { bx = c * cs + cs / 2; by = r * cs; }
+          const blastId = ++bombBlastIdRef.current;
+          setBombBlasts((prev) => [...prev, { x: bx, y: by, id: blastId }]);
+          setTimeout(() => {
+            setBombBlasts((prev) => prev.filter((b) => b.id !== blastId));
+          }, 800);
+
+          // Sync bomb to remote peer
+          if (modeRef.current === "remote") {
+            sendRef.current?.({
+              type: "bomb",
+              row: r,
+              col: c,
+              direction,
+              timestamp: Date.now(),
+            });
+          }
+          return;
+        }
+        // No wall at this cell — advance to next cell in the direction
+        r += drMap[direction];
+        c += dcMap[direction];
       }
 
-      // Break the wall
-      const newMaze = currentMaze.map((row) =>
-        row.map((c) => ({
-          ...c,
-          walls: { ...c.walls },
-        }))
-      );
-      newMaze[pos.row][pos.col].walls[wall] = false;
-      newMaze[nr][nc].walls[oppositeWall[direction]] = false;
-
-      setMaze(newMaze);
-      mazeRef.current = newMaze;
+      // Reached maze edge without finding a breakable wall
       setBombMode(null);
-
-      // Sync bomb to remote peer
-      if (modeRef.current === "remote") {
-        sendRef.current?.({
-          type: "bomb",
-          row: pos.row,
-          col: pos.col,
-          direction,
-          timestamp: Date.now(),
-        });
-      }
     },
     []
   );
@@ -824,6 +834,19 @@ export default function MazePage() {
         newMaze[nr][nc].walls[oppositeWall[direction]] = false;
         setMaze(newMaze);
         mazeRef.current = newMaze;
+
+        // Blast animation for remote bomb
+        const cs = cellSizeRef.current;
+        let bx: number, by: number;
+        if (direction === "right") { bx = (col + 1) * cs; by = row * cs + cs / 2; }
+        else if (direction === "left") { bx = col * cs; by = row * cs + cs / 2; }
+        else if (direction === "down") { bx = col * cs + cs / 2; by = (row + 1) * cs; }
+        else { bx = col * cs + cs / 2; by = row * cs; }
+        const blastId = ++bombBlastIdRef.current;
+        setBombBlasts((prev) => [...prev, { x: bx, y: by, id: blastId }]);
+        setTimeout(() => {
+          setBombBlasts((prev) => prev.filter((b) => b.id !== blastId));
+        }, 800);
         return;
       }
 
@@ -2400,6 +2423,61 @@ export default function MazePage() {
                         }
                       />
                     )}
+
+                    {/* Bomb blast animations */}
+                    <AnimatePresence>
+                      {bombBlasts.map((b) => (
+                        <motion.g key={b.id}>
+                          {/* Flash */}
+                          <motion.circle
+                            cx={b.x} cy={b.y}
+                            r={cellSize * 0.15}
+                            fill="#FF4500"
+                            initial={{ opacity: 1, scale: 0 }}
+                            animate={{ opacity: [1, 0.9, 0], scale: [0, 1.8, 3] }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          />
+                          {/* Shockwave ring */}
+                          <motion.circle
+                            cx={b.x} cy={b.y}
+                            r={cellSize * 0.3}
+                            fill="none"
+                            stroke="#FF4500"
+                            strokeWidth={Math.max(1.5, cellSize * 0.06)}
+                            initial={{ opacity: 0.8, scale: 0 }}
+                            animate={{ opacity: [0.8, 0.4, 0], scale: [0.3, 2, 3.5] }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                          />
+                          {/* Outer ring */}
+                          <motion.circle
+                            cx={b.x} cy={b.y}
+                            r={cellSize * 0.2}
+                            fill="none"
+                            stroke="#FFA500"
+                            strokeWidth={Math.max(1, cellSize * 0.03)}
+                            initial={{ opacity: 0.6, scale: 0 }}
+                            animate={{ opacity: [0.6, 0.2, 0], scale: [0.5, 2.5, 4] }}
+                            transition={{ duration: 0.7, delay: 0.05, ease: "easeOut" }}
+                          />
+                          {/* Debris particles */}
+                          {[0, 60, 120, 180, 240, 300].map((angle) => (
+                            <motion.circle
+                              key={angle}
+                              cx={b.x} cy={b.y}
+                              r={Math.max(1.5, cellSize * 0.04)}
+                              fill="#FFA500"
+                              initial={{ opacity: 1, x: 0, y: 0 }}
+                              animate={{
+                                opacity: [1, 0.6, 0],
+                                x: Math.cos((angle * Math.PI) / 180) * cellSize * 0.8,
+                                y: Math.sin((angle * Math.PI) / 180) * cellSize * 0.8,
+                              }}
+                              transition={{ duration: 0.45, ease: "easeOut" }}
+                            />
+                          ))}
+                        </motion.g>
+                      ))}
+                    </AnimatePresence>
                   </svg>
 
                   {/* P2P 输赢闪光 */}
