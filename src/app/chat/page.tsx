@@ -1,213 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
-import { usePeerConnection } from "../../features/p2p/hooks/usePeerConnection";
-import { useJoinParam } from "../../features/p2p/hooks/useJoinParam";
-import { formatClockTime } from "../../features/p2p/lib/p2p";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
-import {
-  decryptWithPrivateKey,
-  encryptWithPublicKey,
-  generateRsaKeyPair,
-  importRsaPublicKey,
-} from "../../features/p2p/lib/p2pCrypto";
+import { formatClockTime } from "../../features/p2p/lib/p2p";
+import { useChat } from "./hooks/useChat";
 
-type ChatPacket =
-  | {
-      type: "handshake";
-      publicKey: string;
-      timestamp: number;
-    }
-  | {
-      type: "chat-message";
-      ciphertext: string;
-      timestamp: number;
-    };
-
-type ChatMessage = {
-  id: string;
-  text: string;
-  sender: "me" | "peer";
-  timestamp: number;
-};
+const CONNECTION_DESCRIPTION = [
+  "> Same P2P layer can be mounted under other routes for mini-games, whiteboards, or co-op demos.",
+  "> Error, timeout, and disconnect states are now explicit rather than leaving the UI half-locked.",
+  "> Code input is stateless from the connection lifecycle, so retries are predictable.",
+];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState("");
-  const joinPeerId = useJoinParam();
-  const [localKeyPair, setLocalKeyPair] = useState<CryptoKeyPair | null>(null);
-  const [localPublicKey, setLocalPublicKey] = useState<string | null>(null);
-  const [remotePublicKey, setRemotePublicKey] = useState<CryptoKey | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const messageIdRef = useRef(0);
-  const handshakeSentRef = useRef(false);
-
-  const appendMessage = useCallback(
-    (message: Omit<ChatMessage, "id">) => {
-      messageIdRef.current += 1;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-${message.timestamp}-${messageIdRef.current}`,
-          ...message,
-        },
-      ]);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { keyPair, publicKeyBase64 } = await generateRsaKeyPair();
-        if (cancelled) return;
-        setLocalKeyPair(keyPair);
-        setLocalPublicKey(publicKeyBase64);
-      } catch {
-        // keep UI usable even if keygen fails
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleIncomingData = useCallback(
-    (payload: ChatPacket) => {
-      if (!payload?.type) return;
-
-      if (payload.type === "handshake" && payload.publicKey) {
-        (async () => {
-          try {
-            const imported = await importRsaPublicKey(payload.publicKey);
-            setRemotePublicKey(imported);
-          } catch {
-            // ignore bad public key
-          }
-        })();
-        return;
-      }
-
-      if (payload.type === "chat-message" && payload.ciphertext) {
-        if (!localKeyPair?.privateKey) return;
-        (async () => {
-          try {
-            const decrypted = await decryptWithPrivateKey(
-              localKeyPair.privateKey,
-              payload.ciphertext,
-            );
-            appendMessage({
-              text: decrypted,
-              sender: "peer",
-              timestamp: payload.timestamp,
-            });
-          } catch {
-            appendMessage({
-              text: "[Decryption failed]",
-              sender: "peer",
-              timestamp: payload.timestamp,
-            });
-          }
-        })();
-      }
-    },
-    [appendMessage, localKeyPair?.privateKey],
-  );
-
   const {
-    phase,
-    localPeerId,
-    remotePeerId,
-    error,
-    isConnected,
-    connect,
-    disconnect,
-    send,
-    clearError,
-    retryLastConnection,
-    reinitialize,
-  } = usePeerConnection<ChatPacket>({
-    connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
-    onData: handleIncomingData,
-    acceptIncomingConnections: true,
-  });
-
-  useEffect(() => {
-    if (!isConnected) {
-      handshakeSentRef.current = false;
-      setRemotePublicKey(null);
-    }
-  }, [isConnected]);
-
-  useEffect(() => {
-    if (!isConnected || !localPublicKey || handshakeSentRef.current === true) return;
-    const packet: ChatPacket = {
-      type: "handshake",
-      publicKey: localPublicKey,
-      timestamp: Date.now(),
-    };
-    send(packet);
-    handshakeSentRef.current = true;
-  }, [isConnected, localPublicKey, send]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const connectionDescription = useMemo(
-    () => [
-      "> Same P2P layer can be mounted under other routes for mini-games, whiteboards, or co-op demos.",
-      "> Error, timeout, and disconnect states are now explicit rather than leaving the UI half-locked.",
-      "> Code input is stateless from the connection lifecycle, so retries are predictable.",
-    ],
-    [],
-  );
-
-  const handleSendMessage = useCallback(async () => {
-    const trimmed = inputText.trim();
-    if (!trimmed) return;
-
-    if (!remotePublicKey) {
-      appendMessage({
-        text: "Waiting for peer key handshake...",
-        sender: "me",
-        timestamp: Date.now(),
-      });
-      return;
-    }
-
-    const timestamp = Date.now();
-    try {
-      const ciphertext = await encryptWithPublicKey(remotePublicKey, trimmed);
-      const packet: ChatPacket = {
-        type: "chat-message",
-        ciphertext,
-        timestamp,
-      };
-
-      const success = send(packet);
-      if (!success) return;
-
-      appendMessage({
-        text: trimmed,
-        sender: "me",
-        timestamp,
-      });
-      setInputText("");
-    } catch {
-      appendMessage({
-        text: "[Encryption failed]",
-        sender: "me",
-        timestamp,
-      });
-    }
-  }, [appendMessage, inputText, remotePublicKey, send]);
-
-  const encryptionReady = isConnected && Boolean(remotePublicKey && localKeyPair?.privateKey);
+    messages, inputText, setInputText,
+    encryptionReady, messagesEndRef,
+    handleSendMessage,
+    phase, localPeerId, remotePeerId, error, isConnected,
+    connect, disconnect, clearError, retryLastConnection, reinitialize,
+    joinPeerId,
+  } = useChat();
 
   return (
     <div className="relative min-h-screen overflow-hidden text-[var(--pixel-text)]">
@@ -246,7 +60,7 @@ export default function ChatPage() {
               phase={phase}
               connectTimeoutMs={P2P_CONNECT_TIMEOUT_MS}
               error={error}
-              description={connectionDescription}
+              description={CONNECTION_DESCRIPTION}
               autoConnectPeerId={joinPeerId}
               onConnect={connect}
               onRetry={retryLastConnection}
@@ -261,6 +75,7 @@ export default function ChatPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className="overflow-hidden rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)]"
             >
+              {/* Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex gap-1.5">
@@ -299,6 +114,7 @@ export default function ChatPage() {
                 </button>
               </div>
 
+              {/* Messages */}
               <div className="h-[48vh] overflow-y-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent)] px-4 py-5 [scrollbar-color:var(--pixel-accent)_var(--pixel-bg)] [scrollbar-width:thin] md:h-[520px] md:px-6 md:py-6">
                 {messages.length === 0 && (
                   <div className="rounded-none border border-dashed border-[var(--pixel-border)] p-6 text-center">
@@ -327,9 +143,7 @@ export default function ChatPage() {
                             : "rounded-xl rounded-tl-sm border-[var(--pixel-accent-2)] bg-[var(--pixel-bg)] text-[var(--pixel-accent-2)]"
                         }`}
                       >
-                        <p className="font-mono text-sm leading-6 md:text-base">
-                          {message.text}
-                        </p>
+                        <p className="font-mono text-sm leading-6 md:text-base">{message.text}</p>
                         <p className="mt-2 font-mono text-[10px] opacity-70 md:text-xs">
                           {formatClockTime(message.timestamp)}
                         </p>
@@ -341,15 +155,16 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Input */}
               <div className="border-t-2 border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-4 md:px-5">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={inputText}
-                    onChange={(event) => setInputText(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
                         handleSendMessage();
                       }
                     }}
