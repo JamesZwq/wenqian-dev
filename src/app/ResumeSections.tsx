@@ -429,6 +429,20 @@ export default function ResumeSections() {
             href="https://ieeexplore.ieee.org/document/10411576/"
           />
         </div>
+        <p className="mt-4 text-[11px] font-mono text-[var(--pixel-muted)] leading-relaxed">
+          Also:{" "}
+          <span className="text-[var(--pixel-text)]">A Survey on Efficient Graph Reachability Queries</span>
+          {" "}(PAKDD 2025){" · "}
+          <a
+            href="https://github.com/UNSW-database/EulerESG"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--pixel-text)] hover:text-[var(--pixel-accent)] transition-colors"
+          >
+            EulerESG: Automating ESG Disclosure Analysis with LLMs
+          </a>
+          {" "}(arXiv 2025)
+        </p>
       </motion.section>
 
       {/* Skills & Teaching */}
