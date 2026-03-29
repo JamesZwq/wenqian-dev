@@ -276,7 +276,7 @@ function RevealBlocks({
   // Complete callback
   useEffect(() => {
     if (doneRef.current && visibleTotal >= totalBlocks && totalBlocks > 0) {
-      const t = setTimeout(onComplete, 500);
+      const t = setTimeout(onComplete, 1800);
       return () => clearTimeout(t);
     }
   }, [visibleTotal, totalBlocks, onComplete]);
@@ -560,7 +560,7 @@ export default function FlashCountPage() {
     setQuestionResult({ myAnswer: myAns, opponentAnswer: oppAns, correct, myCorrect, opponentCorrect: oppCorrect });
     setMyScore(prev => prev + (myCorrect ? 1 : 0));
     setOpponentScore(prev => prev + (oppCorrect ? 1 : 0));
-    // Auto-advance after 2.5s
+    // Auto-advance after 4s
     setTimeout(() => {
       const pz = puzzlesRef.current;
       const nextIdx = qIdx + 1;
@@ -579,7 +579,7 @@ export default function FlashCountPage() {
       } else {
         startFlash(pz[nextIdx]);
       }
-    }, 2500);
+    }, 4000);
   }, [resetP2pQuestion, stopTimer, startFlash]);
 
   // ─── P2P: after both submitted, host computes & broadcasts result ───
