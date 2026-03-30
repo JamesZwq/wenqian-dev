@@ -2,11 +2,26 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
+const interRegularPromise = fetch(
+  new URL("./Inter-Regular.ttf", import.meta.url)
+).then((r) => r.arrayBuffer());
+
+const interBoldPromise = fetch(
+  new URL("./Inter-Bold.ttf", import.meta.url)
+).then((r) => r.arrayBuffer());
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const title = searchParams.get("title") ?? "Wenqian Zhang";
-  const subtitle = searchParams.get("subtitle") ?? "UNSW CS Ph.D. · Graph Systems · P2P Web Apps";
+  const subtitle =
+    searchParams.get("subtitle") ??
+    "UNSW CS Ph.D. · Graph Systems · P2P Web Apps";
   const tag = searchParams.get("tag") ?? null;
+
+  const [interRegular, interBold] = await Promise.all([
+    interRegularPromise,
+    interBoldPromise,
+  ]);
 
   return new ImageResponse(
     (
@@ -20,22 +35,39 @@ export async function GET(request: Request) {
           justifyContent: "center",
           padding: "64px 72px",
           position: "relative",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          overflow: "hidden",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        {/* Grid pattern */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
+        {/* Grid lines — horizontal */}
+        {Array.from({ length: 14 }).map((_, i) => (
+          <div
+            key={`h${i}`}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: i * 48,
+              height: 1,
+              background: "rgba(99,102,241,0.06)",
+            }}
+          />
+        ))}
+        {/* Grid lines — vertical */}
+        {Array.from({ length: 26 }).map((_, i) => (
+          <div
+            key={`v${i}`}
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: i * 48,
+              width: 1,
+              background: "rgba(99,102,241,0.06)",
+            }}
+          />
+        ))}
 
-        {/* Glow blobs */}
+        {/* Glow blob top-right */}
         <div
           style={{
             position: "absolute",
@@ -43,10 +75,11 @@ export async function GET(request: Request) {
             right: -80,
             width: 400,
             height: 400,
-            borderRadius: "50%",
+            borderRadius: 200,
             background: "radial-gradient(circle, rgba(129,140,248,0.18) 0%, transparent 70%)",
           }}
         />
+        {/* Glow blob bottom-left */}
         <div
           style={{
             position: "absolute",
@@ -54,34 +87,29 @@ export async function GET(request: Request) {
             left: -60,
             width: 320,
             height: 320,
-            borderRadius: "50%",
+            borderRadius: 160,
             background: "radial-gradient(circle, rgba(167,139,250,0.14) 0%, transparent 70%)",
           }}
         />
 
-        {/* Optional tag / badge */}
+        {/* Tag badge */}
         {tag && (
-          <div
-            style={{
-              display: "flex",
-              marginBottom: 28,
-            }}
-          >
-            <span
+          <div style={{ display: "flex", marginBottom: 28 }}>
+            <div
               style={{
+                display: "flex",
                 background: "rgba(99,102,241,0.18)",
                 border: "1px solid rgba(99,102,241,0.35)",
                 borderRadius: 8,
                 color: "#818cf8",
                 fontSize: 18,
-                fontWeight: 600,
+                fontWeight: 700,
                 letterSpacing: "0.12em",
                 padding: "5px 14px",
-                fontFamily: "monospace, system-ui",
               }}
             >
               {tag.toUpperCase()}
-            </span>
+            </div>
           </div>
         )}
 
@@ -94,7 +122,6 @@ export async function GET(request: Request) {
             lineHeight: 1.15,
             letterSpacing: "-0.02em",
             marginBottom: 20,
-            maxWidth: 900,
           }}
         >
           {title}
@@ -108,14 +135,12 @@ export async function GET(request: Request) {
             fontWeight: 400,
             lineHeight: 1.5,
             letterSpacing: "0.01em",
-            maxWidth: 820,
-            fontFamily: "monospace, system-ui",
           }}
         >
           {subtitle}
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom accent bar */}
         <div
           style={{
             position: "absolute",
@@ -135,7 +160,6 @@ export async function GET(request: Request) {
             right: 72,
             color: "rgba(129,140,248,0.7)",
             fontSize: 17,
-            fontFamily: "monospace, system-ui",
             fontWeight: 500,
             letterSpacing: "0.08em",
           }}
@@ -143,7 +167,7 @@ export async function GET(request: Request) {
           wenqianzhang.me
         </div>
 
-        {/* Small dots decoration */}
+        {/* Decorative dots */}
         <div
           style={{
             position: "absolute",
@@ -153,23 +177,19 @@ export async function GET(request: Request) {
             gap: 8,
           }}
         >
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: i === 1 ? "#6366f1" : i === 2 ? "#8b5cf6" : "rgba(99,102,241,0.3)",
-              }}
-            />
-          ))}
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: "#6366f1" }} />
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: "#8b5cf6" }} />
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: "rgba(99,102,241,0.3)" }} />
         </div>
       </div>
     ),
     {
       width: 1200,
       height: 630,
+      fonts: [
+        { name: "Inter", data: interBold, weight: 700 as const, style: "normal" as const },
+        { name: "Inter", data: interRegular, weight: 400 as const, style: "normal" as const },
+      ],
     }
   );
 }

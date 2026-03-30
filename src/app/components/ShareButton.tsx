@@ -8,6 +8,8 @@ interface ShareButtonProps {
   text: string;
   /** Override share URL; defaults to window.location.href */
   url?: string;
+  /** OG image URL for preview; defaults to /api/og?title=... */
+  ogImage?: string;
   /** Extra Tailwind classes for the wrapper div */
   className?: string;
 }
@@ -104,7 +106,7 @@ function CheckIcon() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ShareButton({ title, text, url, className = "" }: ShareButtonProps) {
+export default function ShareButton({ title, text, url, ogImage, className = "" }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
@@ -212,6 +214,27 @@ export default function ShareButton({ title, text, url, className = "" }: ShareB
               >
                 ✕
               </button>
+            </div>
+
+            {/* OG preview card */}
+            <div className="px-3 pt-3">
+              <div className="overflow-hidden rounded-lg border border-[var(--pixel-border)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={ogImage ?? `/api/og?title=${encodeURIComponent(title)}`}
+                  alt="Share preview"
+                  className="block w-full"
+                  style={{ aspectRatio: "1200/630" }}
+                />
+                <div className="bg-[var(--pixel-bg)] px-2.5 py-2">
+                  <p className="font-sans text-[10px] font-semibold text-[var(--pixel-text)] leading-tight truncate">
+                    {title}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[8px] text-[var(--pixel-muted)] truncate">
+                    {typeof window !== "undefined" ? window.location.host : ""}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Platform buttons */}
