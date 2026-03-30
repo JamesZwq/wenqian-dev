@@ -164,7 +164,7 @@ export async function GET(request: Request) {
             letterSpacing: "0.08em",
           }}
         >
-          wenqianzhang.me
+          wenqian.me
         </div>
 
         {/* Decorative dots */}

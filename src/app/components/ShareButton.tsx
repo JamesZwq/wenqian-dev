@@ -14,6 +14,34 @@ interface ShareButtonProps {
   className?: string;
 }
 
+function resolveMetaOgImage() {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return null;
+  }
+
+  const meta = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
+  if (!meta?.content) {
+    return null;
+  }
+
+  try {
+    const resolved = new URL(meta.content, window.location.origin);
+    const isLocalDev =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "[::1]";
+
+    // When metadataBase points at production, local dev still needs the local OG route.
+    if (isLocalDev && resolved.origin !== window.location.origin && resolved.pathname === "/api/og") {
+      return `${window.location.origin}${resolved.pathname}${resolved.search}`;
+    }
+
+    return resolved.href;
+  } catch {
+    return meta.content;
+  }
+}
+
 // ── Platform definitions ──────────────────────────────────────────────────────
 
 const PLATFORMS = [
@@ -109,25 +137,12 @@ function CheckIcon() {
 export default function ShareButton({ title, text, url, ogImage, className = "" }: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [canNativeShare, setCanNativeShare] = useState(false);
-  const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  // Detect native share API + resolve OG image from page meta on mount
-  useEffect(() => {
-    setCanNativeShare(typeof navigator !== "undefined" && "share" in navigator);
-    // Read og:image from the current page's <meta> tags — this is exactly what crawlers see
-    const meta = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
-    if (meta?.content) {
-      // content may be a relative path; resolve it to absolute
-      try {
-        setResolvedOgImage(new URL(meta.content, window.location.origin).href);
-      } catch {
-        setResolvedOgImage(meta.content);
-      }
-    }
-  }, []);
+  const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
+  const resolvedOgImage = resolveMetaOgImage();
+  const fallbackOgImage = `/api/og?title=${encodeURIComponent(title)}`;
 
   const getShareUrl = useCallback(() => {
     return url ?? (typeof window !== "undefined" ? window.location.href : "");
@@ -186,6 +201,11 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
     }
   }, [title, text, getShareUrl]);
 
+  const primaryPreviewImage = ogImage ?? resolvedOgImage ?? fallbackOgImage;
+  const previewImageSrc = failedImageSrc === primaryPreviewImage
+    ? fallbackOgImage
+    : primaryPreviewImage;
+
   return (
     <div className={`relative ${className}`}>
       {/* Trigger button */}
@@ -232,10 +252,11 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
               <div className="overflow-hidden rounded-lg border border-[var(--pixel-border)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={ogImage ?? resolvedOgImage ?? `/api/og?title=${encodeURIComponent(title)}`}
+                  src={previewImageSrc}
                   alt="Share preview"
                   className="block w-full"
                   style={{ aspectRatio: "1200/630" }}
+                  onError={() => setFailedImageSrc(primaryPreviewImage)}
                 />
                 <div className="bg-[var(--pixel-bg)] px-2.5 py-2">
                   <p className="font-sans text-[10px] font-semibold text-[var(--pixel-text)] leading-tight truncate">
