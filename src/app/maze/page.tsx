@@ -11,6 +11,7 @@ import { ITEM_META, type InventorySlot } from "./items";
 import { formatTime } from "./types";
 import { useMazeGame } from "./hooks/useMazeGame";
 import { AnimatedCircle } from "./components/AnimatedCircle";
+import ShareButton from "../components/ShareButton";
 
 export default function MazePage() {
   const {
@@ -112,6 +113,17 @@ export default function MazePage() {
         >
           ← BACK
         </Link>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed right-4 top-4 z-50 md:right-6 md:top-6"
+      >
+        <ShareButton
+          title="Maze Runner"
+          text="Race through procedurally generated mazes with power-ups! Solo, vs AI, or P2P online."
+        />
       </motion.div>
 
       <SettingsPanel

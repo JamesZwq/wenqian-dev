@@ -9,6 +9,7 @@ import { RevealBlocks } from "./components/RevealBlocks";
 import { AnswerBox } from "./components/AnswerBox";
 import { useFlashGame } from "./hooks/useFlashGame";
 import { DIFFICULTIES, QUESTION_COUNTS, TILE_W, TILE_H, formatTime } from "./types";
+import ShareButton from "../components/ShareButton";
 
 // ── Shared UI primitives ──────────────────────────────────────────────────────
 
@@ -106,6 +107,18 @@ export default function FlashCountPage() {
         >
           ← BACK
         </Link>
+      </motion.div>
+
+      {/* Share button */}
+      <motion.div
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed right-4 top-4 z-50 md:right-6 md:top-6"
+      >
+        <ShareButton
+          title="Flash Count"
+          text="Can you count 3D isometric blocks before they vanish? Try this visual memory challenge!"
+        />
       </motion.div>
 
       <div className="relative z-10 container mx-auto px-3 md:px-4 py-4 md:py-8 min-h-screen flex flex-col items-center justify-center">

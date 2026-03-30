@@ -6,6 +6,7 @@ import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { formatClockTime } from "../../features/p2p/lib/p2p";
 import { useChat } from "./hooks/useChat";
+import ShareButton from "../components/ShareButton";
 
 const CONNECTION_DESCRIPTION = [
   "> Same P2P layer can be mounted under other routes for mini-games, whiteboards, or co-op demos.",
@@ -36,6 +37,17 @@ export default function ChatPage() {
         >
           ← BACK
         </Link>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed right-4 top-4 z-50 md:right-6 md:top-6"
+      >
+        <ShareButton
+          title="P2P Chat"
+          text="E2E encrypted peer-to-peer chat — browser-to-browser, no server required!"
+        />
       </motion.div>
 
       <div className="container relative z-10 mx-auto flex min-h-screen flex-col items-center justify-center px-3 py-6 md:px-4 md:py-10">

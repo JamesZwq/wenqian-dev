@@ -6,6 +6,7 @@ import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { useMathGame } from "./hooks/useMathGame";
 import { ALL_OPS, QUESTION_COUNTS, formatTime, opsLabel } from "./types";
+import ShareButton from "../components/ShareButton";
 
 const CONNECTION_DESCRIPTION = [
   "> Share your ID with a friend",
@@ -39,6 +40,18 @@ export default function MathSprintPage() {
         >
           ← BACK
         </Link>
+      </motion.div>
+
+      {/* Share button */}
+      <motion.div
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed right-4 top-4 z-50 md:right-6 md:top-6"
+      >
+        <ShareButton
+          title="Math Sprint"
+          text="Speed arithmetic challenge — solo or P2P online race! How fast can you do mental math?"
+        />
       </motion.div>
 
       <div className="relative z-10 container mx-auto px-3 md:px-4 py-4 md:py-8 min-h-screen flex flex-col items-center justify-center">

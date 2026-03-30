@@ -16,9 +16,37 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wenqian Zhang | Ph.D. @ UNSW",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://wenqianzhang.me"
+  ),
+  title: {
+    default: "Wenqian Zhang | Ph.D. @ UNSW",
+    template: "%s | Wenqian Zhang",
+  },
   description:
-    "Wenqian Zhang - UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025 | Distributed Systems",
+    "Wenqian Zhang — UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025 | Distributed Systems",
+  openGraph: {
+    type: "website",
+    siteName: "Wenqian Zhang",
+    title: "Wenqian Zhang | Ph.D. @ UNSW",
+    description:
+      "Wenqian Zhang — UNSW CS Ph.D. researching large-scale graph systems, SIGMOD 2025. Explore interactive P2P web apps and research.",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Wenqian Zhang | Ph.D. @ UNSW",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wenqian Zhang | Ph.D. @ UNSW",
+    description:
+      "Wenqian Zhang — UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025",
+    images: ["/api/og"],
+  },
 };
 
 export default function RootLayout({

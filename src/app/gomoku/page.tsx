@@ -6,6 +6,7 @@ import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { useGomokuGame } from "./hooks/useGomokuGame";
 import { GomokuBoard } from "./components/GomokuBoard";
+import ShareButton from "../components/ShareButton";
 
 const CONNECTION_DESCRIPTION = [
   "> Share your ID with a friend",
@@ -38,6 +39,17 @@ export default function GomokuPage() {
         >
           ← BACK
         </Link>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed right-4 top-4 z-50 md:right-6 md:top-6"
+      >
+        <ShareButton
+          title="Gomoku — Five in a Row"
+          text="Play Gomoku (Five in a Row) vs AI or challenge a friend via P2P — no signup needed!"
+        />
       </motion.div>
 
       <div className="relative z-10 container mx-auto px-3 md:px-4 py-4 md:py-8 min-h-screen flex flex-col items-center justify-center">

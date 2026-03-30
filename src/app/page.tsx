@@ -11,6 +11,7 @@ import BackgroundModeToggle from "./components/BackgroundModeToggle";
 import ThemeToggle from "./components/ThemeToggle";
 import FpsCounter from "./components/FpsCounter";
 import FloatingNav from "./components/FloatingNav";
+import ShareButton from "./components/ShareButton";
 
 const PhysicsTerminal = dynamic(
   () => import("./components/PhysicsTerminal"),
@@ -80,6 +81,12 @@ export default function Home() {
             <ThemeToggle />
             <FpsCounter />
             <FloatingNav />
+            <div className="fixed top-[52px] right-4 z-[130]">
+              <ShareButton
+                title="Wenqian Zhang | Ph.D. @ UNSW"
+                text="Check out Wenqian Zhang's portfolio — UNSW CS Ph.D., SIGMOD 2025, interactive P2P web apps and research."
+              />
+            </div>
 
             <div className="relative z-10">
               <HeroSection />
