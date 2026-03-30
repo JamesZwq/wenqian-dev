@@ -8,7 +8,7 @@ interface ShareButtonProps {
   text: string;
   /** Override share URL; defaults to window.location.href */
   url?: string;
-  /** OG image URL for preview; defaults to /api/og?title=... */
+  /** Override OG image URL; auto-detected from page meta if omitted */
   ogImage?: string;
   /** Extra Tailwind classes for the wrapper div */
   className?: string;
@@ -110,12 +110,23 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
+  const [resolvedOgImage, setResolvedOgImage] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Detect native share API on mount
+  // Detect native share API + resolve OG image from page meta on mount
   useEffect(() => {
     setCanNativeShare(typeof navigator !== "undefined" && "share" in navigator);
+    // Read og:image from the current page's <meta> tags — this is exactly what crawlers see
+    const meta = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
+    if (meta?.content) {
+      // content may be a relative path; resolve it to absolute
+      try {
+        setResolvedOgImage(new URL(meta.content, window.location.origin).href);
+      } catch {
+        setResolvedOgImage(meta.content);
+      }
+    }
   }, []);
 
   const getShareUrl = useCallback(() => {
@@ -221,7 +232,7 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
               <div className="overflow-hidden rounded-lg border border-[var(--pixel-border)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={ogImage ?? `/api/og?title=${encodeURIComponent(title)}`}
+                  src={ogImage ?? resolvedOgImage ?? `/api/og?title=${encodeURIComponent(title)}`}
                   alt="Share preview"
                   className="block w-full"
                   style={{ aspectRatio: "1200/630" }}
