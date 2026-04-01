@@ -1,443 +1,234 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
-// 引入后期处理与辉光模块
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 
-const BASE_GRID_SIZE = 38;
-const VIEW_SIZE = 50;
+// ─── Config ───────────────────────────────────
+const INTRO_DURATION = 2.5;
+const THEME_LERP = 5.0;
+const BG_LIGHT = new THREE.Color(0xfafbfe);
+const BG_DARK = new THREE.Color(0x0c0a1d);
 
-// Dynamic LOD caps (tune for perf/visual density)
-const GRID_MIN = 18;
-const GRID_MAX = 44;
-const RANDOM_BLOCK_DURATION = 6; 
-const RANDOM_BLOCK_HEIGHT = 2; 
-const RANDOM_SPAWN_INTERVAL = 1; 
-const MODE_SWITCH_SETTLE_DURATION = 1.2; 
+// ─── Vertex Shader (fullscreen quad) ──────────
+const VS = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+`;
 
-const INTRO_DURATION = 3.2; 
-const INTRO_FALL_DURATION = 0.6; 
-const INTRO_MAX_DELAY = 2.4; 
-const INTRO_START_Z_MIN = 14; 
-const INTRO_START_Z_MAX = 28;
+// ─── Fragment Shader (topographic contour) ────
+const FS = `
+uniform float uTime;
+uniform float uTheme;
+uniform float uAmplitude;
+uniform float uTransition;
+uniform vec2  uMouse;
+uniform vec2  uResolution;
 
-export function Scene({ isFullscreen, theme }) {
+varying vec2 vUv;
+
+/* ── Simplex 2D — Ashima Arts ── */
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
+
+float snoise(vec2 v) {
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                      -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
+  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod289(i);
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+                           + i.x + vec3(0.0, i1.x, 1.0));
+  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy),
+                           dot(x12.zw, x12.zw)), 0.0);
+  m = m * m * m * m;
+  vec3 x_ = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h  = abs(x_) - 0.5;
+  vec3 ox = floor(x_ + 0.5);
+  vec3 a0 = x_ - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+  vec3 g;
+  g.x  = a0.x * x0.x  + h.x * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+/* 3-octave FBM — smooth flowing terrain */
+float fbm(vec2 p) {
+  float f = 0.0;
+  f += 0.500 * snoise(p); p *= 2.02;
+  f += 0.250 * snoise(p); p *= 2.03;
+  f += 0.125 * snoise(p);
+  return f / 0.875;
+}
+
+void main() {
+  float aspect = uResolution.x / uResolution.y;
+  vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
+
+  float t = uTime * 0.06;
+
+  /* ── mouse distortion field (ring, not point) ── */
+  vec2  mp    = uMouse * vec2(aspect * 0.5, -0.5);
+  float mDist = length(p - mp);
+  float ringR = 0.22;
+  float ringW = 0.14;
+  float mInfl = exp(-pow(mDist - ringR, 2.0) / (2.0 * ringW * ringW))
+              * smoothstep(0.7, 0.3, mDist);
+  vec2  mDir  = (p - mp) / (mDist + 0.001);
+  vec2  mWarp = mDir * mInfl * 0.025;
+
+  /* domain warping → organic contour shapes */
+  vec2 q = vec2(
+    fbm(p * 1.5 + mWarp * 0.5 + vec2(t * 0.5, 0.0)),
+    fbm(p * 1.5 + mWarp * 0.5 + vec2(0.0, t * 0.35) + vec2(5.2, 1.3))
+  );
+  float h = fbm(p * 1.5 + q * 0.35 + mWarp + vec2(t * 0.2, -t * 0.15));
+
+  /* ── contour lines ── */
+  float interval = 0.1;
+  float tThick = 1.0 + uTransition * 0.8;   /* lines swell during transition */
+
+  /* minor contours */
+  float cv  = h / interval;
+  float f   = fract(cv);
+  float d   = min(f, 1.0 - f);
+  float fw  = max(fwidth(cv), 0.001);
+  float minorLine = 1.0 - smoothstep(0.0, fw * 1.2 * tThick, d);
+
+  /* major contours — every 5th */
+  float mcv = h / (interval * 5.0);
+  float mf  = fract(mcv);
+  float md  = min(mf, 1.0 - mf);
+  float mfw = max(fwidth(mcv), 0.0002);
+  float majorLine = 1.0 - smoothstep(0.0, mfw * 2.0 * tThick, md);
+
+  /* opacity — boosted during transition */
+  float minorA = mix(0.25, 0.22, uTheme) + uTransition * 0.30;
+  float majorA = mix(0.55, 0.50, uTheme) + uTransition * 0.35;
+  float lineAlpha = max(minorLine * minorA, majorLine * majorA);
+
+  /* ── colours ── */
+  vec3 bgL = vec3(0.980, 0.984, 0.996);
+  vec3 bgD = vec3(0.047, 0.039, 0.114);
+  vec3 bg  = mix(bgL, bgD, uTheme);
+
+  /* line colour — accent colours from design system */
+  float hn  = smoothstep(-0.5, 0.5, h);
+  vec3 loL  = vec3(0.388, 0.400, 0.945);
+  vec3 hiL  = vec3(0.545, 0.361, 0.965);
+  vec3 loD  = vec3(0.506, 0.549, 0.973);
+  vec3 hiD  = vec3(0.655, 0.545, 0.980);
+  vec3 lineColor = mix(mix(loL, hiL, hn), mix(loD, hiD, hn), uTheme);
+
+  /* flash toward white at transition peak */
+  lineColor = mix(lineColor, vec3(1.0), uTransition * 0.5);
+
+  /* soft vignette */
+  float vig = 1.0 - smoothstep(0.35, 1.15, length(p * vec2(0.55, 0.8)));
+
+  vec3 color = mix(bg, lineColor, lineAlpha * uAmplitude * vig);
+
+  /* subtle background glow during transition */
+  color += lineColor * uTransition * 0.06 * vig;
+
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+}
+`;
+
+export function Scene({ theme }) {
   const containerRef = useRef(null);
-  const meshRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rootRef = useRef(null);
- 
-  // 后期处理 Refs
-  const composerRef = useRef(null);
-  const bloomPassRef = useRef(null);
+  const stateRef = useRef(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
 
-  // 🚀 新增：用于 CSS 蒙版视差动画的 Refs
-  const maskLayer1Ref = useRef(null);
-  const maskLayer2Ref = useRef(null);
-
-  const animationFrameRef = useRef(null);
-  const [mode, setMode] = useState("random");
-  const modeRef = useRef("random");
-  const lastTimeRef = useRef(0);
-  const waveProgressRef = useRef(0);
-  const waveOriginRef = useRef({ x: BASE_GRID_SIZE / 2, y: BASE_GRID_SIZE / 2 });
-  const lastLocalTRef = useRef(0);
-  const randomActiveBlocksRef = useRef([]); 
-  const lastSpawnTimeRef = useRef(0);
-  const lastFrameZRef = useRef(null); 
-  const lastFrameRyRef = useRef(null); 
-  
-  const settleRef = useRef({
-    active: false,
-    startTime: 0,
-    fromZ: null, 
-    fromRy: null, 
-    toMode: "wave",
-  });
-
-  // 主题切换时的状态追踪（颜色、背景色、辉光强度）
-  const themeRippleRef = useRef({
-    active: false,
-    startTime: 0,
-    fromColor: new THREE.Color(0xffffff),
-    toColor: new THREE.Color(0xffffff),
-    fromBg: new THREE.Color(),
-    toBg: new THREE.Color(),
-    fromBloom: 0,
-    toBloom: 0,
-  });
-  
-  const rippleDistancesRef = useRef(null);
-  const rippleMaxDistRef = useRef(0);
-  const resizeRafRef = useRef(null);
-  const resizeDebounceRef = useRef(null);
-  const pendingResizeRef = useRef({ w: 0, h: 0 });
-  const appliedSizeRef = useRef({ w: 0, h: 0 });
-  // Pre-allocated buffers for random mode (avoid per-frame allocation)
-  const randomOffsetsZRef = useRef(null);
-  const randomRotationsYRef = useRef(null);
-  // Reusable THREE.Color for theme ripple (avoid per-frame allocation)
-  const tempBgColorRef = useRef(new THREE.Color());
-  const themeStrRef = useRef(theme);
-
-  // --- Responsive LOD (reduce instance count & render resolution on small/slow devices) ---
-  const [gridSize, setGridSize] = useState(BASE_GRID_SIZE);
-  const gridSizeRef = useRef(BASE_GRID_SIZE);
+  /* theme prop → animation target */
   useEffect(() => {
-    gridSizeRef.current = gridSize;
-    // keep wave origin centered for the new grid
-    waveOriginRef.current = { x: gridSize / 2, y: gridSize / 2 };
-  }, [gridSize]);
+    if (!stateRef.current) return;
+    stateRef.current.themeTarget = theme === "dark" ? 1.0 : 0.0;
+  }, [theme]);
 
-  const lodRef = useRef({ gridSize: BASE_GRID_SIZE, scale: 1, pixelRatio: 1, enableBloom: true });
-
-  const pickLOD = React.useCallback((w, h) => {
-    const area = Math.max(1, w * h);
-    const dpr = window.devicePixelRatio || 1;
-    const cores = navigator.hardwareConcurrency || 4;
-    const mem = navigator.deviceMemory || 4;
-    const ua = navigator.userAgent || "";
-    const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|Android/.test(ua);
-
-    // Target instance budget ~ proportional to screen area (tune)
-    // 1920x1080 -> ~590  (close to your current ~722)
-    let target = area / 3500;
-    target = Math.max(220, Math.min(950, target));
-
-    // Hardware penalties
-    let hw = 1;
-    if (dpr >= 2.5) hw *= 0.85;
-    if (cores <= 4) hw *= 0.85;
-    if (mem && mem <= 4) hw *= 0.85;
-    if (isSafari) hw *= 0.9;
-    target *= hw;
-
-    // Convert instance budget -> grid size (since count ≈ grid^2 / 2)
-    let g = Math.round(Math.sqrt(target * 2));
-    if (g % 2 === 1) g += 1; // keep even for symmetry
-    g = Math.max(GRID_MIN, Math.min(GRID_MAX, g));
-
-    // Scale so the pattern keeps roughly the same world footprint as BASE_GRID_SIZE
-    const scale = BASE_GRID_SIZE / g;
-
-    // Lower render resolution on heavy DPR / Safari
-    let prCap = isSafari ? 1.25 : 1.5;
-    let pr = Math.min(dpr, prCap);
-    if (target < 320) pr = Math.min(pr, 1.0);
-    if (target < 260) pr = Math.min(pr, 0.9);
-
-    const enableBloom = !isSafari && target >= 320;
-
-    return { gridSize: g, scale, pixelRatio: pr, enableBloom };
-  }, []);
-
-  const basePositions = useMemo(() => {
-    const positions = [];
-    const size = gridSize;
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (r % 2) {
-          const yOffset = c % 2 ? 1 : 0;
-          positions.push(new THREE.Vector3(c, r + yOffset, 0));
-        }
-      }
-    }
-    return positions;
-  }, [gridSize]);
-  const instanceCount = basePositions.length;
-
-  // 每个实例的空间参数 (用于颜色波动动画)
-  const instanceSpatial = useMemo(() => {
-    const arr = [];
-    const size = gridSize;
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (r % 2) {
-          const tRow = r / (size - 1 || 1);
-          const tCol = c / (size - 1 || 1);
-          arr.push({ tRow, tCol, diag: (tRow + tCol) * 0.5 });
-        }
-      }
-    }
-    return arr;
-  }, [gridSize]);
-
-  const { lightColors, darkColors } = useMemo(() => {
-    const lc = [];
-    const dc = [];
-    const size = gridSize;
-
-    const dayStart = new THREE.Color("#ffffff");
-    const dayEnd = new THREE.Color("#e2e8f0");
-
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (r % 2) {
-          const tRow = r / (size - 1 || 1);
-          const tCol = c / (size - 1 || 1);
-          const t = (tRow * 0.5 + tCol * 0.5);
-          lc.push(dayStart.clone().lerp(dayEnd, t));
-          // Dark 初始色 — 运行时会被动画覆盖
-          dc.push(new THREE.Color().setHSL(0.65 + t * 0.15, 0.6, 0.18));
-        }
-      }
-    }
-    return { lightColors: lc, darkColors: dc };
-  }, [gridSize]);
-
-  const introDropData = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < instanceCount; i++) {
-      arr.push({
-        delay: Math.random() * INTRO_MAX_DELAY,
-        startZ: INTRO_START_Z_MIN + Math.random() * (INTRO_START_Z_MAX - INTRO_START_Z_MIN),
-        tumbleRy: (Math.random() - 0.5) * Math.PI * 0.4,
-      });
-    }
-    return arr;
-  }, [instanceCount]);
-
- 
-
-  useEffect(() => {
-    if (!instanceCount) return;
-    const distances = new Float32Array(instanceCount);
-    let maxDist = 0;
-    const originX = gridSize + 2;
-    const originY = gridSize + 2;
-
-    for (let i = 0; i < instanceCount; i++) {
-      const p = basePositions[i];
-      const dx = originX - p.x;
-      const dy = originY - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      distances[i] = dist;
-      if (dist > maxDist) maxDist = dist;
-    }
-
-    rippleDistancesRef.current = distances;
-    rippleMaxDistRef.current = maxDist || 1;
-  }, [basePositions, instanceCount, gridSize]);
-
-  useEffect(() => {
-    const handleToggle = () => {
-      setMode((prev) => (prev === "wave" ? "random" : "wave"));
-    };
-    window.addEventListener("bg-mode-toggle", handleToggle);
-    return () => window.removeEventListener("bg-mode-toggle", handleToggle);
-  }, []);
-
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-
-  useEffect(() => {
-    waveProgressRef.current = 0;
-
-    const z = lastFrameZRef.current;
-    const ry = lastFrameRyRef.current;
-    const fromZ = z && z.length === instanceCount ? new Float32Array(z) : new Float32Array(instanceCount);
-    const fromRy = ry && ry.length === instanceCount ? new Float32Array(ry) : new Float32Array(instanceCount);
-
-    settleRef.current = {
-      active: true,
-      startTime: lastTimeRef.current,
-      fromZ,
-      fromRy,
-      toMode: mode,
-    };
-  }, [mode, instanceCount]);
-
-  // --- 核心 WebGL 初始化与动画循环 ---
+  /* WebGL setup */
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const lod0 = pickLOD(container.clientWidth, container.clientHeight);
-    lodRef.current = lod0;
-    // If LOD wants a different grid, update state and let the effect re-run (avoids building twice)
-    if (lod0.gridSize !== gridSizeRef.current) {
-      setGridSize(lod0.gridSize);
-      return;
-    }
 
+    const W = container.clientWidth;
+    const H = container.clientHeight;
+    const isDark = document.documentElement.classList.contains("dark");
+
+    // Renderer
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
-    renderer.setPixelRatio(lod0.pixelRatio);
-    renderer.setSize(container.clientWidth, container.clientHeight);
-
-    const initialIsDark = theme === "dark";
-    renderer.setClearColor(initialIsDark ? 0x05050a : 0xf4f5f7, 1);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(W, H);
+    renderer.setClearColor(isDark ? BG_DARK : BG_LIGHT);
     container.appendChild(renderer.domElement);
     renderer.domElement.style.pointerEvents = "none";
-    rendererRef.current = renderer;
 
+    // Scene + camera
     const scene = new THREE.Scene();
-    sceneRef.current = scene;
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
-    // --- 宇宙星云渐变背景纹理 ---
-    const bgCanvas = document.createElement("canvas");
-    bgCanvas.width = 512;
-    bgCanvas.height = 512;
-    const bgCtx = bgCanvas.getContext("2d");
-    const bgTexture = new THREE.CanvasTexture(bgCanvas);
-    bgTexture.colorSpace = THREE.SRGBColorSpace;
-
-    const paintBgGradient = (isDark, time) => {
-      if (!bgCtx) return;
-      const W = 512, H = 512;
-      // Base fill
-      bgCtx.fillStyle = isDark ? "#06050f" : "#f5f6fc";
-      bgCtx.fillRect(0, 0, W, H);
-
-      // Nebula blobs — 仅 indigo/violet 色域，与主题一致
-      const blobs = isDark ? [
-        { x: 0.15, y: 0.2, r: 0.55, h: 238, s: 65, l: 18, a: 0.8 },   // indigo
-        { x: 0.8, y: 0.35, r: 0.5, h: 258, s: 55, l: 16, a: 0.55 },   // indigo-violet
-        { x: 0.25, y: 0.78, r: 0.45, h: 248, s: 60, l: 14, a: 0.5 },  // deep indigo
-        { x: 0.5, y: 0.5, r: 0.6, h: 243, s: 70, l: 12, a: 0.7 },    // core
-        { x: 0.75, y: 0.1, r: 0.38, h: 265, s: 50, l: 15, a: 0.35 },  // violet
-      ] : [
-        { x: 0.2, y: 0.2, r: 0.5, h: 238, s: 55, l: 93, a: 0.25 },
-        { x: 0.8, y: 0.4, r: 0.5, h: 258, s: 45, l: 94, a: 0.18 },
-        { x: 0.5, y: 0.5, r: 0.55, h: 243, s: 50, l: 95, a: 0.2 },
-      ];
-
-      for (const b of blobs) {
-        const pulse = Math.sin(time * 0.0004 + b.h) * 0.08 + 1;
-        const radius = b.r * Math.max(W, H) * pulse;
-        const cx = b.x * W;
-        const cy = b.y * H;
-        const grd = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        grd.addColorStop(0, `hsla(${b.h}, ${b.s}%, ${b.l}%, ${b.a})`);
-        grd.addColorStop(0.5, `hsla(${b.h}, ${b.s}%, ${b.l}%, ${b.a * 0.35})`);
-        grd.addColorStop(1, `hsla(${b.h}, ${b.s}%, ${b.l}%, 0)`);
-        bgCtx.fillStyle = grd;
-        bgCtx.fillRect(0, 0, W, H);
-      }
+    // Fullscreen quad
+    const geo = new THREE.PlaneGeometry(2, 2);
+    const uniforms = {
+      uTime:       { value: 0 },
+      uAmplitude:  { value: 0 },
+      uTheme:      { value: isDark ? 1.0 : 0.0 },
+      uTransition: { value: 0 },
+      uMouse:      { value: new THREE.Vector2(0, 0) },
+      uResolution: { value: new THREE.Vector2(W, H) },
     };
-    paintBgGradient(initialIsDark, 0);
-    bgTexture.needsUpdate = true;
-    scene.background = bgTexture;
-
-    const aspect = container.clientWidth / container.clientHeight || 1;
-    const frustumSize = VIEW_SIZE * 0.2;
-    const camera = new THREE.OrthographicCamera(
-      (-frustumSize * aspect) / 2,
-      (frustumSize * aspect) / 2,
-      frustumSize / 2,
-      -frustumSize / 2,
-      0.1,
-      100
-    );
-    camera.position.set(0, 0, 20);
-    camera.zoom = 1;
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-    cameraRef.current = camera;
-
-    // --- 灯光：基础光 + 彩色点光源 ---
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambient);
-    const dir = new THREE.DirectionalLight(0xfff5e6, 1.0);
-    dir.position.set(15, 20, 10);
-    scene.add(dir);
-    const fillLight = new THREE.DirectionalLight(0x88bbff, 0.3);
-    fillLight.position.set(-15, -5, -15);
-    scene.add(fillLight);
-
-    // 彩色点光源 — 给方块网格染上多彩光晕
-    const colorLights = [];
-    if (initialIsDark) {
-      const lightDefs = [
-        { color: 0x6366f1, x: -8, y: 10, z: 6, intensity: 25, dist: 35 },   // indigo
-        { color: 0x818cf8, x: 12, y: -5, z: 8, intensity: 20, dist: 32 },   // lighter indigo
-        { color: 0xa78bfa, x: -5, y: -10, z: 5, intensity: 16, dist: 30 },  // violet
-        { color: 0x8b5cf6, x: 8, y: 8, z: 7, intensity: 14, dist: 28 },    // deeper violet
-      ];
-      for (const ld of lightDefs) {
-        const pl = new THREE.PointLight(ld.color, ld.intensity, ld.dist);
-        pl.position.set(ld.x, ld.y, ld.z);
-        scene.add(pl);
-        colorLights.push(pl);
-      }
-    }
-
-    const root = new THREE.Group();
-    const gridScale = lodRef.current?.scale ?? 1;
-    // Scale up on ultrawide to ensure grid covers the full viewport
-    const ultrawideBoost = aspect > 1.8 ? aspect / 1.8 : 1;
-    const finalScale = gridScale * ultrawideBoost;
-    const offset = -Math.ceil(gridSize / 2) * finalScale;
-    const shift = gridSize * 0.18 * finalScale;
-    root.position.set(offset + shift, offset + shift, 0);
-    root.scale.set(finalScale, finalScale, finalScale);
-    const startRotation = { x: THREE.MathUtils.degToRad(-20), y: THREE.MathUtils.degToRad(20) };
-    root.rotation.set(startRotation.x, startRotation.y, 0);
-    scene.add(root);
-    rootRef.current = root;
-
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-
-    // --- 材质：暗色模式微自发光让颜色可见 ---
-    const material = new THREE.MeshStandardMaterial({
-      color: initialIsDark ? 0x666666 : 0xffffff,
-      metalness: initialIsDark ? 0.2 : 0.1,
-      roughness: initialIsDark ? 0.65 : 0.8,
-      emissive: initialIsDark ? 0x1a1a2e : 0x000000,
-      emissiveIntensity: initialIsDark ? 0.4 : 0,
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: VS,
+      fragmentShader: FS,
+      uniforms,
+      depthTest: false,
+      depthWrite: false,
     });
+    scene.add(new THREE.Mesh(geo, mat));
 
-    const mesh = new THREE.InstancedMesh(geometry, material, instanceCount);
-    meshRef.current = mesh;
-    root.add(mesh);
-
-    const dummy = new THREE.Object3D();
-    const auroraColor = new THREE.Color(); // 复用颜色对象避免每帧分配
-    for (let i = 0; i < instanceCount; i++) {
-      const p = basePositions[i];
-      dummy.position.copy(p);
-      dummy.rotation.set(0, 0, 0);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-
-    // --- 初始化颜色 ---
-    const color = new THREE.Color();
-    const sourceColors = initialIsDark ? darkColors : lightColors;
-    for (let i = 0; i < instanceCount; i++) {
-      color.copy(sourceColors[i] ?? lightColors[i] ?? new THREE.Color(0xffffff));
-      mesh.setColorAt(i, color);
-    }
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-
-    // --- 设置后期处理与辉光 (Bloom) ---
-    const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(container.clientWidth, container.clientHeight),
-      initialIsDark ? 0.45 : 0.0,
-      0.7,
-      0.55
-    );
-    bloomPassRef.current = bloomPass;
-    bloomPass.enabled = lod0.enableBloom;
+    // Bloom
     const composer = new EffectComposer(renderer);
-    composer.addPass(renderScene);
-    composer.addPass(bloomPass);
-    composerRef.current = composer;
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(
+      new THREE.Vector2(W, H),
+      isDark ? 0.2 : 0, 0.7, 0.4
+    );
+    composer.addPass(bloom);
 
-    const clock = new THREE.Clock();
-    const duration = INTRO_DURATION;
-    const targetRotation = { x: THREE.MathUtils.degToRad(-40), y: THREE.MathUtils.degToRad(40) };
+    // State
+    const tv = isDark ? 1.0 : 0.0;
+    const state = {
+      themeTarget: tv,
+      themeCurrent: tv,
+      transEnergy: 0,
+      speedMul: 1.0,
+      accTime: 0,
+      startTime: performance.now(),
+      lastTime: performance.now(),
+      frameId: 0,
+    };
+    stateRef.current = state;
+    composer.render();
 
-    // Scroll-throttle: halve framerate during active scroll to free GPU for compositing
+    // ── Speed event ──
+    const onSpeed = (e) => { state.speedMul = e.detail; };
+    window.addEventListener("bg-speed", onSpeed);
+
+    // ── Scroll throttle ──
     let scrolling = false;
     let scrollTimer = null;
-    let scrollSkip = false;
+    let skipFrame = false;
     const onScroll = () => {
       scrolling = true;
       if (scrollTimer) clearTimeout(scrollTimer);
@@ -445,544 +236,101 @@ export function Scene({ isFullscreen, theme }) {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
+    // ── Mouse ──
+    const onMouse = (e) => {
+      mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    window.addEventListener("mousemove", onMouse, { passive: true });
+
+    // ── Animate ──
     const animate = () => {
-      // Skip all work when tab is hidden — saves GPU & battery
       if (document.hidden) {
-        animationFrameRef.current = requestAnimationFrame(animate);
+        state.frameId = requestAnimationFrame(animate);
         return;
       }
-      // During active scroll, render at half framerate (~30fps)
       if (scrolling) {
-        scrollSkip = !scrollSkip;
-        if (scrollSkip) {
-          animationFrameRef.current = requestAnimationFrame(animate);
-          return;
-        }
+        skipFrame = !skipFrame;
+        if (skipFrame) { state.frameId = requestAnimationFrame(animate); return; }
       }
 
-      const currentCamera = cameraRef.current;
-      const currentRoot = rootRef.current;
+      const now = performance.now();
+      const dt = Math.min((now - state.lastTime) / 1000, 0.1);
+      state.lastTime = now;
+      const elapsed = (now - state.startTime) / 1000;
 
-      if (currentCamera && currentRoot) {
-        const tNow = clock.getElapsedTime();
-        lastTimeRef.current = tNow;
+      state.accTime += dt * state.speedMul;
+      uniforms.uTime.value = state.accTime;
 
-        const tIntro = Math.min(clock.getElapsedTime() / duration, 1);
-        const easeOut = 1 - Math.pow(1 - tIntro, 3); 
+      // Intro fade-in
+      const intro = Math.min(elapsed / INTRO_DURATION, 1);
+      uniforms.uAmplitude.value = 1 - Math.pow(1 - intro, 3);
 
-        const baseX = startRotation.x + (targetRotation.x - startRotation.x) * easeOut;
-        const baseY = startRotation.y + (targetRotation.y - startRotation.y) * easeOut;
-        currentRoot.rotation.x = baseX;
-        currentRoot.rotation.y = baseY;
-
-        // 每 ~2s 刷新一次星云背景纹理（缓慢脉动）
-        if (bgTexture && bgCtx && Math.floor(tNow * 0.5) !== Math.floor((tNow - 0.017) * 0.5)) {
-          const currentIsDark = themeStrRef.current === "dark";
-          paintBgGradient(currentIsDark, tNow * 1000);
-          bgTexture.needsUpdate = true;
-        }
-
-        // 彩色点光源缓慢轨道运动
-        for (let li = 0; li < colorLights.length; li++) {
-          const pl = colorLights[li];
-          const angle = tNow * 0.15 + li * Math.PI * 0.5;
-          const baseR = 10 + li * 2;
-          pl.position.x += Math.sin(angle) * 0.02;
-          pl.position.y += Math.cos(angle * 0.7) * 0.02;
-        }
-
-        if (meshRef.current) {
-          const mesh = meshRef.current;
-          const t = tNow;
-          const currentMode = modeRef.current;
-
-          if (!lastFrameZRef.current || lastFrameZRef.current.length !== instanceCount) {
-            lastFrameZRef.current = new Float32Array(instanceCount);
-          }
-          if (!lastFrameRyRef.current || lastFrameRyRef.current.length !== instanceCount) {
-            lastFrameRyRef.current = new Float32Array(instanceCount);
-          }
-
-          if (tNow < INTRO_DURATION) {
-            const localDummy = dummy;
-            for (let i = 0; i < instanceCount; i++) {
-              const p = basePositions[i];
-              const d = introDropData[i];
-              const phase = (tNow - d.delay) / INTRO_FALL_DURATION;
-              let z, ry;
-              if (phase <= 0) {
-                z = d.startZ; ry = d.tumbleRy;
-              } else if (phase >= 1) {
-                z = 0; ry = 0;
-              } else {
-                const eased = 1 - Math.pow(1 - phase, 3);
-                z = d.startZ * (1 - eased);
-                ry = d.tumbleRy * (1 - eased);
-              }
-              localDummy.position.set(p.x, p.y, z);
-              localDummy.rotation.set(0, ry, 0);
-              localDummy.updateMatrix();
-              mesh.setMatrixAt(i, localDummy.matrix);
-              lastFrameZRef.current[i] = z;
-              lastFrameRyRef.current[i] = ry;
-            }
-            mesh.instanceMatrix.needsUpdate = true;
-          } else {
-            const ripple = themeRippleRef.current;
-            const settle = settleRef.current;
-
-            // --- 主题切换：平滑过渡颜色、背景、发光 ---
-            if (ripple.active && rippleDistancesRef.current) {
-              const distances = rippleDistancesRef.current;
-              const maxDist = rippleMaxDistRef.current || 1;
-              if (!ripple.startTime) ripple.startTime = tNow;
-
-              const elapsed = tNow - ripple.startTime;
-              const waveDuration = 1.0; 
-              const liftDuration = 0.6; 
-              const liftHeight = 1.5; // 让起落更加克制
-              const waveSpeed = maxDist / waveDuration;
-
-              const localDummy = dummy;
-              let allDone = true;
-
-              for (let i = 0; i < instanceCount; i++) {
-                const p = basePositions[i];
-                const dist = distances[i];
-                const delay = dist / waveSpeed;
-                const localTime = elapsed - delay;
-
-                let lift = 0;
-                let colorProgress = 0;
-
-                if (localTime > 0 && localTime < liftDuration) {
-                  const u = Math.min(Math.max(localTime / liftDuration, 0), 1);
-                  const s = Math.sin(Math.PI * u);
-                  lift = liftHeight * s * s;
-                  colorProgress = u;
-                  allDone = false;
-                } else if (localTime >= liftDuration) {
-                  colorProgress = 1;
-                } else {
-                  allDone = false;
-                }
-
-                localDummy.position.set(p.x, p.y, lift);
-                localDummy.rotation.set(0, 0, 0);
-                localDummy.updateMatrix();
-                mesh.setMatrixAt(i, localDummy.matrix);
-
-                // 暂时不在涟漪中修改实例颜色，只用抬升表现切换感
-              }
-
-              mesh.instanceMatrix.needsUpdate = true;
-
-              // 全局插值计算（材质基础色、背景色、辉光强度）
-              const globalProgress = Math.min(elapsed / (waveDuration + liftDuration), 1);
-              const globalEase = globalProgress < 0.5 ? 4 * Math.pow(globalProgress, 3) : 1 - Math.pow(-2 * globalProgress + 2, 3) / 2;
-
-              mesh.material.color.copy(ripple.fromColor).lerp(ripple.toColor, globalEase);
-
-              // 更新星云背景纹理（主题过渡中平滑切换）
-              const transIsDark = globalEase < 0.5 ? (ripple.fromBg.r < 0.1) : (ripple.toBg.r < 0.1);
-              paintBgGradient(transIsDark, tNow * 1000);
-              bgTexture.needsUpdate = true;
-
-              if (bloomPassRef.current) {
-                bloomPassRef.current.strength = ripple.fromBloom + (ripple.toBloom - ripple.fromBloom) * globalEase;
-              }
-
-              if (allDone) ripple.active = false;
-
-            } else if (settle.active) {
-              const uRaw = (t - settle.startTime) / MODE_SWITCH_SETTLE_DURATION;
-              const u = Math.min(Math.max(uRaw, 0), 1);
-              const eased = 1 - Math.pow(1 - u, 3);
-
-              const fromZ = settle.fromZ ?? lastFrameZRef.current;
-              const fromRy = settle.fromRy ?? lastFrameRyRef.current;
-
-              const localDummy = dummy;
-              for (let i = 0; i < instanceCount; i++) {
-                const p = basePositions[i];
-                const z0 = fromZ[i] ?? 0;
-                const ry0 = fromRy[i] ?? 0;
-                const z = z0 * (1 - eased);
-                const ry = ry0 * (1 - eased);
-
-                localDummy.position.set(p.x, p.y, z);
-                localDummy.rotation.set(0, ry, 0);
-                localDummy.updateMatrix();
-                mesh.setMatrixAt(i, localDummy.matrix);
-
-                lastFrameZRef.current[i] = z;
-                lastFrameRyRef.current[i] = ry;
-              }
-              mesh.instanceMatrix.needsUpdate = true;
-
-              if (u >= 1) {
-                settleRef.current.active = false;
-                lastLocalTRef.current = 0;
-                randomActiveBlocksRef.current = [];
-                lastSpawnTimeRef.current = t;
-                waveOriginRef.current = { x: Math.random() * gridSize, y: Math.random() * gridSize };
-              }
-            } else if (currentMode === "wave") {
-              const localDummy = dummy;
-              const maxRadius = Math.sqrt((gridSize * gridSize) * 2);
-              const waveSpeed = maxRadius / 50; 
-              const pulseDuration = 5; 
-              const amp = 3; 
-
-              const totalCycle = maxRadius / waveSpeed + pulseDuration;
-              const localT = t % totalCycle;
-
-              if (localT < lastLocalTRef.current) {
-                waveOriginRef.current = { x: Math.random() * gridSize, y: Math.random() * gridSize };
-              }
-              lastLocalTRef.current = localT;
-
-              const centerX = waveOriginRef.current.x;
-              const centerY = waveOriginRef.current.y;
-
-              const frac = localT / totalCycle;
-              waveProgressRef.current = frac;
-
-              for (let i = 0; i < instanceCount; i++) {
-                const p = basePositions[i];
-                const dx = p.x - centerX;
-                const dy = p.y - centerY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                const reachTime = dist / waveSpeed;
-                const phase = localT - reachTime; 
-
-                let offsetZ = 0;
-                if (phase > 0 && phase < pulseDuration) {
-                  const u = phase / pulseDuration; 
-                  const s = Math.sin(Math.PI * u); 
-                  offsetZ = amp * s * s; 
-                }
-
-                localDummy.position.set(p.x, p.y, offsetZ);
-                localDummy.rotation.set(0, 0, 0);
-                localDummy.updateMatrix();
-                mesh.setMatrixAt(i, localDummy.matrix);
-
-                lastFrameZRef.current[i] = offsetZ;
-                lastFrameRyRef.current[i] = 0;
-              }
-              mesh.instanceMatrix.needsUpdate = true;
-            } else {
-              const localDummy = dummy;
-              if (t - lastSpawnTimeRef.current >= RANDOM_SPAWN_INTERVAL) {
-                lastSpawnTimeRef.current = t;
-                const newIndex = Math.floor(Math.random() * instanceCount);
-                randomActiveBlocksRef.current.push({ index: newIndex, startTime: t });
-              }
-
-              const active = randomActiveBlocksRef.current;
-              const nextActive = [];
-              // Reuse pre-allocated buffers instead of creating new arrays every frame
-              if (!randomOffsetsZRef.current || randomOffsetsZRef.current.length !== instanceCount) {
-                randomOffsetsZRef.current = new Float32Array(instanceCount);
-                randomRotationsYRef.current = new Float32Array(instanceCount);
-              }
-              const offsetsZ = randomOffsetsZRef.current;
-              const rotationsY = randomRotationsYRef.current;
-              offsetsZ.fill(0);
-              rotationsY.fill(0);
-
-              for (let k = 0; k < active.length; k++) {
-                const item = active[k];
-                const elapsed = t - item.startTime;
-                if (elapsed >= 0 && elapsed < RANDOM_BLOCK_DURATION) {
-                  nextActive.push(item);
-                  const u = Math.min(Math.max(elapsed / RANDOM_BLOCK_DURATION, 0), 1); 
-                  const ue = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-                  const s = Math.sin(Math.PI * ue); 
-                  const z = RANDOM_BLOCK_HEIGHT * s * s;
-                  const ry = 2 * Math.PI * ue; 
-
-                  if (z > offsetsZ[item.index]) {
-                    offsetsZ[item.index] = z;
-                    rotationsY[item.index] = ry;
-                  }
-                }
-              }
-
-              randomActiveBlocksRef.current = nextActive;
-
-              for (let i = 0; i < instanceCount; i++) {
-                const p = basePositions[i];
-                const z = offsetsZ[i];
-                const ry = rotationsY[i];
-
-                localDummy.position.set(p.x, p.y, z);
-                localDummy.rotation.set(0, ry, 0);
-                localDummy.updateMatrix();
-                mesh.setMatrixAt(i, localDummy.matrix);
-
-                lastFrameZRef.current[i] = z;
-                lastFrameRyRef.current[i] = ry;
-              }
-              mesh.instanceMatrix.needsUpdate = true;
-            }
-          }
-        }
-
-        // --- 实时颜色波动（极光效果）---
-        if (meshRef.current && themeStrRef.current === "dark") {
-          const mesh = meshRef.current;
-          const spatials = instanceSpatial;
-          // 每 6 帧更新一次颜色（~10fps 足够流畅，大幅节省 GPU upload）
-          const frameCount = Math.floor(tNow * 60);
-          if (frameCount % 6 === 0 && spatials.length === instanceCount) {
-            for (let i = 0; i < instanceCount; i++) {
-              const s = spatials[i];
-              // 色相仅在 indigo(0.66) ↔ violet(0.74) 间缓慢流动
-              const hue = 0.66
-                + s.diag * 0.06
-                + Math.sin(tNow * 0.08 + s.tRow * 3.0) * 0.03
-                + Math.sin(tNow * 0.06 + s.tCol * 4.0) * 0.025
-                + Math.sin(tNow * 0.04 + s.diag * 5.0) * 0.02;
-              const sat = 0.45 + Math.sin(tNow * 0.1 + s.diag * 2.5) * 0.1;
-              const lit = 0.16 + Math.sin(tNow * 0.07 + s.tRow * 2.0) * 0.05;
-              auroraColor.setHSL(hue, sat, lit);
-              mesh.setColorAt(i, auroraColor);
-            }
-            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-          }
-        }
-
-        // 使用 composer 代替原生的 renderer 渲染
-        if (composerRef.current) {
-          composerRef.current.render();
-        }
+      // Theme transition (exponential ease)
+      state.themeCurrent += (state.themeTarget - state.themeCurrent) * (1 - Math.exp(-THEME_LERP * dt));
+      if (Math.abs(state.themeTarget - state.themeCurrent) < 0.0005) {
+        state.themeCurrent = state.themeTarget;
       }
+      uniforms.uTheme.value = state.themeCurrent;
 
-      animationFrameRef.current = requestAnimationFrame(animate);
+      // Transition energy — bell curve peaking at midpoint (0.5)
+      const transRaw = Math.min(state.themeCurrent, 1 - state.themeCurrent) * 2;
+      state.transEnergy += (transRaw - state.transEnergy) * (1 - Math.exp(-10.0 * dt));
+      uniforms.uTransition.value = state.transEnergy;
+
+      // Bloom: base dark-mode glow + dramatic transition pulse
+      bloom.strength = state.themeCurrent * 0.2 + state.transEnergy * 0.8;
+
+      // Smooth mouse — slow drift for gentle convergence/dispersion
+      const ms = 1 - Math.exp(-1 * dt);
+      uniforms.uMouse.value.x += (mouseRef.current.x - uniforms.uMouse.value.x) * ms;
+      uniforms.uMouse.value.y += (mouseRef.current.y - uniforms.uMouse.value.y) * ms;
+
+      composer.render();
+      state.frameId = requestAnimationFrame(animate);
     };
 
-    animate();
+    state.frameId = requestAnimationFrame(animate);
 
-    const applyResize = (w, h) => {
-      if (!cameraRef.current || !rendererRef.current) return;
-
-      // Update LOD (grid + pixel ratio + bloom)
-      const lodN = pickLOD(w, h);
-      // Rebuild only when grid changes meaningfully (avoids thrashing during tiny resizes)
-      if (Math.abs(lodN.gridSize - gridSizeRef.current) >= 2) {
-        lodRef.current = lodN;
-        setGridSize(lodN.gridSize);
-        // NOTE: the effect will re-run and size will be applied during init
-        return;
-      }
-      lodRef.current = lodN;
-
-      rendererRef.current.setPixelRatio(lodN.pixelRatio);
-      if (bloomPassRef.current) bloomPassRef.current.enabled = lodN.enableBloom;
-
-      const aspectNew = w / h || 1;
-      const cam = cameraRef.current;
-      const frustum = frustumSize;
-      cam.left = (-frustum * aspectNew) / 2;
-      cam.right = (frustum * aspectNew) / 2;
-      cam.top = frustum / 2;
-      cam.bottom = -frustum / 2;
-      cam.updateProjectionMatrix();
-
-      rendererRef.current.setSize(w, h);
-      if (composerRef.current) composerRef.current.setSize(w, h);
-
-      appliedSizeRef.current = { w, h };
+    // ── Resize ──
+    let resizeTimer = null;
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!container) return;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        renderer.setSize(w, h);
+        composer.setSize(w, h);
+        uniforms.uResolution.value.set(w, h);
+      }, 200);
     };
+    window.addEventListener("resize", onResize);
 
-    const scheduleDebouncedResize = (w, h) => {
-      pendingResizeRef.current = { w, h };
-      if (resizeDebounceRef.current) clearTimeout(resizeDebounceRef.current);
-      resizeDebounceRef.current = setTimeout(() => {
-        resizeDebounceRef.current = null;
-        const p = pendingResizeRef.current;
-        // Only apply if it still differs (avoid redundant work)
-        const a = appliedSizeRef.current;
-        if (!a.w || !a.h || Math.abs(p.w - a.w) > 2 || Math.abs(p.h - a.h) > 2) {
-          applyResize(p.w, p.h);
-        }
-      }, 220); // tolerate mobile address-bar jitter; apply after it settles
-    };
-
-    const handleResize = () => {
-      if (resizeRafRef.current !== null) return;
-      resizeRafRef.current = requestAnimationFrame(() => {
-        resizeRafRef.current = null;
-        if (!container || !cameraRef.current || !rendererRef.current) return;
-
-        // Use integer pixels & bucket rounding to avoid 1~2px oscillation on mobile.
-        const rawW = container.clientWidth;
-        const rawH = container.clientHeight;
-
-        // Snap to buckets so tiny changes won't trigger resizes.
-        const BUCKET = 24; // px
-        const w = Math.max(1, Math.round(rawW / BUCKET) * BUCKET);
-        const h = Math.max(1, Math.round(rawH / BUCKET) * BUCKET);
-
-        const a = appliedSizeRef.current;
-        // First run: apply immediately
-        if (!a.w || !a.h) {
-          applyResize(w, h);
-          return;
-        }
-
-        const dw = Math.abs(w - a.w);
-        const dh = Math.abs(h - a.h);
-        const area0 = a.w * a.h;
-        const area1 = w * h;
-        const areaRatio = Math.abs(area1 - area0) / Math.max(1, area0);
-
-        // Large changes (rotation/fullscreen) -> apply immediately
-        if (dw >= 72 || dh >= 72 || areaRatio >= 0.12) {
-          applyResize(w, h);
-          return;
-        }
-
-        // Small jitter -> debounce; will apply once things settle
-        scheduleDebouncedResize(w, h);
-      });
-    };
-
-    window.addEventListener("resize", handleResize);
-
+    // ── Cleanup ──
     return () => {
-      if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
-      if (resizeDebounceRef.current) clearTimeout(resizeDebounceRef.current);
+      cancelAnimationFrame(state.frameId);
+      window.removeEventListener("bg-speed", onSpeed);
+      window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll);
       if (scrollTimer) clearTimeout(scrollTimer);
-      window.removeEventListener("resize", handleResize);
-      if (rendererRef.current) rendererRef.current.dispose();
-      if (meshRef.current) {
-        meshRef.current.geometry.dispose();
-        meshRef.current.material.dispose();
-      }
-      if (bgTexture) bgTexture.dispose();
-      if (container && renderer.domElement.parentNode === container) {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      renderer.dispose();
+      geo.dispose();
+      mat.dispose();
+      if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
       }
+      stateRef.current = null;
     };
-  }, [basePositions, instanceCount, instanceSpatial, lightColors, darkColors, introDropData]);
-
-  // --- 🚀 新增：CSS 蒙版的鼠标视差动画 ---
-  useEffect(() => {
-    let animationFrameId;
-
-    const handleMouseMove = (e) => {
-      // 使用 requestAnimationFrame 保证动画流畅，不掉帧
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-
-      animationFrameId = requestAnimationFrame(() => {
-        if (!maskLayer1Ref.current || !maskLayer2Ref.current) return;
-        
-        // 计算鼠标相对屏幕中心的偏移量（范围约 -1 到 1）
-        const x = (e.clientX / window.innerWidth - 0.5) * 2;
-        const y = (e.clientY / window.innerHeight - 0.5) * 2;
-
-        // 设置视差位移：
-        // 层1 (模糊底色) 移动幅度较小
-        // 层2 (扫描细纹) 移动幅度稍大，错开距离产生 3D 浮动感
-        maskLayer1Ref.current.style.transform = `translate(${x * -8}px, ${y * -8}px)`;
-        maskLayer2Ref.current.style.transform = `translate(${x * -16}px, ${y * -16}px)`;
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    };
-  }, []);
-
-  // --- 主题触发器：只记录目标状态，由 animate 循环处理平滑渐变 ---
-  useEffect(() => {
-    themeStrRef.current = theme;
-    const mesh = meshRef.current;
-    const renderer = rendererRef.current;
-    if (!mesh || !renderer) return;
-
-    const isDark = theme === "dark";
-    const ripple = themeRippleRef.current;
-
-    ripple.active = true;
-    ripple.startTime = 0; // 下一帧重新打时间戳
-    
-    if (mesh.material && "color" in mesh.material) {
-      ripple.fromColor.copy(mesh.material.color);
-      ripple.toColor.set(isDark ? 0x666666 : 0xffffff);
-    }
-
-    ripple.fromBg.set(isDark ? 0xf4f5f7 : 0x05050a);
-    ripple.toBg.set(isDark ? 0x05050a : 0xf4f5f7);
-
-    // 材质属性随主题切换
-    if (mesh.material) {
-      mesh.material.metalness = isDark ? 0.2 : 0.1;
-      mesh.material.roughness = isDark ? 0.65 : 0.8;
-      mesh.material.emissive.set(isDark ? 0x1a1a2e : 0x000000);
-      mesh.material.emissiveIntensity = isDark ? 0.4 : 0;
-    }
-
-    // Light mode: 恢复静态颜色
-    if (!isDark) {
-      const color = new THREE.Color();
-      for (let i = 0; i < instanceCount; i++) {
-        color.copy(lightColors[i] ?? new THREE.Color(0xffffff));
-        mesh.setColorAt(i, color);
-      }
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    }
-
-    if (bloomPassRef.current) {
-      bloomPassRef.current.enabled = lodRef.current.enableBloom;
-      ripple.fromBloom = bloomPassRef.current.strength;
-      ripple.toBloom = isDark ? 0.45 : 0.0;
-    }
-
-  }, [theme, instanceCount, lightColors]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={containerRef} className="w-full h-full relative overflow-hidden">
-
-      {/* 底色层 (移动较慢) — 极轻薄遮盖，保留星云色彩 */}
-      <div
-        ref={maskLayer1Ref}
-        className="absolute inset-[-30px] pointer-events-none transition-colors duration-1000 ease-in-out"
-        style={{
-          backgroundColor: theme === "dark"
-            ? "rgba(2, 6, 23, 0.08)"
-            : "rgba(244, 245, 247, 0.2)",
-          zIndex: 1,
-          willChange: "transform"
-        }}
-      />
-
-      {/* 第二层: 仅保留视差运动，不再有横纹 */}
-      <div
-        ref={maskLayer2Ref}
-        className="absolute inset-[-30px] pointer-events-none"
-        style={{
-          zIndex: 2,
-          willChange: "transform"
-        }}
-      />
-
-      {/* 原本的 WAVE UI */}
-      {mode === "wave" && (
-        <div className="pointer-events-none absolute right-2 bottom-10 z-[3] flex items-center gap-2 text-[9px] font-[family-name:var(--font-press-start)] tracking-[0.15em] text-[color-mix(in_oklab,var(--pixel-text)_80%,transparent)]">
-          {/* ... 保持不变 */}
-        </div>
-      )}
-    </div>
+    <div
+      ref={containerRef}
+      className="w-full h-full"
+      style={{ backgroundColor: theme === "dark" ? "#0c0a1d" : "#fafbfe" }}
+    />
   );
 }

@@ -7,7 +7,7 @@ import MouseProvider from "./components/MouseProvider";
 import { ScrollLagProvider } from "./components/ScrollLagContext";
 import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
 import PetBedToggle from "./components/PetBedToggle";
-import BackgroundModeToggle from "./components/BackgroundModeToggle";
+import BgSpeedControl from "./components/BgSpeedControl";
 import ThemeToggle from "./components/ThemeToggle";
 import FpsCounter from "./components/FpsCounter";
 import FloatingNav from "./components/FloatingNav";
@@ -77,7 +77,7 @@ export default function Home() {
           <main className="relative min-h-screen selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
             <CursorPet />
             <PetBedToggle />
-            <BackgroundModeToggle />
+            <BgSpeedControl />
             <ThemeToggle />
             <FpsCounter />
             <FloatingNav />
