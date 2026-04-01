@@ -839,7 +839,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     <div ref={outerRef} className={["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ")} style={{willChange: "transform" ,  zIndex: 1}}>
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
-            className="rounded-2xl border border-white/20 dark:border-white/[0.08] bg-gradient-to-b from-white/30 to-white/18 dark:from-white/[0.10] dark:to-white/[0.04] backdrop-blur-2xl backdrop-saturate-[1.3] shadow-xl shadow-[var(--pixel-glow)] ring-1 ring-inset ring-white/25 dark:ring-white/[0.08] select-none cursor-grab active:cursor-grabbing"
+            className="rounded-2xl border border-white/20 dark:border-white/[0.08] bg-gradient-to-b from-white/12 to-white/6 dark:from-white/[0.07] dark:to-white/[0.02] backdrop-blur-3xl backdrop-saturate-150 shadow-xl shadow-[var(--pixel-glow)] ring-1 ring-inset ring-white/20 dark:ring-white/[0.06] select-none cursor-grab active:cursor-grabbing"
             style={{ touchAction: "none" }}
             onPointerDownCapture={onTerminalPointerDown}
             onPointerMoveCapture={onTerminalPointerMove}

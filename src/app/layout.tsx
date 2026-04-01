@@ -78,7 +78,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-[var(--pixel-bg)] text-[var(--pixel-text)]`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased text-[var(--pixel-text)]`}
       >
         <ThemeProvider>
           <AnimatedFavicon />
