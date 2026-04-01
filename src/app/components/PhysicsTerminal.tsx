@@ -839,14 +839,14 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     <div ref={outerRef} className={["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ")} style={{willChange: "transform" ,  zIndex: 1}}>
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
-            className="rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] shadow-xl shadow-[var(--pixel-glow)] select-none cursor-grab active:cursor-grabbing"
+            className="rounded-2xl border border-white/20 dark:border-white/[0.08] bg-gradient-to-b from-white/30 to-white/18 dark:from-white/[0.10] dark:to-white/[0.04] backdrop-blur-2xl backdrop-saturate-[1.3] shadow-xl shadow-[var(--pixel-glow)] ring-1 ring-inset ring-white/25 dark:ring-white/[0.08] select-none cursor-grab active:cursor-grabbing"
             style={{ touchAction: "none" }}
             onPointerDownCapture={onTerminalPointerDown}
             onPointerMoveCapture={onTerminalPointerMove}
             onPointerUpCapture={endDrag}
             onPointerCancelCapture={endDrag}
           >
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] rounded-t-2xl select-none">
+          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b border-white/15 dark:border-white/[0.06] bg-white/10 dark:bg-white/[0.03] rounded-t-2xl select-none">
             <div className="flex gap-1.5">
               <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ff5f56]" />
               <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ffbd2e]" />
