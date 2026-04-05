@@ -618,7 +618,7 @@ export default function PokerPage() {
   const {
     gameMode, setGameMode, displayView, isGameOver,
     phase, localPeerId, error, isConnected,
-    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
+    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, roomCode,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
     doAction, requestNextHand, requestRematch, exitToMenu,
@@ -687,6 +687,7 @@ export default function PokerPage() {
                   onRetry={retryLastConnection}
                   onClearError={clearError}
                   onReinitialize={reinitialize}
+                  roomCode={roomCode}
                 />
                 <div className="mt-4 flex justify-center">
                   <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">

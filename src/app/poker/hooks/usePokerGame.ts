@@ -95,7 +95,7 @@ export function usePokerGame() {
 
   const {
     phase, localPeerId, error, isConnected,
-    connect, send, sendChat, clearError, retryLastConnection, reinitialize,
+    connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
   } = usePeerConnection<PokerPacket>({
     connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
     handshake: { site: "wenqian.me", game: "poker" },
@@ -168,7 +168,7 @@ export function usePokerGame() {
 
   return {
     gameMode, setGameMode, displayView, myIndex, isGameOver,
-    phase, localPeerId, error, isConnected,
+    phase, localPeerId, error, isConnected, roomCode,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,

@@ -72,7 +72,7 @@ export function useChat() {
     }
   }, [appendMessage, localKeyPair?.privateKey]);
 
-  const { phase, localPeerId, remotePeerId, error, isConnected, connect, disconnect, send, clearError, retryLastConnection, reinitialize } =
+  const { phase, localPeerId, remotePeerId, error, isConnected, connect, disconnect, send, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<ChatPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "chat" },
@@ -129,7 +129,7 @@ export function useChat() {
     messagesEndRef,
     handleSendMessage,
     // Connection
-    phase, localPeerId, remotePeerId, error, isConnected,
+    phase, localPeerId, remotePeerId, error, isConnected, roomCode,
     connect, disconnect, clearError, retryLastConnection, reinitialize,
     joinPeerId,
   };

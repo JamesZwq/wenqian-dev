@@ -18,6 +18,7 @@ interface P2PConnectionPanelProps {
   title?: string;
   description?: string[];
   autoConnectPeerId?: string | null;
+  roomCode?: string | null;
   onConnect: (peerId: string) => void;
   onRetry?: () => void;
   onClearError?: () => void;
@@ -40,11 +41,12 @@ export default function P2PConnectionPanel({
   error = null,
   title = "P2P_CONNECTION",
   description = [
-    "> Share your invite link with a friend.",
-    "> Or enter their peer code to connect.",
+    "> Enter a room code to create or join a room.",
+    "> Share the same code with a friend.",
     "> Direct browser-to-browser, no server required.",
   ],
   autoConnectPeerId,
+  roomCode,
   onConnect,
   onRetry,
   onClearError,
@@ -57,18 +59,13 @@ export default function P2PConnectionPanel({
   const effectiveTimeoutMs = connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
   const progressDurationSec = Math.max(0.1, effectiveTimeoutMs / 1000);
 
-  // Auto-connect when peer ID is ready and autoConnectPeerId is provided
+  // Auto-connect when autoConnectPeerId is provided and phase is ready
   useEffect(() => {
-    if (
-      autoConnectPeerId &&
-      localPeerId &&
-      phase === "ready" &&
-      !autoConnectDone
-    ) {
+    if (autoConnectPeerId && phase === "ready" && !autoConnectDone) {
       setAutoConnectDone(true);
       onConnect(autoConnectPeerId);
     }
-  }, [autoConnectPeerId, localPeerId, phase, autoConnectDone, onConnect]);
+  }, [autoConnectPeerId, phase, autoConnectDone, onConnect]);
 
   useEffect(() => {
     if (!error) return;
@@ -81,12 +78,14 @@ export default function P2PConnectionPanel({
     return "idle";
   }, [phase]);
 
-  const handleShareLink = async () => {
-    if (!localPeerId) return;
+  const isWaitingForOpponent = !!roomCode && phase === "ready";
 
+  const handleShareLink = async () => {
+    const code = roomCode;
+    if (!code) return;
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set("join", localPeerId);
+      url.searchParams.set("join", code);
       await navigator.clipboard.writeText(url.toString());
       setCopySuccess(true);
       window.setTimeout(() => setCopySuccess(false), 1500);
@@ -95,9 +94,9 @@ export default function P2PConnectionPanel({
     }
   };
 
-  const handleConnect = (peerId: string) => {
+  const handleConnect = (code: string) => {
     onClearError?.();
-    onConnect(peerId);
+    onConnect(code);
   };
 
   return (
@@ -123,61 +122,59 @@ export default function P2PConnectionPanel({
           <div
             className={`rounded-md border px-2 py-1 font-sans font-semibold text-[8px] tracking-tight md:text-[9px] ${PHASE_BADGE_CLASS[phase]}`}
           >
-            {getPhaseLabel(phase)}
+            {isWaitingForOpponent ? "WAITING" : getPhaseLabel(phase)}
           </div>
         </div>
 
         <div className="grid gap-4 p-4 md:gap-6 md:grid-cols-[1.2fr_1fr] md:p-7">
           <div className="space-y-4 md:space-y-5">
-            <div>
-              <label className="mb-2 block font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
-                YOUR PEER ID
-              </label>
-
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={localPeerId}
-                  placeholder={phase === "initializing" ? "Generating peer ID..." : "Unavailable"}
-                  className="h-11 flex-1 truncate rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] px-3 font-mono text-xs text-[var(--pixel-accent)] focus:outline-none md:h-12 md:px-4 md:text-base"
-                />
+            {/* ── Waiting for opponent (host created room) ── */}
+            {isWaitingForOpponent && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl border border-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-accent)_8%,transparent)] p-4"
+              >
+                <p className="mb-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+                  ROOM CREATED
+                </p>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="font-mono text-2xl font-bold tracking-[0.15em] text-[var(--pixel-accent)]">
+                    {roomCode}
+                  </span>
+                  <motion.div
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                    className="font-mono text-xs text-[var(--pixel-muted)]"
+                  >
+                    waiting for opponent...
+                  </motion.div>
+                </div>
                 <button
                   type="button"
                   onClick={handleShareLink}
-                  disabled={!localPeerId}
-                  className={`h-11 min-w-[80px] rounded-xl border px-3 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:h-12 md:text-[10px] ${
-                    localPeerId
-                      ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.03]"
-                      : "cursor-not-allowed border-[var(--pixel-border)] bg-[var(--pixel-border)] text-[var(--pixel-bg)] opacity-60"
+                  className={`rounded-xl border px-3 py-2 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:text-[10px] ${
+                    "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.03]"
                   }`}
                 >
-                  {copySuccess ? "COPIED" : "SHARE LINK"}
+                  {copySuccess ? "COPIED!" : "SHARE LINK"}
                 </button>
-              </div>
+              </motion.div>
+            )}
 
-              <div className="mt-2 flex flex-wrap gap-2">
-                {onReinitialize && (
-                  <button
-                    type="button"
-                    onClick={onReinitialize}
-                    className="rounded-xl border border-[var(--pixel-border)] px-2 py-1 font-sans font-semibold text-[8px] tracking-tight text-[var(--pixel-muted)] transition-colors hover:border-[var(--pixel-accent-2)] hover:text-[var(--pixel-accent-2)] md:text-[9px]"
-                  >
-                    RECREATE ID
-                  </button>
-                )}
+            {/* ── Room code input (not yet joined) ── */}
+            {!isWaitingForOpponent && (
+              <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
+                <CodeInput
+                  length={6}
+                  label="ROOM CODE"
+                  disabled={phase === "initializing" || phase === "connecting"}
+                  status={codeInputStatus}
+                  resetSignal={resetSignal}
+                  onComplete={handleConnect}
+                />
               </div>
-            </div>
-
-            <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
-              <CodeInput
-                length={6}
-                label="CONNECT_TO_PEER"
-                disabled={phase === "initializing" || phase === "connecting" || !localPeerId}
-                status={codeInputStatus}
-                resetSignal={resetSignal}
-                onComplete={handleConnect}
-              />
-            </div>
+            )}
 
             <AnimatePresence mode="wait">
               {phase === "connecting" && (
@@ -196,10 +193,10 @@ export default function P2PConnectionPanel({
                     />
                     <div>
                       <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent-2)] md:text-xs">
-                        HANDSHAKE IN PROGRESS
+                        JOINING ROOM
                       </p>
                       <p className="mt-1 font-mono text-xs text-[var(--pixel-text)]">
-                        Establishing a direct channel. The code input stays locked until this attempt succeeds or fails.
+                        Creating or joining the room...
                       </p>
                     </div>
                   </div>
@@ -268,7 +265,7 @@ export default function P2PConnectionPanel({
                   exit={{ opacity: 0, y: -8 }}
                   className="rounded-xl border border-[var(--pixel-border)] px-4 py-3 font-mono text-xs text-[var(--pixel-muted)]"
                 >
-                  &gt; Creating your local peer session...
+                  &gt; Preparing...
                 </motion.div>
               )}
             </AnimatePresence>
@@ -280,11 +277,12 @@ export default function P2PConnectionPanel({
                 STATUS
               </p>
               <p className="mt-2 font-mono text-sm text-[var(--pixel-text)]">
-                {phase === "ready" && "Your local peer is ready. You can share the code or enter another code now."}
-                {phase === "connecting" && "A connection attempt is active. The panel is intentionally locked to avoid duplicated handshakes."}
-                {phase === "connected" && "The direct connection is live. This panel can now be swapped out for any game or collaborative view."}
-                {phase === "initializing" && "The local peer is still being prepared."}
-                {(phase === "error" || phase === "disconnected") && "The previous attempt ended. You can retry immediately without refreshing the page."}
+                {phase === "ready" && !isWaitingForOpponent && "Enter a room code. If nobody is in that room, you'll create it. Otherwise you'll join automatically."}
+                {isWaitingForOpponent && "You created the room. Share the code with your friend and wait for them to join."}
+                {phase === "connecting" && "Joining the room..."}
+                {phase === "connected" && "Connected! The game is starting."}
+                {phase === "initializing" && "Preparing the connection..."}
+                {(phase === "error" || phase === "disconnected") && "Something went wrong. You can retry or enter a new code."}
               </p>
             </div>
 

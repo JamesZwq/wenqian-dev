@@ -33,6 +33,7 @@ export interface P2PState {
   remotePeerId: string | null;
   error: P2PErrorState | null;
   lastConnectedPeerId: string | null;
+  roomCode: string | null;
 }
 
 export interface UsePeerConnectionOptions<TData = unknown> {

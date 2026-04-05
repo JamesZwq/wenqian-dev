@@ -132,7 +132,7 @@ function PlayerArea({
 export default function HalliGalliPage() {
   const {
     gameMode, setGameMode, myIndex, myView,
-    phase, localPeerId, error, isConnected,
+    phase, localPeerId, error, isConnected, roomCode,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
@@ -251,6 +251,7 @@ export default function HalliGalliPage() {
                   onRetry={retryLastConnection}
                   onClearError={clearError}
                   onReinitialize={reinitialize}
+                  roomCode={roomCode}
                 />
                 <div className="mt-4 flex justify-center">
                   <button

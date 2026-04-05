@@ -19,7 +19,7 @@ export default function ChatPage() {
     messages, inputText, setInputText,
     encryptionReady, messagesEndRef,
     handleSendMessage,
-    phase, localPeerId, remotePeerId, error, isConnected,
+    phase, localPeerId, remotePeerId, error, isConnected, roomCode,
     connect, disconnect, clearError, retryLastConnection, reinitialize,
     joinPeerId,
   } = useChat();
@@ -78,6 +78,7 @@ export default function ChatPage() {
               onRetry={retryLastConnection}
               onClearError={clearError}
               onReinitialize={reinitialize}
+              roomCode={roomCode}
             />
           )}
 

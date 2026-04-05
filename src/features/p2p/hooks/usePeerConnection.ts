@@ -22,6 +22,7 @@ const INITIAL_STATE: P2PState = {
   remotePeerId: null,
   error: null,
   lastConnectedPeerId: null,
+  roomCode: null,
 };
 
 export function usePeerConnection<TData = unknown>(
@@ -243,214 +244,178 @@ export function usePeerConnection<TData = unknown>(
     [],
   );
 
+  // Helper: attach standard peer-level event listeners
+  const setupPeerListeners = useCallback(
+    (peer: Peer) => {
+      const handleIncoming = (connection: DataConnection) => {
+        if (optionsRef.current.acceptIncomingConnections === false) { connection.close(); return; }
+        if (connectionRef.current?.open) { connection.close(); return; }
+        const expected = optionsRef.current.handshake;
+        if (expected) {
+          const meta = connection.metadata as Record<string, string> | undefined;
+          if (!meta || !Object.entries(expected).every(([k, v]) => meta[k] === v)) { connection.close(); return; }
+        }
+        if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
+        lastAttemptedPeerIdRef.current = connection.peer;
+        latestRemotePeerIdRef.current = connection.peer;
+        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: connection.peer, error: null }));
+        attachConnection(connection, "incoming");
+      };
+      const handleErr = (raw: unknown) => emitError(normalizePeerError(raw));
+      const handleDisc = () => emitError(createPeerServerDisconnectedError());
+      peer.on("connection", handleIncoming);
+      peer.on("error", handleErr);
+      peer.on("disconnected", handleDisc);
+      return { handleIncoming, handleErr, handleDisc };
+    },
+    [attachConnection, emitError],
+  );
+
+  // Helper: full teardown of a peer + connection
+  const teardown = useCallback(() => {
+    if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
+    connectionCleanupRef.current?.();
+    connectionCleanupRef.current = null;
+    const conn = connectionRef.current; connectionRef.current = null;
+    if (conn) { try { conn.close(); } catch {} }
+    try { peerRef.current?.destroy(); } catch {}
+    peerRef.current = null;
+    latestRemotePeerIdRef.current = null;
+  }, []);
+
   useEffect(() => {
     setState(INITIAL_STATE);
     latestRemotePeerIdRef.current = null;
 
+    // Room mode: don't auto-create peer — wait for connect(code)
+    if (optionsRef.current.handshake) {
+      setState((prev) => ({ ...prev, phase: "ready" }));
+      return () => teardown();
+    }
+
+    // Classic mode: create peer on mount
     const localPeerId = options.peerId ?? generateShortPeerId();
     const peer = new Peer(localPeerId, options.peerOptions);
     peerRef.current = peer;
 
     const handleOpen = (openedPeerId: string) => {
-      setState((prev) => ({
-        ...prev,
-        phase: "ready",
-        localPeerId: openedPeerId,
-        error: null,
-      }));
+      setState((prev) => ({ ...prev, phase: "ready", localPeerId: openedPeerId, error: null }));
     };
-
-    const handleIncomingConnection = (connection: DataConnection) => {
-      if (optionsRef.current.acceptIncomingConnections === false) {
-        connection.close();
-        return;
-      }
-
-      // Reject if already have an open connection (prevents link-sharing collisions)
-      if (connectionRef.current?.open) {
-        connection.close();
-        return;
-      }
-
-      // Validate handshake metadata
-      const expectedHandshake = optionsRef.current.handshake;
-      if (expectedHandshake) {
-        const meta = connection.metadata as Record<string, string> | undefined;
-        const valid = meta != null &&
-          Object.entries(expectedHandshake).every(([k, v]) => meta[k] === v);
-        if (!valid) {
-          connection.close();
-          return;
-        }
-      }
-
-      if (connectTimeoutRef.current) {
-        clearTimeout(connectTimeoutRef.current);
-        connectTimeoutRef.current = null;
-      }
-      lastAttemptedPeerIdRef.current = connection.peer;
-      latestRemotePeerIdRef.current = connection.peer;
-      setState((prev) => ({
-        ...prev,
-        phase: "connecting",
-        remotePeerId: connection.peer,
-        error: null,
-      }));
-      attachConnection(connection, "incoming");
-    };
-
-    const handlePeerError = (rawError: unknown) => {
-      const normalized = normalizePeerError(rawError);
-      emitError(normalized);
-    };
-
-    const handlePeerDisconnected = () => {
-      emitError(createPeerServerDisconnectedError());
-    };
-
     peer.on("open", handleOpen);
-    peer.on("connection", handleIncomingConnection);
-    peer.on("error", handlePeerError);
-    peer.on("disconnected", handlePeerDisconnected);
+    const listeners = setupPeerListeners(peer);
 
     return () => {
-      if (connectTimeoutRef.current) {
-        clearTimeout(connectTimeoutRef.current);
-        connectTimeoutRef.current = null;
-      }
-      
-      connectionCleanupRef.current?.();
-      connectionCleanupRef.current = null;
-
-      const current = connectionRef.current;
-      connectionRef.current = null;
-
-      if (current) {
-        try {
-          current.close();
-        } catch {
-          // ignore close failures during teardown
-        }
-      }
-
+      teardown();
       try {
         peer.off?.("open", handleOpen);
-        peer.off?.("connection", handleIncomingConnection);
-        peer.off?.("error", handlePeerError);
-        peer.off?.("disconnected", handlePeerDisconnected);
-      } catch {
-        // ignore listener cleanup failures
-      }
-
-      try {
-        peer.destroy();
-      } catch {
-        // ignore destroy failures
-      }
-
-      peerRef.current = null;
-      latestRemotePeerIdRef.current = null;
+        peer.off?.("connection", listeners.handleIncoming);
+        peer.off?.("error", listeners.handleErr);
+        peer.off?.("disconnected", listeners.handleDisc);
+      } catch {}
     };
   }, [
     attachConnection,
     instanceNonce,
     options.peerId,
     options.peerOptions,
+    setupPeerListeners,
+    teardown,
   ]);
 
-  const connect = useCallback(
-    (targetPeerId: string) => {
-      const peer = peerRef.current;
-      const sanitizedTarget = sanitizePeerId(targetPeerId);
-
-      if (!peer || peer.destroyed) {
-        emitError({
-          code: "unknown",
-          title: "PEER NOT READY",
-          message: "The local peer is not ready yet. Please wait a moment and try again.",
-          recoverable: true,
-        });
-        return false;
-      }
-
-      if (!sanitizedTarget) {
-        emitError({
-          code: "invalid-id",
-          title: "INVALID PEER ID",
-          message: "Please enter a valid peer code before connecting.",
-          recoverable: true,
-        });
-        return false;
-      }
-
-      if (state.phase === "connecting") {
-        return false;
-      }
-
-      if (connectTimeoutRef.current) {
-        clearTimeout(connectTimeoutRef.current);
-        connectTimeoutRef.current = null;
-      }
-      lastAttemptedPeerIdRef.current = sanitizedTarget;
-      latestRemotePeerIdRef.current = sanitizedTarget;
-      setState((prev) => ({
-        ...prev,
-        phase: "connecting",
-        remotePeerId: sanitizedTarget,
-        error: null,
-      }));
-
+  // Helper: connect to a known peer ID (used in both classic and room-guest mode)
+  const connectToPeer = useCallback(
+    (peer: Peer, targetId: string) => {
       try {
-        const connection = peer.connect(sanitizedTarget, {
+        const connection = peer.connect(targetId, {
           reliable: true,
           metadata: optionsRef.current.handshake,
         });
         attachConnection(connection, "outgoing");
 
-        const timeoutMs =
-          optionsRef.current.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
-
+        const timeoutMs = optionsRef.current.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
         connectTimeoutRef.current = setTimeout(() => {
           if (connectionRef.current !== connection) return;
-
-          const timeoutError = createTimeoutError(timeoutMs);
-          
-          // Inline detachCurrentConnection
-          if (connectTimeoutRef.current) {
-            clearTimeout(connectTimeoutRef.current);
-            connectTimeoutRef.current = null;
-          }
-          connectionCleanupRef.current?.();
-          connectionCleanupRef.current = null;
-          connectionRef.current = null;
-          
-          setState((prev) => ({
-            ...prev,
-            phase: "error",
-            remotePeerId: sanitizedTarget,
-            error: timeoutError,
-          }));
-          optionsRef.current.onError?.(timeoutError);
-          optionsRef.current.onDisconnected?.({
-            peerId: sanitizedTarget,
-            reason: "timeout",
-          });
+          const err = createTimeoutError(timeoutMs);
+          if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
+          connectionCleanupRef.current?.(); connectionCleanupRef.current = null; connectionRef.current = null;
+          setState((prev) => ({ ...prev, phase: "error", error: err }));
+          optionsRef.current.onError?.(err);
+          optionsRef.current.onDisconnected?.({ peerId: targetId, reason: "timeout" });
         }, timeoutMs);
-
-        return true;
-      } catch (rawError) {
-        const normalized = normalizePeerError(rawError);
-        setState((prev) => ({
-          ...prev,
-          phase: "error",
-          remotePeerId: sanitizedTarget,
-          error: normalized,
-        }));
-        optionsRef.current.onError?.(normalized);
-        return false;
+      } catch (raw) {
+        emitError(normalizePeerError(raw));
       }
     },
-    [attachConnection, state.phase],
+    [attachConnection, emitError],
+  );
+
+  const connect = useCallback(
+    (code: string) => {
+      const sanitized = sanitizePeerId(code);
+      if (!sanitized) {
+        emitError({ code: "invalid-id", title: "INVALID CODE", message: "Please enter a valid code.", recoverable: true });
+        return false;
+      }
+      if (state.phase === "connecting") return false;
+
+      const handshake = optionsRef.current.handshake;
+      const prefix = handshake ? `wq-${handshake.game}` : null;
+
+      // ── Classic mode (no handshake) ──
+      if (!prefix) {
+        const peer = peerRef.current;
+        if (!peer || peer.destroyed) {
+          emitError({ code: "unknown", title: "PEER NOT READY", message: "Please wait a moment and try again.", recoverable: true });
+          return false;
+        }
+        lastAttemptedPeerIdRef.current = sanitized;
+        latestRemotePeerIdRef.current = sanitized;
+        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: sanitized, error: null }));
+        connectToPeer(peer, sanitized);
+        return true;
+      }
+
+      // ── Room mode ──
+      const roomId = `${prefix}-${sanitized}`;
+      setState((prev) => ({ ...prev, phase: "connecting", roomCode: sanitized, error: null }));
+
+      // Tear down any existing peer
+      teardown();
+
+      // Attempt 1: register as host with roomId
+      const hostPeer = new Peer(roomId, optionsRef.current.peerOptions);
+
+      hostPeer.on("open", () => {
+        // We are the host — wait for opponent
+        peerRef.current = hostPeer;
+        setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
+        setupPeerListeners(hostPeer);
+      });
+
+      hostPeer.on("error", (err) => {
+        const raw = err as { type?: string };
+        if (raw.type === "unavailable-id") {
+          // Room exists → join as guest
+          try { hostPeer.destroy(); } catch {}
+
+          const guestPeer = new Peer(generateShortPeerId(), optionsRef.current.peerOptions);
+          guestPeer.on("open", () => {
+            peerRef.current = guestPeer;
+            setState((prev) => ({ ...prev, roomCode: sanitized }));
+            setupPeerListeners(guestPeer);
+            connectToPeer(guestPeer, roomId);
+          });
+          guestPeer.on("error", (e) => emitError(normalizePeerError(e)));
+          return;
+        }
+        // Other error
+        try { hostPeer.destroy(); } catch {}
+        emitError(normalizePeerError(err));
+      });
+
+      return true;
+    },
+    [state.phase, emitError, teardown, setupPeerListeners, connectToPeer],
   );
 
   const retryLastConnection = useCallback(() => {

@@ -109,7 +109,7 @@ export function useMathGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<MathPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "math" },
@@ -225,7 +225,7 @@ export function useMathGame() {
     // P2P state
     direction, opponentProgress, opponentFinished, waitingForConfig, p2pSettingsReady,
     // Connection
-    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId, inputRef,
     // Chat
     chatMessages, addMyMessage,

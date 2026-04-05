@@ -155,7 +155,7 @@ export function useGomokuGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<GamePacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "gomoku" },
@@ -286,7 +286,7 @@ export function useGomokuGame() {
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
     // Connection
-    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId, latencyMs, lastRemoteMessageAt,
     // Chat
     chatMessages, addMyMessage,

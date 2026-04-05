@@ -90,7 +90,7 @@ export function useHalliGalliGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<HalliPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "halli-galli" },
@@ -179,7 +179,7 @@ export function useHalliGalliGame() {
 
   return {
     gameMode, setGameMode, myIndex, myView,
-    phase, localPeerId, error, isConnected,
+    phase, localPeerId, error, isConnected, roomCode,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
