@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import P2PConnectionPanel from "@/features/p2p/components/P2PConnectionPanel";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
-import { rankStr, suitSymbol, suitColor, getActions, isInBestHand } from "./utils";
+import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, simulateEquity, type EquityResult } from "./utils";
 
 // ── Card component ──
 
@@ -159,6 +159,97 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
   );
 }
 
+// ── Equity overlay ──
+
+function PctBar({ pct, color }: { pct: number; color: string }) {
+  return (
+    <div className="h-2 flex-1 rounded-full bg-[var(--pixel-bg-alt)] overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(pct, 100)}%` }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="h-full rounded-full"
+        style={{ background: color }}
+      />
+    </div>
+  );
+}
+
+function EquityOverlay({ result, loading }: { result: EquityResult | null; loading: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl"
+    >
+      <div className="w-full max-w-xs mx-3 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 shadow-2xl">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-mono text-[10px] font-semibold tracking-widest text-[var(--pixel-accent)]">HAND ANALYSIS</span>
+        </div>
+
+        {loading || !result ? (
+          <div className="py-6 text-center">
+            <span className="font-mono text-xs text-[var(--pixel-muted)] animate-pulse">Computing...</span>
+          </div>
+        ) : (
+          <>
+            {/* Equity section */}
+            <div className="space-y-1.5 mb-4">
+              <div className="font-mono text-[9px] font-semibold text-[var(--pixel-muted)] tracking-wider mb-1">EQUITY</div>
+              {([
+                { label: "Win", pct: result.winPct, color: "#22c55e" },
+                { label: "Lose", pct: result.losePct, color: "#ef4444" },
+                { label: "Tie", pct: result.tiePct, color: "#eab308" },
+              ] as const).map(r => (
+                <div key={r.label} className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] w-8 text-right" style={{ color: r.color }}>{r.label}</span>
+                  <PctBar pct={r.pct} color={r.color} />
+                  <span className="font-mono text-[10px] w-12 text-right font-semibold" style={{ color: r.color }}>
+                    {r.pct.toFixed(1)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Hand distribution */}
+            <div className="space-y-1">
+              <div className="font-mono text-[9px] font-semibold text-[var(--pixel-muted)] tracking-wider mb-1">YOUR HAND ODDS</div>
+              {result.handDist.map(h => (
+                <div key={h.name} className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] w-[86px] text-right text-[var(--pixel-text)] truncate">{h.name}</span>
+                  <div className="h-1.5 flex-1 rounded-full bg-[var(--pixel-bg-alt)] overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(h.pct, 100)}%` }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className="h-full rounded-full bg-[var(--pixel-accent)]"
+                      style={{ opacity: h.pct > 0 ? 1 : 0.2 }}
+                    />
+                  </div>
+                  <span className={`font-mono text-[9px] w-11 text-right ${h.pct > 0 ? "text-[var(--pixel-accent)] font-semibold" : "text-[var(--pixel-muted)]"}`}>
+                    {h.pct.toFixed(1)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 text-center font-mono text-[8px] text-[var(--pixel-muted)]">
+              ~{result.samples.toLocaleString()} simulations &middot; opponent cards unknown
+            </div>
+          </>
+        )}
+
+        <div className="mt-2 text-center font-mono text-[8px] text-[var(--pixel-muted)]">
+          <span className="hidden md:inline">Release SPACE to close</span>
+          <span className="md:hidden">Tap outside to close</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Poker table ──
 
 function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
@@ -168,6 +259,53 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   onNextHand: () => void;
   onRematch: () => void;
 }) {
+  // ── Equity analysis (hold SPACE / tap ?) ──
+  const [showEquity, setShowEquity] = useState(false);
+  const [equityResult, setEquityResult] = useState<EquityResult | null>(null);
+  const [equityLoading, setEquityLoading] = useState(false);
+  const equityCacheKey = useRef("");
+  const canShowEquity = view.phase !== "showdown" && view.phase !== "waiting" && view.myCards.length === 2;
+
+  // Compute equity on demand
+  useEffect(() => {
+    if (!showEquity || !canShowEquity) return;
+    const key = view.myCards.map(c => `${c.rank}${c.suit}`).join(",") + "|" + view.community.map(c => `${c.rank}${c.suit}`).join(",");
+    if (equityCacheKey.current === key && equityResult) return; // cached
+    equityCacheKey.current = key;
+    setEquityLoading(true);
+    setEquityResult(null);
+    // Defer to next frame so "Computing..." renders first
+    const raf = requestAnimationFrame(() => {
+      const r = simulateEquity(view.myCards, view.community, 3000);
+      setEquityResult(r);
+      setEquityLoading(false);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [showEquity, canShowEquity, view.myCards, view.community, equityResult]);
+
+  // Reset cache on new hand/phase
+  useEffect(() => {
+    equityCacheKey.current = "";
+    setEquityResult(null);
+  }, [view.handNumber, view.phase]);
+
+  // Keyboard: hold SPACE
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat) return;
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "button" || tag === "textarea" || tag === "select") return;
+      e.preventDefault();
+      if (canShowEquity) setShowEquity(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "Space") setShowEquity(false);
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, [canShowEquity]);
+
   const potTotal = view.pot + view.myBet + view.opponentBet;
   const phaseName = view.phase === "preflop" ? "PRE-FLOP" : view.phase.toUpperCase();
   const sb = view.smallBlind;
@@ -194,13 +332,35 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   }, [view.lastAction]);
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col gap-3">
+    <div className="w-full max-w-md mx-auto flex flex-col gap-3 relative">
+      {/* Equity overlay */}
+      <AnimatePresence>
+        {showEquity && canShowEquity && (
+          <EquityOverlay result={equityResult} loading={equityLoading} />
+        )}
+      </AnimatePresence>
+
       {/* Header info */}
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] text-[var(--pixel-muted)]">
           Hand #{view.handNumber} &middot; Blinds {sb}/{sb * 2}
         </span>
-        <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{phaseName}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{phaseName}</span>
+          {canShowEquity && (
+            <button
+              onMouseDown={() => setShowEquity(true)}
+              onMouseUp={() => setShowEquity(false)}
+              onMouseLeave={() => setShowEquity(false)}
+              onTouchStart={() => setShowEquity(true)}
+              onTouchEnd={() => setShowEquity(false)}
+              className="w-5 h-5 rounded-full border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] flex items-center justify-center font-mono text-[9px] font-bold text-[var(--pixel-muted)] hover:text-[var(--pixel-accent)] hover:border-[var(--pixel-accent)] transition-colors"
+              title="Hold to show hand analysis (or hold SPACE)"
+            >
+              ?
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Opponent area */}
@@ -411,6 +571,16 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         <div className="text-center py-2">
           <span className="font-mono text-[10px] text-[var(--pixel-muted)] animate-pulse">
             Waiting for opponent...
+          </span>
+        </div>
+      )}
+
+      {/* Help hint */}
+      {canShowEquity && !isShowdown && (
+        <div className="text-center">
+          <span className="font-mono text-[8px] text-[var(--pixel-muted)]/50">
+            <span className="hidden md:inline">Hold SPACE for hand analysis</span>
+            <span className="md:hidden">Hold [?] for hand analysis</span>
           </span>
         </div>
       )}
