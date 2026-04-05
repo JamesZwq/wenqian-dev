@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // ── Card data — mirrors exactly what each layout.tsx passes to /api/og ─────
 
@@ -68,16 +68,35 @@ const CARDS: OgCard[] = [
   },
 ];
 
-// ── Single card panel ──────────────────────────────────────────────────────────
+// ── Single card panel (loads only when `active` is true) ───────────────────
 
-function CardPanel({ card }: { card: OgCard }) {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
+function CardPanel({
+  card,
+  active,
+  onDone,
+}: {
+  card: OgCard;
+  active: boolean;
+  onDone: () => void;
+}) {
+  const [status, setStatus] = useState<"waiting" | "loading" | "ok" | "error">("waiting");
+  const [retryKey, setRetryKey] = useState(0);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (active && status === "waiting") setStatus("loading");
+  }, [active, status]);
+
+  const handleDone = useCallback(
+    (s: "ok" | "error") => {
+      setStatus(s);
+      onDone();
+    },
+    [onDone]
+  );
+
   const fullUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${card.ogUrl}`
-      : card.ogUrl;
+    typeof window !== "undefined" ? `${window.location.origin}${card.ogUrl}` : card.ogUrl;
 
   function copyUrl() {
     navigator.clipboard.writeText(fullUrl).then(() => {
@@ -85,6 +104,13 @@ function CardPanel({ card }: { card: OgCard }) {
       setTimeout(() => setCopied(false), 1800);
     });
   }
+
+  function retry() {
+    setStatus("loading");
+    setRetryKey((k) => k + 1);
+  }
+
+  const showImage = status === "loading" || status === "ok" || status === "error";
 
   return (
     <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] overflow-hidden flex flex-col">
@@ -113,10 +139,11 @@ function CardPanel({ card }: { card: OgCard }) {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Status dot */}
           <span
             className={`inline-block w-2 h-2 rounded-full ${
-              status === "loading"
+              status === "waiting"
+                ? "bg-gray-500"
+                : status === "loading"
                 ? "bg-yellow-400 animate-pulse"
                 : status === "ok"
                 ? "bg-emerald-400"
@@ -143,23 +170,41 @@ function CardPanel({ card }: { card: OgCard }) {
         className="block relative bg-[var(--pixel-bg)]"
         style={{ aspectRatio: "1200 / 630" }}
       >
-        {status === "error" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-red-400">
-            <span className="text-2xl">⚠</span>
-            <span className="font-mono text-xs">Failed to load</span>
+        {status === "waiting" && (
+          <div className="absolute inset-0 flex items-center justify-center text-[var(--pixel-muted)]">
+            <span className="font-mono text-xs opacity-40">queued...</span>
           </div>
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={card.ogUrl}
-          alt={`OG card — ${card.label}`}
-          width={1200}
-          height={630}
-          className="block w-full h-full object-cover transition-opacity"
-          style={{ opacity: status === "error" ? 0 : 1 }}
-          onLoad={() => setStatus("ok")}
-          onError={() => setStatus("error")}
-        />
+        {status === "error" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-red-400 z-10">
+            <span className="text-2xl">!</span>
+            <span className="font-mono text-xs">Failed to load</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                retry();
+              }}
+              className="font-mono text-[10px] px-3 py-1 rounded border border-red-500/40 hover:bg-red-500/10 transition-colors"
+            >
+              RETRY
+            </button>
+          </div>
+        )}
+        {showImage && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            key={retryKey}
+            src={status === "loading" || status === "ok" ? card.ogUrl : undefined}
+            alt={`OG card — ${card.label}`}
+            width={1200}
+            height={630}
+            className="block w-full h-full object-cover transition-opacity"
+            style={{ opacity: status === "ok" ? 1 : status === "loading" ? 0.3 : 0 }}
+            onLoad={() => handleDone("ok")}
+            onError={() => handleDone("error")}
+          />
+        )}
       </a>
 
       {/* URL row */}
@@ -183,11 +228,26 @@ function CardPanel({ card }: { card: OgCard }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Page — loads cards sequentially (1 at a time) to avoid CF worker limits ──
 
 export default function OgDebugPage() {
-  const gameCards = CARDS.filter((c) => c.hasVisual);
-  const defaultCards = CARDS.filter((c) => !c.hasVisual);
+  // Track how many cards have finished loading (success or error)
+  const [doneCount, setDoneCount] = useState(0);
+
+  const advance = useCallback(() => setDoneCount((c) => c + 1), []);
+
+  const allCards = CARDS;
+  const gameCards = allCards.filter((c) => c.hasVisual);
+  const defaultCards = allCards.filter((c) => !c.hasVisual);
+
+  // A card is "active" (should start loading) when its index <= doneCount
+  // This means we load 1 card at a time, sequentially.
+  let globalIndex = 0;
+
+  function renderCard(card: OgCard) {
+    const idx = globalIndex++;
+    return <CardPanel key={card.route} card={card} active={idx <= doneCount} onDone={advance} />;
+  }
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-10">
@@ -203,33 +263,31 @@ export default function OgDebugPage() {
             </span>
           </div>
           <p className="font-mono text-xs text-[var(--pixel-muted)]">
-            Each card renders the exact URL from its{" "}
-            <code className="text-[var(--pixel-accent)]">layout.tsx</code> metadata.
-            Click any image to open at full size (1200×630). Dot = load status.
+            Cards load sequentially (1 at a time) to stay within Cloudflare worker limits.
+            Click any image to open at full size (1200x630). Dot = load status.
+          </p>
+          <p className="font-mono text-[10px] text-[var(--pixel-muted)] opacity-60">
+            Progress: {Math.min(doneCount, CARDS.length)}/{CARDS.length} loaded
           </p>
         </div>
 
-        {/* Game cards: 2-col grid */}
+        {/* Game cards */}
         <section>
           <h2 className="font-mono text-xs font-semibold text-[var(--pixel-muted)] uppercase tracking-widest mb-3">
             Game cards ({gameCards.length})
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {gameCards.map((card) => (
-              <CardPanel key={card.route} card={card} />
-            ))}
+            {gameCards.map((card) => renderCard(card))}
           </div>
         </section>
 
-        {/* Default card(s) */}
+        {/* Default cards */}
         <section className="mt-8">
           <h2 className="font-mono text-xs font-semibold text-[var(--pixel-muted)] uppercase tracking-widest mb-3">
             Default card ({defaultCards.length})
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {defaultCards.map((card) => (
-              <CardPanel key={card.route} card={card} />
-            ))}
+            {defaultCards.map((card) => renderCard(card))}
           </div>
         </section>
       </div>

@@ -968,6 +968,9 @@ export async function GET(request: Request) {
         { name: "Inter", data: interBold, weight: 700 as const, style: "normal" as const },
         { name: "Inter", data: interRegular, weight: 400 as const, style: "normal" as const },
       ],
+      headers: {
+        "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+      },
     }
   );
 }
