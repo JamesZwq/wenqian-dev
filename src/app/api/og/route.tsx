@@ -305,7 +305,7 @@ export async function GET(request: Request) {
             letterSpacing: "0.08em",
           }}
         >
-          wenqian.me
+          wenqian.dev
         </div>
 
         {/* Decorative dots — use game accent */}
