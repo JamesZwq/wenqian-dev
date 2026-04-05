@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 type P2PStatusPanelProps = {
@@ -13,10 +14,10 @@ type P2PStatusPanelProps = {
   className?: string;
 };
 
-function formatLastSeen(lastRemoteMessageAt?: number | null) {
+function formatLastSeen(lastRemoteMessageAt: number | null | undefined, now: number) {
   if (!lastRemoteMessageAt) return "no signal";
-  const delta = Date.now() - lastRemoteMessageAt;
-  if (delta < 1000) return "just now";
+  const delta = now - lastRemoteMessageAt;
+  if (delta < 1500) return "just now";
   if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
   return `${Math.floor(delta / 60_000)}m ago`;
 }
@@ -31,6 +32,13 @@ export function P2PStatusPanel({
   lastRemoteMessageAt,
   className = "",
 }: P2PStatusPanelProps) {
+  // Tick every second so "last signal" updates in real time
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -59,7 +67,7 @@ export function P2PStatusPanel({
 
         <div className="flex justify-between gap-3">
           <span className="text-[var(--pixel-muted)]">last signal</span>
-          <span>{formatLastSeen(lastRemoteMessageAt)}</span>
+          <span>{formatLastSeen(lastRemoteMessageAt, now)}</span>
         </div>
 
         <div className="pt-1">
