@@ -128,131 +128,182 @@ export default function P2PConnectionPanel({
 
         <div className="grid gap-4 p-4 md:gap-6 md:grid-cols-[1.2fr_1fr] md:p-7">
           <div className="space-y-4 md:space-y-5">
-            {/* ── Waiting for opponent (host created room) ── */}
-            {isWaitingForOpponent && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-accent)_8%,transparent)] p-4"
-              >
-                <p className="mb-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
-                  ROOM CREATED
-                </p>
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="font-mono text-2xl font-bold tracking-[0.15em] text-[var(--pixel-accent)]">
-                    {roomCode}
-                  </span>
-                  <motion.div
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    className="font-mono text-xs text-[var(--pixel-muted)]"
-                  >
-                    waiting for opponent...
-                  </motion.div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleShareLink}
-                  className={`rounded-xl border px-3 py-2 font-sans font-semibold text-[9px] tracking-tight transition-transform duration-150 md:text-[10px] ${
-                    "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.03]"
-                  }`}
+            <AnimatePresence mode="wait">
+              {isWaitingForOpponent ? (
+                <motion.div
+                  key="waiting"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
                 >
-                  {copySuccess ? "COPIED!" : "SHARE LINK"}
-                </button>
-              </motion.div>
-            )}
+                  {/* Room info card */}
+                  <div className="rounded-xl border border-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-accent)_8%,transparent)] p-4">
+                    <p className="mb-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] md:text-xs">
+                      ROOM CREATED
+                    </p>
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="font-mono text-2xl font-bold tracking-[0.15em] text-[var(--pixel-accent)]">
+                        {roomCode}
+                      </span>
+                      <motion.div
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        className="font-mono text-xs text-[var(--pixel-muted)]"
+                      >
+                        waiting for opponent...
+                      </motion.div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleShareLink}
+                      className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-3 py-2 font-sans font-semibold text-[9px] tracking-tight text-[var(--pixel-bg)] transition-transform duration-150 hover:scale-[1.03] md:text-[10px]"
+                    >
+                      {copySuccess ? "COPIED!" : "SHARE LINK"}
+                    </button>
+                  </div>
 
-            {/* ── Room code input (not yet joined) ── */}
-            {!isWaitingForOpponent && (
-              <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
-                <CodeInput
-                  length={6}
-                  label="ROOM CODE"
-                  disabled={phase === "initializing" || phase === "connecting"}
-                  status={codeInputStatus}
-                  resetSignal={resetSignal}
-                  onComplete={handleConnect}
-                />
-              </div>
-            )}
+                  {/* Waiting animation — host ready, scanning for opponent */}
+                  <div className="flex items-center justify-center gap-3 py-3">
+                    {/* Host — solid, glowing */}
+                    <motion.div
+                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)] shadow-[0_0_12px_var(--pixel-glow)]"
+                      animate={{ boxShadow: ["0 0 8px var(--pixel-glow)", "0 0 20px var(--pixel-glow)", "0 0 8px var(--pixel-glow)"] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <span className="text-base">👤</span>
+                    </motion.div>
 
-            {/* ── How it works (idle state) ── */}
-            {!isWaitingForOpponent && phase === "ready" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-4"
-              >
-                {/* Connection visual */}
-                <div className="flex items-center justify-center gap-3 py-3">
-                  <motion.div
-                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)]"
-                    animate={{ scale: [1, 1.08, 1] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    {/* Signal pulses traveling right */}
+                    <div className="relative h-[2px] w-24">
+                      <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
+                      {[0, 0.5, 1.0].map((delay, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)]"
+                          animate={{ left: ["-4px", "calc(100% + 4px)"], opacity: [0, 1, 1, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity, delay, ease: "easeInOut" }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Opponent slot — radar scan */}
+                    <div className="relative flex h-11 w-11 items-center justify-center">
+                      {[0, 0.7, 1.4].map((delay, i) => (
+                        <motion.div
+                          key={i}
+                          className="pointer-events-none absolute inset-0 rounded-full border border-[var(--pixel-accent)]"
+                          animate={{ scale: [0.5, 1.4], opacity: [0.6, 0] }}
+                          transition={{ duration: 2.1, repeat: Infinity, delay, ease: "easeOut" }}
+                        />
+                      ))}
+                      <span className="relative font-mono text-sm font-bold text-[var(--pixel-muted)]">?</span>
+                    </div>
+                  </div>
+
+                  {/* Hint */}
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-center font-mono text-[11px] text-[var(--pixel-muted)]"
                   >
-                    <span className="text-base">👤</span>
-                  </motion.div>
-
-                  <div className="relative h-[2px] w-20">
-                    <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
-                    <motion.div
-                      className="absolute inset-y-0 left-0 rounded-full bg-[var(--pixel-accent)]"
-                      animate={{ width: ["0%", "100%"] }}
-                      transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-                    />
-                    {/* Traveling dot */}
-                    <motion.div
-                      className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)] shadow-[0_0_6px_var(--pixel-accent)]"
-                      animate={{ left: ["0%", "100%"] }}
-                      transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                    Share the code <span className="font-bold text-[var(--pixel-accent)]">{roomCode}</span> — your friend enters the same code to join
+                  </motion.p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="input"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  {/* Room code input */}
+                  <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)]/50 p-4">
+                    <CodeInput
+                      length={6}
+                      label="ROOM CODE"
+                      disabled={phase === "initializing" || phase === "connecting"}
+                      status={codeInputStatus}
+                      resetSignal={resetSignal}
+                      onComplete={handleConnect}
                     />
                   </div>
 
-                  <motion.div
-                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-[var(--pixel-muted)]"
-                    animate={{
-                      borderColor: [
-                        "var(--pixel-muted)",
-                        "var(--pixel-accent)",
-                        "var(--pixel-muted)",
-                      ],
-                    }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <motion.span
-                      className="text-base"
-                      animate={{ opacity: [0.3, 0.7, 0.3] }}
-                      transition={{ duration: 2.5, repeat: Infinity }}
-                    >
-                      👤
-                    </motion.span>
-                  </motion.div>
-                </div>
-
-                {/* Steps */}
-                <div className="space-y-2.5 px-1">
-                  {[
-                    { icon: "⌨️", text: "Enter any room code — a word, number, anything" },
-                    { icon: "🔗", text: "Share the same code with your friend" },
-                    { icon: "⚡", text: "First in creates the room, second auto-joins" },
-                  ].map((item, i) => (
+                  {/* How it works guide (idle only) */}
+                  {phase === "ready" && (
                     <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + i * 0.15 }}
-                      className="flex items-start gap-2.5"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="space-y-4"
                     >
-                      <span className="mt-0.5 text-sm leading-none">{item.icon}</span>
-                      <span className="font-mono text-xs leading-relaxed text-[var(--pixel-muted)]">
-                        {item.text}
-                      </span>
+                      <div className="flex items-center justify-center gap-3 py-3">
+                        <motion.div
+                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)]"
+                          animate={{ scale: [1, 1.08, 1] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          <span className="text-base">👤</span>
+                        </motion.div>
+
+                        <div className="relative h-[2px] w-20">
+                          <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
+                          <motion.div
+                            className="absolute inset-y-0 left-0 rounded-full bg-[var(--pixel-accent)]"
+                            animate={{ width: ["0%", "100%"] }}
+                            transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                          />
+                          <motion.div
+                            className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)] shadow-[0_0_6px_var(--pixel-accent)]"
+                            animate={{ left: ["0%", "100%"] }}
+                            transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                          />
+                        </div>
+
+                        <motion.div
+                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-[var(--pixel-muted)]"
+                          animate={{ borderColor: ["var(--pixel-muted)", "var(--pixel-accent)", "var(--pixel-muted)"] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          <motion.span
+                            className="text-base"
+                            animate={{ opacity: [0.3, 0.7, 0.3] }}
+                            transition={{ duration: 2.5, repeat: Infinity }}
+                          >
+                            👤
+                          </motion.span>
+                        </motion.div>
+                      </div>
+
+                      <div className="space-y-2.5 px-1">
+                        {[
+                          { icon: "⌨️", text: "Enter any room code — a word, number, anything" },
+                          { icon: "🔗", text: "Share the same code with your friend" },
+                          { icon: "⚡", text: "First in creates the room, second auto-joins" },
+                        ].map((item, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.5 + i * 0.15 }}
+                            className="flex items-start gap-2.5"
+                          >
+                            <span className="mt-0.5 text-sm leading-none">{item.icon}</span>
+                            <span className="font-mono text-xs leading-relaxed text-[var(--pixel-muted)]">
+                              {item.text}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </div>
                     </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence mode="wait">
               {phase === "connecting" && (
