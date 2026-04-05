@@ -152,13 +152,24 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
             CHECK
           </button>
         ) : (
-          <button
-            onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/15 dark:bg-[var(--pixel-accent-2)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)] transition-all hover:bg-[var(--pixel-accent-2)]/25 dark:hover:bg-[var(--pixel-accent-2)]/30"
-          >
-            <span className="block">{acts.callIsAllIn ? "ALL IN" : "CALL"}</span>
-            <span className="block text-[9px] font-mono opacity-80">${acts.callAmount}</span>
-          </button>
+          <div className="relative flex-1">
+            {/* Inward ripple rings */}
+            {[0, 0.6, 1.2].map((delay, i) => (
+              <motion.div
+                key={i}
+                className="pointer-events-none absolute inset-0 rounded-xl border-2 border-[var(--pixel-accent-2)]"
+                animate={{ scale: [1.12, 1.0], opacity: [0, 0.5, 0] }}
+                transition={{ duration: 1.8, repeat: Infinity, delay, ease: "easeInOut" }}
+              />
+            ))}
+            <button
+              onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
+              className="relative z-10 w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/15 dark:bg-[var(--pixel-accent-2)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)] transition-all hover:bg-[var(--pixel-accent-2)]/25 dark:hover:bg-[var(--pixel-accent-2)]/30"
+            >
+              <span className="block">{acts.callIsAllIn ? "ALL IN" : "CALL"}</span>
+              <span className="block text-[9px] font-mono opacity-80">${acts.callAmount}</span>
+            </button>
+          </div>
         )}
         {acts.canRaise && !showRaise && (
           <button
