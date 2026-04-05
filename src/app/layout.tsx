@@ -25,6 +25,15 @@ export const metadata: Metadata = {
   },
   description:
     "Wenqian Zhang — UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025 | Distributed Systems",
+  keywords: [
+    "Wenqian Zhang",
+    "UNSW PhD",
+    "graph systems",
+    "distributed systems",
+    "SIGMOD 2025",
+    "p2p web apps",
+    "browser games",
+  ],
   openGraph: {
     type: "website",
     siteName: "Wenqian Zhang",
@@ -49,6 +58,22 @@ export const metadata: Metadata = {
   },
 };
 
+const siteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Wenqian Zhang",
+  url: "https://wenqian.dev",
+  jobTitle: "Ph.D. Candidate",
+  affiliation: {
+    "@type": "Organization",
+    name: "University of New South Wales (UNSW)",
+    url: "https://www.unsw.edu.au",
+  },
+  description:
+    "UNSW CS Ph.D. candidate researching large-scale graph analysis and distributed systems. Creator of P2P browser games and web applications.",
+  sameAs: ["https://github.com/Wenqian-Zhang"],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -57,6 +82,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

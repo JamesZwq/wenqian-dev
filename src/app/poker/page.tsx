@@ -623,7 +623,7 @@ const CONNECTION_DESC = [
   "> Share your ID with a friend",
   "> Or enter their ID to connect",
   "> Heads-up No-Limit Hold'em",
-  "> 500 chips each, blinds double every 5 hands",
+  "> 500 chips each, blinds double every 5 -> 10 -> 20 -> 40 -> ... hands",
 ];
 
 export default function PokerPage() {
@@ -672,7 +672,7 @@ export default function PokerPage() {
                     <p>&gt; 2-player heads-up No-Limit Hold&apos;em</p>
                     <p>&gt; Each player starts with $500</p>
                     <p>&gt; Blinds start at 1/2</p>
-                    <p>&gt; Blinds double every 5 hands</p>
+                    <p>&gt; Blinds double every 5 -&gt; 10 -&gt; 20 -&gt; 40 -&gt; ... hands</p>
                     <p>&gt; Play until someone busts!</p>
                   </div>
                 </div>
