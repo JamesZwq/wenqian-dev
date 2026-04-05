@@ -24,7 +24,7 @@ export interface FullGameState {
   handNumber: number;
   deck: Card[];
   lastAction?: { playerIndex: 0 | 1; action: ActionType; amount: number };
-  result?: { winnerIndex: 0 | 1 | -1; winnerHand: string; hands: [string, string] };
+  result?: { winnerIndex: 0 | 1 | -1; winnerHand: string; hands: [string, string]; bestCards: [Card[], Card[]] };
   hasActedThisRound: [boolean, boolean];
 }
 
@@ -48,7 +48,14 @@ export interface PlayerView {
   smallBlind: number;
   bigBlind: number;
   lastAction?: { isMe: boolean; action: ActionType; amount: number };
-  result?: { iWon: boolean | null; winnerHand: string; myHandDesc: string; opponentHandDesc: string };
+  result?: {
+    iWon: boolean | null;
+    winnerHand: string;
+    myHandDesc: string;
+    opponentHandDesc: string;
+    myBestCards: Card[];
+    opponentBestCards: Card[];
+  };
 }
 
 export type PokerPacket =

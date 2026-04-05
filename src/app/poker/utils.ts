@@ -55,19 +55,28 @@ function evaluate5(cards: Card[]): { value: HandValue; name: string } {
   return { value: [0, ...ranks], name: "High Card" };
 }
 
-export function evaluateHand(hole: Card[], community: Card[]): { value: HandValue; name: string } {
+export function evaluateHand(hole: Card[], community: Card[]): { value: HandValue; name: string; bestCards: Card[] } {
   const all = [...hole, ...community];
-  let best: { value: HandValue; name: string } | null = null;
+  let best: { value: HandValue; name: string; bestCards: Card[] } | null = null;
   const n = all.length;
   for (let i = 0; i < n - 4; i++)
     for (let j = i + 1; j < n - 3; j++)
       for (let k = j + 1; k < n - 2; k++)
         for (let l = k + 1; l < n - 1; l++)
           for (let m = l + 1; m < n; m++) {
-            const r = evaluate5([all[i], all[j], all[k], all[l], all[m]]);
-            if (!best || compareHands(r.value, best.value) > 0) best = r;
+            const combo = [all[i], all[j], all[k], all[l], all[m]];
+            const r = evaluate5(combo);
+            if (!best || compareHands(r.value, best.value) > 0) best = { ...r, bestCards: combo };
           }
   return best!;
+}
+
+export function cardEq(a: Card, b: Card): boolean {
+  return a.rank === b.rank && a.suit === b.suit;
+}
+
+export function isInBestHand(card: Card, bestCards: Card[]): boolean {
+  return bestCards.some(bc => cardEq(bc, card));
 }
 
 export function compareHands(a: HandValue, b: HandValue): number {
@@ -149,18 +158,19 @@ function resolveShowdown(s: FullGameState): void {
   const h0 = evaluateHand(s.players[0].cards, s.community);
   const h1 = evaluateHand(s.players[1].cards, s.community);
   const cmp = compareHands(h0.value, h1.value);
+  const bc: [Card[], Card[]] = [h0.bestCards, h1.bestCards];
 
   if (cmp > 0) {
     s.players[0].chips += s.pot;
-    s.result = { winnerIndex: 0, winnerHand: h0.name, hands: [h0.name, h1.name] };
+    s.result = { winnerIndex: 0, winnerHand: h0.name, hands: [h0.name, h1.name], bestCards: bc };
   } else if (cmp < 0) {
     s.players[1].chips += s.pot;
-    s.result = { winnerIndex: 1, winnerHand: h1.name, hands: [h0.name, h1.name] };
+    s.result = { winnerIndex: 1, winnerHand: h1.name, hands: [h0.name, h1.name], bestCards: bc };
   } else {
     const half = Math.floor(s.pot / 2);
     s.players[0].chips += half;
     s.players[1].chips += s.pot - half;
-    s.result = { winnerIndex: -1, winnerHand: h0.name, hands: [h0.name, h1.name] };
+    s.result = { winnerIndex: -1, winnerHand: h0.name, hands: [h0.name, h1.name], bestCards: bc };
   }
   s.pot = 0;
 }
@@ -233,7 +243,7 @@ export function processAction(
       opp.chips += total;
       s.pot = 0; me.bet = 0; opp.bet = 0;
       s.phase = "showdown";
-      s.result = { winnerIndex: oi, winnerHand: "Fold", hands: ["", ""] };
+      s.result = { winnerIndex: oi, winnerHand: "Fold", hands: ["", ""], bestCards: [[], []] };
       break;
     }
     case "check": {
@@ -325,6 +335,8 @@ export function createPlayerView(state: FullGameState, playerIndex: 0 | 1): Play
       winnerHand: state.result.winnerHand,
       myHandDesc: myH?.name ?? "",
       opponentHandDesc: oppH?.name ?? "",
+      myBestCards: state.result.bestCards ? state.result.bestCards[playerIndex] : [],
+      opponentBestCards: state.result.bestCards ? state.result.bestCards[oi] : [],
     };
   }
 

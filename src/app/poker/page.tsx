@@ -8,15 +8,18 @@ import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
-import { rankStr, suitSymbol, suitColor, getActions, getBlindLevel } from "./utils";
+import { rankStr, suitSymbol, suitColor, getActions, isInBestHand } from "./utils";
 
 // ── Card component ──
 
-function CardView({ card, faceDown, small }: { card?: Card | null; faceDown?: boolean; small?: boolean }) {
+function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
+  card?: Card | null; faceDown?: boolean; small?: boolean;
+  highlight?: boolean; dimmed?: boolean; delay?: number;
+}) {
   const w = small ? "w-9 h-[52px]" : "w-[52px] h-[74px]";
   if (faceDown || !card) {
     return (
-      <div className={`${w} rounded-lg border-2 border-blue-400/30 bg-gradient-to-br from-blue-900 to-indigo-800 flex items-center justify-center shadow-md`}>
+      <div className={`${w} rounded-lg border-2 border-blue-400/30 bg-gradient-to-br from-blue-900 to-indigo-800 flex items-center justify-center shadow-md ${dimmed ? "opacity-40" : ""}`}>
         <div className="w-3/5 h-3/5 rounded-sm border border-blue-400/20 bg-blue-800/60" />
       </div>
     );
@@ -27,9 +30,14 @@ function CardView({ card, faceDown, small }: { card?: Card | null; faceDown?: bo
   return (
     <motion.div
       initial={{ rotateY: 90, opacity: 0 }}
-      animate={{ rotateY: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className={`${w} rounded-lg border border-gray-300 bg-white flex flex-col items-center justify-center relative shadow-md`}
+      animate={highlight
+        ? { rotateY: 0, opacity: 1, scale: [1, 1.08, 1], boxShadow: ["0 0 0px rgba(250,204,21,0)", "0 0 18px rgba(250,204,21,0.7)", "0 0 10px rgba(250,204,21,0.5)"] }
+        : { rotateY: 0, opacity: dimmed ? 0.35 : 1 }}
+      transition={highlight
+        ? { rotateY: { duration: 0.3, delay: delay ?? 0 }, scale: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, boxShadow: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, opacity: { duration: 0.3, delay: delay ?? 0 } }
+        : { duration: 0.3, delay: delay ?? 0 }}
+      className={`${w} rounded-lg border-2 ${highlight ? "border-yellow-400" : "border-gray-300"} bg-white flex flex-col items-center justify-center relative shadow-md`}
+      style={highlight ? { zIndex: 2 } : undefined}
     >
       <span className={`absolute top-0.5 left-1 font-bold ${fs}`} style={{ color: c }}>{rankStr(card.rank)}</span>
       <span className={ss} style={{ color: c }}>{suitSymbol(card.suit)}</span>
@@ -164,6 +172,16 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   const phaseName = view.phase === "preflop" ? "PRE-FLOP" : view.phase.toUpperCase();
   const sb = view.smallBlind;
   const isShowdown = view.phase === "showdown";
+  const isFoldWin = isShowdown && view.result?.winnerHand === "Fold";
+  const showBestCards = isShowdown && !isFoldWin && view.result;
+
+  // Determine which cards to highlight at showdown
+  // Winner's best 5 cards glow; loser's non-best cards are dimmed
+  const winnerBest = showBestCards
+    ? (view.result!.iWon === true ? view.result!.myBestCards
+       : view.result!.iWon === false ? view.result!.opponentBestCards
+       : view.result!.myBestCards) // tie: highlight both
+    : [];
 
   const lastActionLabel = useCallback(() => {
     if (!view.lastAction) return null;
@@ -199,9 +217,13 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
             {view.opponentCards ? (
-              view.opponentCards.map((c, i) => <CardView key={i} card={c} small />)
+              view.opponentCards.map((c, i) => {
+                const hl = showBestCards && view.result!.iWon !== true && isInBestHand(c, view.result!.opponentBestCards);
+                const dim = showBestCards && !isInBestHand(c, view.result!.opponentBestCards) && view.result!.iWon !== null;
+                return <CardView key={i} card={c} small highlight={hl} dimmed={dim} delay={i * 0.12} />;
+              })
             ) : (
-              <><CardView faceDown small /><CardView faceDown small /></>
+              <><CardView faceDown small dimmed={isFoldWin && view.opponentFolded} /><CardView faceDown small dimmed={isFoldWin && view.opponentFolded} /></>
             )}
           </div>
           {view.opponentBet > 0 && (
@@ -209,7 +231,14 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           )}
         </div>
         {isShowdown && view.result && !view.opponentFolded && (
-          <div className="mt-1 font-mono text-[10px] text-[var(--pixel-muted)]">{view.result.opponentHandDesc}</div>
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-1.5 font-mono text-[10px] text-[var(--pixel-muted)]"
+          >
+            {view.result.opponentHandDesc}
+          </motion.div>
         )}
       </div>
 
@@ -219,7 +248,11 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           {view.community.length === 0 ? (
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for community cards...</span>
           ) : (
-            view.community.map((c, i) => <CardView key={i} card={c} />)
+            view.community.map((c, i) => {
+              const hl = showBestCards && isInBestHand(c, winnerBest);
+              const dim = showBestCards && !isInBestHand(c, winnerBest);
+              return <CardView key={i} card={c} highlight={hl} dimmed={dim} delay={i * 0.08} />;
+            })
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -235,9 +268,10 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       {/* Showdown result */}
       {isShowdown && view.result && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`rounded-xl border p-3 text-center ${
+          initial={{ opacity: 0, y: 20, scale: 0.92 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className={`rounded-xl border p-4 text-center overflow-hidden relative ${
             view.result.iWon === true
               ? "border-green-500/60 bg-green-500/10"
               : view.result.iWon === false
@@ -245,22 +279,79 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
                 : "border-yellow-500/60 bg-yellow-500/10"
           }`}
         >
-          <div className={`font-sans font-bold text-lg ${
-            view.result.iWon === true ? "text-green-400" : view.result.iWon === false ? "text-red-400" : "text-yellow-400"
-          }`}>
+          {/* Shimmer overlay for winner */}
+          {view.result.iWon === true && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/10 to-transparent"
+              initial={{ x: "-100%" }}
+              animate={{ x: "200%" }}
+              transition={{ duration: 1.5, delay: 0.3, repeat: Infinity, repeatDelay: 2 }}
+            />
+          )}
+
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.15 }}
+            className={`font-sans font-bold text-xl relative ${
+              view.result.iWon === true ? "text-green-400" : view.result.iWon === false ? "text-red-400" : "text-yellow-400"
+            }`}
+          >
             {view.result.iWon === true ? "YOU WIN!" : view.result.iWon === false ? "YOU LOSE" : "SPLIT POT"}
-          </div>
-          <div className="font-mono text-[10px] text-[var(--pixel-muted)] mt-1">
-            {view.result.winnerHand === "Fold" ? "Opponent folded" : view.result.winnerHand}
-          </div>
-          <div className="mt-3">
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+            className="font-mono text-xs text-[var(--pixel-muted)] mt-1.5 relative"
+          >
+            {view.result.winnerHand === "Fold" ? "Opponent folded" : (
+              <span>
+                {view.result.iWon === true ? "Your hand: " : view.result.iWon === false ? "Opponent's hand: " : "Both hands: "}
+                <span className={view.result.iWon === true ? "text-green-400 font-semibold" : view.result.iWon === false ? "text-red-400 font-semibold" : "text-yellow-400 font-semibold"}>
+                  {view.result.winnerHand}
+                </span>
+              </span>
+            )}
+          </motion.div>
+
+          {/* Show both hand descriptions at showdown (non-fold) */}
+          {!isFoldWin && view.result.myHandDesc && view.result.opponentHandDesc && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ delay: 0.55 }}
+              className="mt-2 flex justify-center gap-4 font-mono text-[10px] relative"
+            >
+              <span className={view.result.iWon === true ? "text-green-400" : "text-[var(--pixel-muted)]"}>
+                You: {view.result.myHandDesc}
+              </span>
+              <span className="text-[var(--pixel-border)]">vs</span>
+              <span className={view.result.iWon === false ? "text-red-400" : "text-[var(--pixel-muted)]"}>
+                Opp: {view.result.opponentHandDesc}
+              </span>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-3 relative"
+          >
             {isGameOver ? (
-              <button
-                onClick={onRematch}
-                className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-6 py-2.5 font-sans font-semibold text-[11px] text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]"
-              >
-                REMATCH (500 each)
-              </button>
+              <div className="space-y-2">
+                <div className={`font-sans font-bold text-sm ${view.result.iWon === true ? "text-green-400" : "text-red-400"}`}>
+                  {view.result.iWon === true ? "OPPONENT BUSTED!" : "YOU BUSTED!"}
+                </div>
+                <button
+                  onClick={onRematch}
+                  className="rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-6 py-2.5 font-sans font-semibold text-[11px] text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]"
+                >
+                  REMATCH (500 each)
+                </button>
+              </div>
             ) : (
               <button
                 onClick={onNextHand}
@@ -269,7 +360,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
                 NEXT HAND
               </button>
             )}
-          </div>
+          </motion.div>
         </motion.div>
       )}
 
@@ -286,14 +377,25 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
-            {view.myCards.map((c, i) => <CardView key={i} card={c} small />)}
+            {view.myCards.map((c, i) => {
+              const hl = showBestCards && view.result!.iWon !== false && isInBestHand(c, view.result!.myBestCards);
+              const dim = showBestCards && !isInBestHand(c, view.result!.myBestCards) && view.result!.iWon !== null;
+              return <CardView key={i} card={c} small highlight={hl} dimmed={dim} delay={i * 0.12} />;
+            })}
           </div>
           {view.myBet > 0 && (
             <span className="ml-auto font-mono text-xs text-[var(--pixel-accent-2)]">Bet: ${view.myBet}</span>
           )}
         </div>
         {isShowdown && view.result && !view.myFolded && (
-          <div className="mt-1 font-mono text-[10px] text-[var(--pixel-accent)]">{view.result.myHandDesc}</div>
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-1.5 font-mono text-[10px] text-[var(--pixel-accent)]"
+          >
+            {view.result.myHandDesc}
+          </motion.div>
         )}
       </div>
 
