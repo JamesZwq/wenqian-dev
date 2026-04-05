@@ -129,19 +129,22 @@ export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState 
       lastBell: { valid: true, ringer },
     });
   } else {
-    const ringerDeckKey = ringer === 0 ? "deck0" : "deck1";
-    const oppDeckKey = ringer === 0 ? "deck1" : "deck0";
-    const ringerDiscardKey = ringer === 0 ? "discard0" : "discard1";
-    const ringerDeck = [...state[ringerDeckKey]];
-    const penalty = ringerDeck.shift();
-    const ringerOut = ringerDeck.length === 0 && state[ringerDiscardKey].length === 0;
+    // Wrong bell: opponent wins all discard pile cards (same reward as correct bell)
+    const opp = (1 - ringer) as 0 | 1;
+    const won = shuffle([...state.discard0, ...state.discard1]);
+    const newDeck0 = opp === 0 ? [...state.deck0, ...won] : [...state.deck0];
+    const newDeck1 = opp === 1 ? [...state.deck1, ...won] : [...state.deck1];
+    const ringerEmpty = ringer === 0 ? newDeck0.length === 0 : newDeck1.length === 0;
 
     return autoSkip({
       ...state,
-      [ringerDeckKey]: ringerDeck,
-      [oppDeckKey]: penalty ? [...state[oppDeckKey], penalty] : state[oppDeckKey],
-      phase: ringerOut ? "game_over" : "playing",
-      winner: ringerOut ? ((1 - ringer) as 0 | 1) : null,
+      deck0: newDeck0,
+      deck1: newDeck1,
+      discard0: [],
+      discard1: [],
+      activePlayer: opp,
+      phase: ringerEmpty ? "game_over" : "playing",
+      winner: ringerEmpty ? opp : null,
       lastBell: { valid: false, ringer },
     });
   }
@@ -169,14 +172,3 @@ export function createView(state: FullHalliState, playerIndex: 0 | 1): HalliView
   };
 }
 
-// Compute fruit totals from a view (for display)
-export function getFruitTotals(view: HalliView): Partial<Record<Fruit, number>> {
-  const cards = [view.mySlot1, view.mySlot2, view.oppSlot1, view.oppSlot2].filter(Boolean) as HalliCard[];
-  const totals: Partial<Record<Fruit, number>> = {};
-  for (const card of cards) {
-    for (const { fruit, count } of card.fruits) {
-      totals[fruit] = (totals[fruit] ?? 0) + count;
-    }
-  }
-  return totals;
-}

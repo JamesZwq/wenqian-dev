@@ -9,10 +9,7 @@ import { P2PChat } from "@/features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { useHalliGalliGame } from "./hooks/useHalliGalliGame";
-import { FRUIT_EMOJI, FRUIT_COLOR, type Fruit, type HalliCard, type HalliView } from "./types";
-import { getFruitTotals } from "./gameLogic";
-
-const FRUITS_ORDER: Fruit[] = ["strawberry", "banana", "lemon", "plum"];
+import { FRUIT_EMOJI, FRUIT_COLOR, type HalliCard } from "./types";
 
 const CONNECTION_DESCRIPTION = [
   "> Share your ID with a friend",
@@ -129,49 +126,6 @@ function PlayerArea({
   );
 }
 
-// ── Fruit totals bar ─────────────────────────────────────────────
-
-function FruitTotalsBar({ view }: { view: HalliView }) {
-  const totals = getFruitTotals(view);
-  const any5 = Object.values(totals).some(v => v === 5);
-
-  if (Object.keys(totals).length === 0) {
-    return (
-      <div className="h-8 flex items-center justify-center">
-        <span className="font-mono text-[10px] text-[var(--pixel-muted)]">— flip cards to start —</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2 justify-center">
-      {FRUITS_ORDER.map(fruit => {
-        const count = totals[fruit] ?? 0;
-        if (count === 0) return null;
-        const isExact5 = count === 5;
-        const isClose = count === 4;
-        return (
-          <motion.div
-            key={fruit}
-            animate={isExact5 ? { scale: [1, 1.12, 1] } : {}}
-            transition={{ duration: 0.4, repeat: isExact5 ? Infinity : 0 }}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-xs font-bold ${
-              isExact5
-                ? "border-[var(--pixel-warn)] bg-[var(--pixel-warn)] text-[var(--pixel-bg)]"
-                : isClose
-                  ? "border-[var(--pixel-warn)] text-[var(--pixel-warn)]"
-                  : "border-[var(--pixel-border)] text-[var(--pixel-muted)]"
-            }`}
-          >
-            <span>{FRUIT_EMOJI[fruit]}</span>
-            <span>{count}</span>
-            {isExact5 && <span className="font-bold">= 5!</span>}
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-}
 
 // ── Main page ────────────────────────────────────────────────────
 
@@ -265,7 +219,7 @@ export default function HalliGalliPage() {
                     <p>&gt; Cards can show multiple fruit types 🍓🍌🍋🍇</p>
                     <p>&gt; When any fruit totals exactly <span className="text-[var(--pixel-accent)]">5</span>, ring the bell!</p>
                     <p>&gt; Press <span className="text-[var(--pixel-accent-2)]">Space</span> or click the bell button</p>
-                    <p>&gt; Wrong ring = lose 1 card to opponent</p>
+                    <p>&gt; Wrong ring = opponent takes all visible cards!</p>
                   </div>
                 </div>
                 <button
@@ -336,9 +290,6 @@ export default function HalliGalliPage() {
                       isActive={!myView.isMyTurn && myView.phase === "playing"}
                     />
 
-                    {/* Fruit totals */}
-                    <FruitTotalsBar view={myView} />
-
                     {/* Bell result banner */}
                     <AnimatePresence>
                       {myView.lastBell && (
@@ -362,8 +313,8 @@ export default function HalliGalliPage() {
                               ? "🔔 You rang first — pile is yours!"
                               : "🔔 Opponent rang first!"
                             : myView.lastBell.iWon
-                              ? "✗ Wrong bell — you lose 1 card"
-                              : "✗ Opponent wrong bell — you gain 1 card"
+                              ? "✗ Wrong bell — opponent takes the pile!"
+                              : "✗ Opponent wrong bell — pile is yours!"
                           }
                         </motion.div>
                       )}
