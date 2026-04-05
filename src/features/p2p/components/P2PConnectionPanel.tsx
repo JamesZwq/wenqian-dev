@@ -176,6 +176,84 @@ export default function P2PConnectionPanel({
               </div>
             )}
 
+            {/* ── How it works (idle state) ── */}
+            {!isWaitingForOpponent && phase === "ready" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-4"
+              >
+                {/* Connection visual */}
+                <div className="flex items-center justify-center gap-3 py-3">
+                  <motion.div
+                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)]"
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <span className="text-base">👤</span>
+                  </motion.div>
+
+                  <div className="relative h-[2px] w-20">
+                    <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full bg-[var(--pixel-accent)]"
+                      animate={{ width: ["0%", "100%"] }}
+                      transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                    />
+                    {/* Traveling dot */}
+                    <motion.div
+                      className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)] shadow-[0_0_6px_var(--pixel-accent)]"
+                      animate={{ left: ["0%", "100%"] }}
+                      transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                    />
+                  </div>
+
+                  <motion.div
+                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-[var(--pixel-muted)]"
+                    animate={{
+                      borderColor: [
+                        "var(--pixel-muted)",
+                        "var(--pixel-accent)",
+                        "var(--pixel-muted)",
+                      ],
+                    }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <motion.span
+                      className="text-base"
+                      animate={{ opacity: [0.3, 0.7, 0.3] }}
+                      transition={{ duration: 2.5, repeat: Infinity }}
+                    >
+                      👤
+                    </motion.span>
+                  </motion.div>
+                </div>
+
+                {/* Steps */}
+                <div className="space-y-2.5 px-1">
+                  {[
+                    { icon: "⌨️", text: "Enter any room code — a word, number, anything" },
+                    { icon: "🔗", text: "Share the same code with your friend" },
+                    { icon: "⚡", text: "First in creates the room, second auto-joins" },
+                  ].map((item, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.15 }}
+                      className="flex items-start gap-2.5"
+                    >
+                      <span className="mt-0.5 text-sm leading-none">{item.icon}</span>
+                      <span className="font-mono text-xs leading-relaxed text-[var(--pixel-muted)]">
+                        {item.text}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             <AnimatePresence mode="wait">
               {phase === "connecting" && (
                 <motion.div
