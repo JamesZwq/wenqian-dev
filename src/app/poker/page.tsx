@@ -147,16 +147,17 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         {acts.canCheck ? (
           <button
             onClick={() => onAction("check")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)]/40 bg-[var(--pixel-card-bg)] backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:border-[var(--pixel-accent)] hover:bg-[var(--pixel-accent)]/10"
           >
             CHECK
           </button>
         ) : (
           <button
             onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/15 dark:bg-[var(--pixel-accent-2)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)] transition-all hover:bg-[var(--pixel-accent-2)]/25 dark:hover:bg-[var(--pixel-accent-2)]/30"
           >
-            {acts.callIsAllIn ? `ALL IN $${acts.callAmount}` : `CALL $${acts.callAmount}`}
+            <span className="block">{acts.callIsAllIn ? "ALL IN" : "CALL"}</span>
+            <span className="block text-[9px] font-mono opacity-80">${acts.callAmount}</span>
           </button>
         )}
         {acts.canRaise && !showRaise && (
