@@ -88,8 +88,14 @@ export function compareHands(a: HandValue, b: HandValue): number {
 
 // ── Blind level ──
 
+/**
+ * Blind doubling schedule: 5 hands, then 10, 20, 40, 80 …
+ * Level thresholds: 5, 15, 35, 75, 155 …  =  5·(2^(n+1)−1)
+ * Returns the small blind amount (1, 2, 4, 8 …).
+ */
 export function getBlindLevel(handNumber: number): number {
-  return Math.pow(2, Math.floor((handNumber - 1) / 5));
+  const level = Math.floor(Math.log2((handNumber + 4) / 5));
+  return Math.pow(2, level);
 }
 
 // ── Display helpers ──
@@ -362,75 +368,3 @@ export function getActions(v: PlayerView) {
   };
 }
 
-// ── Monte Carlo equity simulation ──
-
-const HAND_TYPE_LABELS = [
-  "High Card", "One Pair", "Two Pair", "Three of a Kind",
-  "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush",
-] as const;
-
-export interface EquityResult {
-  winPct: number;
-  losePct: number;
-  tiePct: number;
-  handDist: { name: string; pct: number }[];
-  samples: number;
-}
-
-/** Pick n random elements from arr without replacement (partial Fisher-Yates) */
-function pickN(arr: Card[], n: number): Card[] {
-  const len = arr.length;
-  const idx = new Array<number>(len);
-  for (let i = 0; i < len; i++) idx[i] = i;
-  const res: Card[] = [];
-  for (let i = 0; i < n; i++) {
-    const j = i + Math.floor(Math.random() * (len - i));
-    const tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
-    res.push(arr[idx[i]]);
-  }
-  return res;
-}
-
-/**
- * Estimate win/lose/tie equity and hand-type distribution via Monte Carlo.
- * Assumes opponent's hole cards are unknown; deals random opponents from the
- * remaining deck and fills in any missing community cards.
- */
-export function simulateEquity(myCards: Card[], community: Card[], samples = 3000): EquityResult {
-  const knownSet = new Set([...myCards, ...community].map(c => `${c.rank}.${c.suit}`));
-  const remaining = createDeck().filter(c => !knownSet.has(`${c.rank}.${c.suit}`));
-  const commNeeded = 5 - community.length;
-  const pickCount = 2 + commNeeded; // 2 opponent + remaining community
-
-  let wins = 0, losses = 0, ties = 0;
-  const handCounts = new Array(9).fill(0) as number[];
-
-  for (let s = 0; s < samples; s++) {
-    const picked = pickN(remaining, pickCount);
-    const oppCards = [picked[0], picked[1]];
-    const fullComm = commNeeded > 0
-      ? [...community, ...picked.slice(2, 2 + commNeeded)]
-      : community;
-
-    const myHand = evaluateHand(myCards, fullComm);
-    const oppHand = evaluateHand(oppCards, fullComm);
-
-    handCounts[myHand.value[0]]++;
-
-    const cmp = compareHands(myHand.value, oppHand.value);
-    if (cmp > 0) wins++;
-    else if (cmp < 0) losses++;
-    else ties++;
-  }
-
-  return {
-    winPct: (wins / samples) * 100,
-    losePct: (losses / samples) * 100,
-    tiePct: (ties / samples) * 100,
-    handDist: HAND_TYPE_LABELS.map((name, i) => ({
-      name,
-      pct: (handCounts[i] / samples) * 100,
-    })).reverse(), // best hands first
-    samples,
-  };
-}

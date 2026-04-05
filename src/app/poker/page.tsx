@@ -8,7 +8,8 @@ import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
-import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, simulateEquity, type EquityResult } from "./utils";
+import { rankStr, suitSymbol, suitColor, getActions, isInBestHand } from "./utils";
+import { calcEquity, type EquityResult } from "./equity";
 
 // ── Card component ──
 
@@ -236,7 +237,11 @@ function EquityOverlay({ result, loading }: { result: EquityResult | null; loadi
             </div>
 
             <div className="mt-3 text-center font-mono text-[8px] text-[var(--pixel-muted)]">
-              ~{result.samples.toLocaleString()} simulations &middot; opponent cards unknown
+              {result.exact
+                ? <>{result.samples.toLocaleString()} combinations &middot; exact</>
+                : <>~{result.samples.toLocaleString()} simulations &middot; approximate</>
+              }
+              {" "}&middot; opponent cards unknown
             </div>
           </>
         )}
@@ -276,7 +281,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     setEquityResult(null);
     // Defer to next frame so "Computing..." renders first
     const raf = requestAnimationFrame(() => {
-      const r = simulateEquity(view.myCards, view.community, 3000);
+      const r = calcEquity(view.myCards, view.community);
       setEquityResult(r);
       setEquityLoading(false);
     });
