@@ -487,6 +487,7 @@ const VFS_CONTENTS: Record<string, string> = {
 export default function PhysicsTerminal({ className, title }: { className?: string; title?: string }) {
   const isMobile = useIsMobileContext();
   const outerRef = useRef<HTMLDivElement | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -530,6 +531,22 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   const paletteRef = useRef<Palette>({ accent: "#818cf8", accent2: "#a78bfa", warn: "#fbbf24", text: "#e8e5f5" });
   const fontFamilyRef = useRef<string>(FALLBACK_FONT_FAMILY);
+  const glassFilterIdRef = useRef(`liquid-glass-${Math.random().toString(36).slice(2, 10)}`);
+  const glassPointerRef = useRef({ x: 52, y: 18, tx: 52, ty: 18, vx: 0, vy: 0 });
+
+  const updateGlassPointer = useCallback((clientX: number, clientY: number) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const rect = shell.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const px = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
+    const py = clamp(((clientY - rect.top) / rect.height) * 100, 0, 100);
+
+    glassPointerRef.current.tx = px;
+    glassPointerRef.current.ty = py;
+  }, []);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -723,7 +740,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       if (document.hidden || window.scrollY > window.innerHeight * 1.3) {
         last = nowMs(); return;
       }
-      const t = nowMs(); let dt = clamp((t - last) / 1000, 0, 0.033); last = t;
+      const t = nowMs(); const dt = clamp((t - last) / 1000, 0, 0.033); last = t;
 
       const world = worldRef.current; const cvs = canvasRef.current;
       if (!world || !cvs) return;
@@ -748,6 +765,34 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       }
 
       if (outerRef.current) outerRef.current.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+      if (shellRef.current) {
+        const speed = Math.hypot(vel.x, vel.y);
+        const glassPointer = glassPointerRef.current;
+        let remainPointer = dt;
+        const pointerK = 150;
+        const pointerC = 22;
+        const pointerMaxV = 240;
+
+        while (remainPointer > 0) {
+          const h = Math.min(remainPointer, SPRING_MAX_STEP);
+          const axPointer = -pointerK * (glassPointer.x - glassPointer.tx) - pointerC * glassPointer.vx;
+          const ayPointer = -pointerK * (glassPointer.y - glassPointer.ty) - pointerC * glassPointer.vy;
+
+          glassPointer.vx = clamp(glassPointer.vx + axPointer * h, -pointerMaxV, pointerMaxV);
+          glassPointer.vy = clamp(glassPointer.vy + ayPointer * h, -pointerMaxV, pointerMaxV);
+          glassPointer.x += glassPointer.vx * h;
+          glassPointer.y += glassPointer.vy * h;
+          remainPointer -= h;
+        }
+
+        shellRef.current.style.setProperty("--liquid-pointer-x", `${glassPointer.x.toFixed(2)}%`);
+        shellRef.current.style.setProperty("--liquid-pointer-y", `${glassPointer.y.toFixed(2)}%`);
+        shellRef.current.style.setProperty("--liquid-drift-x", `${clamp(-vel.x / 220, -16, 16).toFixed(2)}px`);
+        shellRef.current.style.setProperty("--liquid-drift-y", `${clamp(-vel.y / 250, -12, 12).toFixed(2)}px`);
+        shellRef.current.style.setProperty("--liquid-scale", (1 + clamp(speed / 20000, 0, 0.035)).toFixed(4));
+        shellRef.current.style.setProperty("--liquid-caustic-opacity", (0.56 + clamp(speed / 2800, 0, 0.2)).toFixed(3));
+        shellRef.current.style.setProperty("--liquid-highlight-opacity", (0.5 + clamp(speed / 3200, 0, 0.16)).toFixed(3));
+      }
 
       world.axExt = dragging ? -axBox : 0; world.ayExt = dragging ? -ayBox : 0; world.gravityOn = dragging;
 
@@ -818,12 +863,14 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   const onTerminalPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault(); if (e.button !== 0) return;
+    updateGlassPointer(e.clientX, e.clientY);
     const pid = e.pointerId; (e.currentTarget as HTMLElement).setPointerCapture(pid);
     const pos = boxPosRef.current; boxTargetRef.current = { x: pos.x, y: pos.y };
     setUiDragging(true); dragRef.current = { active: true, pid, sx: e.clientX, sy: e.clientY, tx: pos.x, ty: pos.y };
   };
 
   const onTerminalPointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    updateGlassPointer(e.clientX, e.clientY);
     if (!dragRef.current.active || dragRef.current.pid !== e.pointerId) return;
     e.preventDefault();
     boxTargetRef.current = { x: dragRef.current.tx + (e.clientX - dragRef.current.sx), y: dragRef.current.ty + (e.clientY - dragRef.current.sy) };
@@ -835,48 +882,109 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     boxTargetRef.current = { x: 0, y: 0 };
   };
 
+  const onTerminalPointerLeave: React.PointerEventHandler<HTMLDivElement> = () => {
+    if (dragRef.current.active) return;
+    glassPointerRef.current.tx = 52;
+    glassPointerRef.current.ty = 18;
+  };
+
+  const glassShellStyle = {
+    touchAction: "none",
+    ["--liquid-pointer-x" as string]: "52%",
+    ["--liquid-pointer-y" as string]: "18%",
+    ["--liquid-drift-x" as string]: "0px",
+    ["--liquid-drift-y" as string]: "0px",
+    ["--liquid-scale" as string]: 1,
+    ["--liquid-caustic-opacity" as string]: 0.56,
+    ["--liquid-highlight-opacity" as string]: 0.5,
+  } as React.CSSProperties;
+
+  const glassLayerStyle = {
+    borderRadius: "calc(1.75rem - 1px)",
+    filter: `url(#${glassFilterIdRef.current})`,
+  } as React.CSSProperties;
+
   return (
     <div ref={outerRef} className={["relative z-20 w-[95vw] max-w-3xl mx-3 sm:mx-4", className].filter(Boolean).join(" ")} style={{willChange: "transform" ,  zIndex: 1}}>
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
-            className="rounded-2xl border border-white/20 dark:border-white/[0.08] bg-gradient-to-b from-white/12 to-white/6 dark:from-white/[0.07] dark:to-white/[0.02] backdrop-blur-3xl backdrop-saturate-150 shadow-xl shadow-[var(--pixel-glow)] ring-1 ring-inset ring-white/20 dark:ring-white/[0.06] select-none cursor-grab active:cursor-grabbing"
-            style={{ touchAction: "none" }}
+            ref={shellRef}
+            className="liquid-terminal-shell rounded-[1.75rem] select-none cursor-grab active:cursor-grabbing"
+            style={glassShellStyle}
             onPointerDownCapture={onTerminalPointerDown}
             onPointerMoveCapture={onTerminalPointerMove}
             onPointerUpCapture={endDrag}
             onPointerCancelCapture={endDrag}
+            onPointerLeave={onTerminalPointerLeave}
           >
-          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b border-white/15 dark:border-white/[0.06] bg-white/10 dark:bg-white/[0.03] rounded-t-2xl select-none">
-            <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ff5f56]" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ffbd2e]" />
-              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#27c93f]" />
-            </div>
-            <span className="font-mono text-[10px] sm:text-[12px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-tight truncate">
-              {title ?? "WENQIAN.ZHANG — BASH — 80x24"}
-            </span>
-          </div>
-
-          <div
-            ref={contentRef}
-            className="relative p-4 sm:p-6 md:p-8 h-[340px] sm:h-[420px] md:h-[480px] font-[family-name:var(--font-jetbrains)] overflow-hidden"
-          >
-            <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-            
-            {/* 手机端不显示输入提示框 */}
-            {!isMobile && (
-              <div 
-                className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${
-                  hasInteracted ? "opacity-0" : "opacity-70 animate-pulse"
-                }`}
+          <svg className="absolute h-0 w-0 pointer-events-none" aria-hidden="true" focusable="false">
+            <defs>
+              <filter
+                id={glassFilterIdRef.current}
+                x="-20%"
+                y="-20%"
+                width="140%"
+                height="140%"
+                colorInterpolationFilters="sRGB"
               >
-                <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-md border border-[var(--pixel-border)] flex items-center gap-2">
-                  <span className="text-[12px] sm:text-[14px] text-[var(--pixel-text)] tracking-wider">
-                    &gt; Start typing to interact _
-                  </span>
-                </div>
+                <feTurbulence
+                  type="fractalNoise"
+                  baseFrequency={isMobile ? "0.035 0.09" : "0.02 0.06"}
+                  numOctaves="2"
+                  seed="11"
+                  stitchTiles="stitch"
+                  result="noise"
+                />
+                <feGaussianBlur in="noise" stdDeviation={isMobile ? "0.35" : "0.7"} result="softNoise" />
+                <feDisplacementMap
+                  in="SourceGraphic"
+                  in2="softNoise"
+                  scale={isMobile ? "10" : "18"}
+                  xChannelSelector="R"
+                  yChannelSelector="G"
+                />
+              </filter>
+            </defs>
+          </svg>
+
+          <div className="liquid-terminal-underlay pointer-events-none absolute inset-0 rounded-[inherit]" />
+          <div className="liquid-terminal-caustics pointer-events-none absolute inset-[1px]" style={glassLayerStyle} />
+          <div className="liquid-terminal-rim pointer-events-none absolute inset-0 rounded-[inherit]" />
+          <div className="liquid-terminal-noise pointer-events-none absolute inset-0 rounded-[inherit]" />
+
+          <div className="relative z-10">
+            <div className="liquid-terminal-toolbar flex items-center gap-2 px-3 sm:px-4 py-2 border-b rounded-t-[1.75rem] select-none">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ff5f56]" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#ffbd2e]" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#27c93f]" />
               </div>
-            )}
+              <span className="font-mono text-[10px] sm:text-[12px] text-[var(--pixel-accent)] ml-2 sm:ml-4 tracking-tight truncate">
+                {title ?? "WENQIAN.ZHANG — BASH — 80x24"}
+              </span>
+            </div>
+
+            <div
+              ref={contentRef}
+              className="liquid-terminal-content relative p-4 sm:p-6 md:p-8 h-[340px] sm:h-[420px] md:h-[480px] font-[family-name:var(--font-jetbrains)] overflow-hidden"
+            >
+              <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+
+              {/* 手机端不显示输入提示框 */}
+              {!isMobile && (
+                <div
+                  className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${
+                    hasInteracted ? "opacity-0" : "opacity-70 animate-pulse"
+                  }`}
+                >
+                  <div className="liquid-terminal-hint px-4 py-1.5 rounded-xl flex items-center gap-2">
+                    <span className="text-[12px] sm:text-[14px] text-[var(--pixel-text)] tracking-wider">
+                      &gt; Start typing to interact _
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

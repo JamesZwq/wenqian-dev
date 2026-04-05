@@ -43,6 +43,13 @@ export default function FloatingNav() {
       color: "var(--pixel-accent-2)",
       description: "Count 3D blocks before they vanish"
     },
+    {
+      href: "/poker",
+      label: "Texas Hold'em",
+      icon: "♠️",
+      color: "var(--pixel-warn)",
+      description: "Heads-up P2P poker, blinds escalate"
+    },
   ];
 
   return (

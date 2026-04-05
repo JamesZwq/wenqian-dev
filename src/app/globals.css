@@ -48,12 +48,184 @@ body {
   transition: background-color 0.6s ease, color 0.6s ease;
 }
 
+/* Poker raise quick buttons */
+.raise-quick-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pixel-border);
+  background: var(--pixel-bg-alt);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--pixel-muted);
+  transition: all 0.15s;
+  &:hover {
+    border-color: var(--pixel-accent);
+    color: var(--pixel-accent);
+  }
+}
+
 /* Glass card utility — 92% opaque background makes blur invisible; drop it for GPU savings */
 .glass-card {
   border-radius: 1rem;
   border: 1px solid var(--pixel-border);
   background: var(--pixel-card-bg);
   box-shadow: 0 8px 32px var(--pixel-glow);
+}
+
+.liquid-terminal-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, white 46%, var(--pixel-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08)),
+    linear-gradient(135deg, color-mix(in oklab, white 18%, var(--pixel-accent) 12%), transparent 52%);
+  box-shadow:
+    0 28px 72px rgba(15, 23, 42, 0.14),
+    0 10px 24px rgba(148, 163, 184, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -20px 36px rgba(125, 166, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(190%) contrast(1.14) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(190%) contrast(1.14) brightness(1.04);
+}
+
+.dark .liquid-terminal-shell {
+  border-color: color-mix(in oklab, white 16%, var(--pixel-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    linear-gradient(145deg, rgba(129, 140, 248, 0.08), rgba(56, 189, 248, 0.02) 55%, transparent 100%);
+  box-shadow:
+    0 30px 78px rgba(2, 6, 23, 0.52),
+    0 12px 26px rgba(15, 23, 42, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -18px 34px rgba(59, 130, 246, 0.1);
+}
+
+.liquid-terminal-underlay {
+  background:
+    radial-gradient(circle at var(--liquid-pointer-x) var(--liquid-pointer-y), rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.14) 16%, rgba(138, 197, 255, 0.12) 34%, transparent 58%),
+    radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.28), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 30%, rgba(152, 204, 255, 0.08) 100%);
+  opacity: 0.98;
+}
+
+.dark .liquid-terminal-underlay {
+  background:
+    radial-gradient(circle at var(--liquid-pointer-x) var(--liquid-pointer-y), rgba(255, 255, 255, 0.12), rgba(96, 165, 250, 0.1) 22%, rgba(56, 189, 248, 0.06) 40%, transparent 62%),
+    radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.11), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(30, 41, 59, 0.08) 28%, rgba(14, 116, 144, 0.08) 100%);
+}
+
+.liquid-terminal-caustics {
+  opacity: var(--liquid-caustic-opacity, 0.56);
+  background:
+    radial-gradient(circle at var(--liquid-pointer-x) var(--liquid-pointer-y), rgba(255, 255, 255, 0.44), rgba(185, 227, 255, 0.24) 18%, rgba(255, 255, 255, 0.08) 34%, transparent 56%),
+    radial-gradient(circle at 88% 6%, rgba(255, 255, 255, 0.32), transparent 28%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 24%, transparent 48%, rgba(186, 224, 255, 0.18) 68%, rgba(255, 255, 255, 0.06) 100%);
+  mix-blend-mode: screen;
+  transform: translate3d(var(--liquid-drift-x, 0px), var(--liquid-drift-y, 0px), 0) scale(var(--liquid-scale, 1));
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.dark .liquid-terminal-caustics {
+  background:
+    radial-gradient(circle at var(--liquid-pointer-x) var(--liquid-pointer-y), rgba(255, 255, 255, 0.18), rgba(96, 165, 250, 0.18) 22%, rgba(56, 189, 248, 0.1) 38%, transparent 58%),
+    radial-gradient(circle at 88% 6%, rgba(255, 255, 255, 0.14), transparent 30%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 22%, transparent 50%, rgba(125, 211, 252, 0.14) 72%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+.liquid-terminal-rim {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.12) 18%, transparent 38%),
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.42), transparent 26%),
+    radial-gradient(circle at 92% 0%, rgba(255, 255, 255, 0.24), transparent 24%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(138, 197, 255, 0.16);
+  opacity: var(--liquid-highlight-opacity, 0.5);
+  transition: opacity 180ms ease;
+}
+
+.dark .liquid-terminal-rim {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 16%, transparent 34%),
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.14), transparent 26%),
+    radial-gradient(circle at 92% 0%, rgba(125, 211, 252, 0.12), transparent 24%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(125, 211, 252, 0.1);
+}
+
+.liquid-terminal-noise {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.18) 0.55px, transparent 0.7px);
+  background-size: 10px 10px;
+  mix-blend-mode: soft-light;
+  opacity: 0.12;
+}
+
+.liquid-terminal-toolbar {
+  position: relative;
+  border-color: color-mix(in oklab, white 24%, var(--pixel-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 45%, rgba(255, 255, 255, 0.06));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+.dark .liquid-terminal-toolbar {
+  border-color: color-mix(in oklab, white 12%, var(--pixel-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    linear-gradient(90deg, rgba(129, 140, 248, 0.08), transparent 45%, rgba(125, 211, 252, 0.06));
+}
+
+.liquid-terminal-content {
+  background:
+    linear-gradient(180deg, rgba(247, 250, 255, 0.08), rgba(214, 226, 255, 0.06)),
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.14), transparent 42%);
+}
+
+.dark .liquid-terminal-content {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.22), rgba(2, 6, 23, 0.38)),
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.05), transparent 42%);
+}
+
+.liquid-terminal-hint {
+  border: 1px solid color-mix(in oklab, white 18%, var(--pixel-border));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.12)),
+    rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+}
+
+.dark .liquid-terminal-hint {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(2, 6, 23, 0.42);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-terminal-shell {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 248, 255, 0.86)),
+      linear-gradient(135deg, rgba(191, 219, 254, 0.44), transparent 60%);
+  }
+
+  .dark .liquid-terminal-shell {
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.88)),
+      linear-gradient(135deg, rgba(59, 130, 246, 0.16), transparent 60%);
+  }
 }
 
 /* Pixel border utility - modernized */
