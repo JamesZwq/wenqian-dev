@@ -75,6 +75,7 @@ export function useChat() {
   const { phase, localPeerId, remotePeerId, error, isConnected, connect, disconnect, send, clearError, retryLastConnection, reinitialize } =
     usePeerConnection<ChatPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+      handshake: { site: "wenqian.me", game: "chat" },
       onData: handleIncomingData,
       acceptIncomingConnections: true,
     });

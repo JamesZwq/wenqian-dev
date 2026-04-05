@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generatePuzzleSet, type BlockPuzzle, type Difficulty } from "../flashCountEngine";
 import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection";
+import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { getBestSpeed, saveBestSpeed } from "../bestSpeed";
@@ -225,11 +226,15 @@ export function useFlashGame() {
     }
   }, [broadcastResult, resetP2pQuestion, processQuestionResult]);
 
+  const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
+
   // ── P2P connection ──
-  const { phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize } =
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
     usePeerConnection<FlashPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+      handshake: { site: "wenqian.me", game: "flash-count" },
       onData: handleIncomingData,
+      onChat,
       acceptIncomingConnections: true,
       onConnected: ({ direction: dir }) => {
         setDirection(dir);
@@ -391,8 +396,10 @@ export function useFlashGame() {
     myP2pAnswer, opponentSubmitted, questionResult,
     myScore, opponentScore, p2pGameResult,
     // P2P connection
-    phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
     joinPeerId,
+    // Chat
+    chatMessages, addMyMessage,
     // Refs
     inputRef,
     // Handlers

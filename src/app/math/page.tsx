@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
+import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { useMathGame } from "./hooks/useMathGame";
 import { ALL_OPS, QUESTION_COUNTS, formatTime, opsLabel } from "./types";
@@ -20,8 +21,9 @@ export default function MathSprintPage() {
     gameMode, setGameMode, questions, currentIndex, inputValue,
     flashColor, shaking, elapsed, result, isNewRecord, resultOps, resultCount,
     direction, opponentProgress, opponentFinished,
-    phase, localPeerId, error, isConnected, connect, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize,
     joinPeerId, inputRef,
+    chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch, handleInputChange,
     speed, isPlaying, showP2pSettings, showP2pWaiting, showGame,
   } = useMathGame();
@@ -494,6 +496,12 @@ export default function MathSprintPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      <P2PChat
+        messages={chatMessages}
+        onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
+        isConnected={gameMode === "p2p" && isConnected}
+      />
     </div>
   );
 }

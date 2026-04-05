@@ -6,7 +6,9 @@ export type AIDifficulty = "easy" | "medium" | "hard";
 
 export type GamePacket =
   | { type: "move"; row: number; col: number; timestamp: number }
-  | { type: "reset"; timestamp: number };
+  | { type: "reset"; timestamp: number }
+  | { type: "ping"; sentAt: number }
+  | { type: "pong"; sentAt: number };
 
 export type GameState = {
   board: CellState[][];

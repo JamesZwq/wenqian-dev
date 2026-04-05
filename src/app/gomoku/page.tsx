@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
+import { P2PStatusPanel } from "../../features/p2p/components/P2PStatusPanel";
+import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { useGomokuGame } from "./hooks/useGomokuGame";
 import { GomokuBoard } from "./components/GomokuBoard";
@@ -20,8 +22,9 @@ export default function GomokuPage() {
     myColor, lastMove, previewPos, setPreviewPos,
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
-    phase, localPeerId, error, isConnected, connect, clearError, retryLastConnection, reinitialize,
-    joinPeerId,
+    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize,
+    joinPeerId, latencyMs, lastRemoteMessageAt,
+    chatMessages, addMyMessage,
     startAIGame, exitToMenu, handleBoardClick, makeMove, resetGame,
     myPlayerId, isMyTurn, opponentLabel, boardPixels, stoneRadius,
   } = useGomokuGame();
@@ -335,6 +338,23 @@ export default function GomokuPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      {gameMode === "p2p" && isConnected && (
+        <P2PStatusPanel
+          isConnected={isConnected}
+          phase={phase}
+          role={myColor === "black" ? "P1 / black" : myColor === "white" ? "P2 / white" : "unknown"}
+          localPeerId={localPeerId}
+          latencyMs={latencyMs}
+          lastRemoteMessageAt={lastRemoteMessageAt}
+        />
+      )}
+
+      <P2PChat
+        messages={chatMessages}
+        onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
+        isConnected={gameMode === "p2p" && isConnected}
+      />
     </div>
   );
 }

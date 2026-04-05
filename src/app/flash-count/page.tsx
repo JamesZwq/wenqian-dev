@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
+import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { IsometricBlocks } from "./components/IsometricBlocks";
 import { RevealBlocks } from "./components/RevealBlocks";
@@ -79,8 +80,9 @@ export default function FlashCountPage() {
     soloResult, isNewRecord, resultDiff, resultCount,
     direction, waitingForConfig, hostPreview,
     myP2pAnswer, opponentSubmitted, questionResult, myScore, opponentScore, p2pGameResult,
-    phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
     joinPeerId, inputRef,
+    chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch,
     handleSoloInputChange, handleP2pInputChange, onRevealComplete,
     speed, isPlaying, showP2pSettings, showP2pWaiting, showGame,
@@ -617,6 +619,12 @@ export default function FlashCountPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      <P2PChat
+        messages={chatMessages}
+        onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
+        isConnected={gameMode === "p2p" && isConnected}
+      />
     </div>
   );
 }

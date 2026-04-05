@@ -141,6 +141,19 @@ export function usePeerConnection<TData = unknown>(
       const handleData = (payload: unknown) => {
         if (connectionRef.current !== connection) return;
 
+        // Intercept chat packets — don't pass to game onData
+        if (
+          payload !== null &&
+          typeof payload === "object" &&
+          (payload as Record<string, unknown>).__chat === true
+        ) {
+          const text = (payload as Record<string, unknown>).text;
+          if (typeof text === "string") {
+            optionsRef.current.onChat?.(text);
+          }
+          return;
+        }
+
         optionsRef.current.onData?.(payload as TData, {
           peerId: connection.peer,
           receivedAt: Date.now(),
@@ -251,6 +264,24 @@ export function usePeerConnection<TData = unknown>(
       if (optionsRef.current.acceptIncomingConnections === false) {
         connection.close();
         return;
+      }
+
+      // Reject if already have an open connection (prevents link-sharing collisions)
+      if (connectionRef.current?.open) {
+        connection.close();
+        return;
+      }
+
+      // Validate handshake metadata
+      const expectedHandshake = optionsRef.current.handshake;
+      if (expectedHandshake) {
+        const meta = connection.metadata as Record<string, string> | undefined;
+        const valid = meta != null &&
+          Object.entries(expectedHandshake).every(([k, v]) => meta[k] === v);
+        if (!valid) {
+          connection.close();
+          return;
+        }
       }
 
       if (connectTimeoutRef.current) {
@@ -370,7 +401,10 @@ export function usePeerConnection<TData = unknown>(
       }));
 
       try {
-        const connection = peer.connect(sanitizedTarget, { reliable: true });
+        const connection = peer.connect(sanitizedTarget, {
+          reliable: true,
+          metadata: optionsRef.current.handshake,
+        });
         attachConnection(connection, "outgoing");
 
         const timeoutMs =
@@ -479,6 +513,20 @@ export function usePeerConnection<TData = unknown>(
     [emitError],
   );
 
+  const sendChat = useCallback(
+    (text: string): boolean => {
+      const connection = connectionRef.current;
+      if (!connection || !connection.open) return false;
+      try {
+        connection.send({ __chat: true, text, timestamp: Date.now() });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
   const reinitialize = useCallback(() => {
     // Inline detachCurrentConnection
     if (connectTimeoutRef.current) {
@@ -527,6 +575,7 @@ export function usePeerConnection<TData = unknown>(
     connect,
     disconnect,
     send,
+    sendChat,
     clearError,
     retryLastConnection,
     reinitialize,

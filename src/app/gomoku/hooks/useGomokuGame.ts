@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection";
+import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { getAIMove } from "../gomokuAI";
@@ -31,7 +32,12 @@ export function useGomokuGame() {
   const [showExplosion, setShowExplosion] = useState(false);
   const [explosionPieces, setExplosionPieces] = useState<Array<{ x: number; y: number; color: "black" | "white" }>>([]);
 
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [lastRemoteMessageAt, setLastRemoteMessageAt] = useState<number | null>(null);
+
   const aiTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const sendRef = useRef<(p: GamePacket) => boolean>(() => false);
   const gameStateRef = useRef(gameState);
   const gameModeRef = useRef(gameMode);
 
@@ -119,6 +125,15 @@ export function useGomokuGame() {
   // ── P2P incoming data ──
   const handleIncomingData = useCallback((payload: GamePacket) => {
     if (!payload?.type) return;
+    setLastRemoteMessageAt(Date.now());
+    if (payload.type === "ping") {
+      sendRef.current({ type: "pong", sentAt: payload.sentAt });
+      return;
+    }
+    if (payload.type === "pong") {
+      setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
+      return;
+    }
     if (payload.type === "move") {
       setGameState(prev => {
         if (prev.status !== "playing" || prev.board[payload.row][payload.col] !== null) return prev;
@@ -138,10 +153,14 @@ export function useGomokuGame() {
     }
   }, [checkWin]);
 
-  const { phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize } =
+  const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
+
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
     usePeerConnection<GamePacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+      handshake: { site: "wenqian.me", game: "gomoku" },
       onData: handleIncomingData,
+      onChat,
       acceptIncomingConnections: true,
       onConnected: ({ direction }) => {
         setMyColor(direction === "outgoing" ? "black" : "white");
@@ -150,8 +169,28 @@ export function useGomokuGame() {
       onDisconnected: () => {
         setMyColor(null);
         setGameState(prev => ({ ...prev, status: "waiting" }));
+        setLatencyMs(null);
+        setLastRemoteMessageAt(null);
       },
     });
+
+  useEffect(() => { sendRef.current = send; }, [send]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = undefined;
+      setLatencyMs(null);
+      return;
+    }
+    pingIntervalRef.current = setInterval(() => {
+      sendRef.current({ type: "ping", sentAt: Date.now() });
+    }, 2000);
+    return () => {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = undefined;
+    };
+  }, [isConnected]);
 
   // ── Make a move ──
   const makeMove = useCallback((row: number, col: number) => {
@@ -247,8 +286,10 @@ export function useGomokuGame() {
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
     // Connection
-    phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize,
-    joinPeerId,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
+    joinPeerId, latencyMs, lastRemoteMessageAt,
+    // Chat
+    chatMessages, addMyMessage,
     // Handlers
     startAIGame, exitToMenu, handleBoardClick, makeMove, resetGame,
     // Derived

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generateQuestionSet, type Operation, type Question } from "../mathEngine";
 import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection";
+import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { getBestSpeed, saveBestSpeed } from "../bestSpeed";
@@ -106,10 +107,14 @@ export function useMathGame() {
     }
   }, []);
 
-  const { phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize } =
+  const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
+
+  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize } =
     usePeerConnection<MathPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+      handshake: { site: "wenqian.me", game: "math" },
       onData: handleIncomingData,
+      onChat,
       acceptIncomingConnections: true,
       onConnected: ({ direction: dir }) => {
         setDirection(dir);
@@ -220,8 +225,10 @@ export function useMathGame() {
     // P2P state
     direction, opponentProgress, opponentFinished, waitingForConfig, p2pSettingsReady,
     // Connection
-    phase, localPeerId, error, isConnected, connect, send, clearError, retryLastConnection, reinitialize,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize,
     joinPeerId, inputRef,
+    // Chat
+    chatMessages, addMyMessage,
     // Handlers
     startSolo, startP2pGame, exitToMenu, handleRematch, handleInputChange,
     // Derived

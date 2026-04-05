@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePeerConnection } from "@/features/p2p/hooks/usePeerConnection";
+import { useP2PChat } from "@/features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "@/features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import type { ActionType, FullGameState, GameMode, PlayerView, PokerPacket } from "../types";
@@ -16,9 +17,13 @@ export function usePokerGame() {
   const [fullState, setFullState] = useState<FullGameState | null>(null);
   const [guestView, setGuestView] = useState<PlayerView | null>(null);
 
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [lastRemoteMessageAt, setLastRemoteMessageAt] = useState<number | null>(null);
+
   const myIndexRef = useRef<0 | 1 | null>(null);
   const fullStateRef = useRef<FullGameState | null>(null);
   const sendRef = useRef<(p: PokerPacket) => boolean>(() => false);
+  const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
   useEffect(() => { fullStateRef.current = fullState; }, [fullState]);
@@ -56,6 +61,15 @@ export function usePokerGame() {
 
   const handleIncomingData = useCallback((payload: PokerPacket) => {
     if (!payload?.type) return;
+    setLastRemoteMessageAt(Date.now());
+    if (payload.type === "ping") {
+      sendRef.current({ type: "pong", sentAt: payload.sentAt });
+      return;
+    }
+    if (payload.type === "pong") {
+      setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
+      return;
+    }
     const idx = myIndexRef.current;
     switch (payload.type) {
       case "sync":
@@ -77,12 +91,16 @@ export function usePokerGame() {
     }
   }, [doProcessAction, doStartNewHand, syncToGuest]);
 
+  const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
+
   const {
     phase, localPeerId, error, isConnected,
-    connect, send, clearError, retryLastConnection, reinitialize,
+    connect, send, sendChat, clearError, retryLastConnection, reinitialize,
   } = usePeerConnection<PokerPacket>({
     connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+    handshake: { site: "wenqian.me", game: "poker" },
     onData: handleIncomingData,
+    onChat,
     acceptIncomingConnections: true,
     onConnected: ({ direction }) => {
       if (direction === "outgoing") {
@@ -96,10 +114,29 @@ export function usePokerGame() {
         setMyIndex(1); myIndexRef.current = 1;
       }
     },
-    onDisconnected: () => { setMyIndex(null); myIndexRef.current = null; },
+    onDisconnected: () => {
+      setMyIndex(null); myIndexRef.current = null;
+      setLatencyMs(null); setLastRemoteMessageAt(null);
+    },
   });
 
   useEffect(() => { sendRef.current = send; }, [send]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = undefined;
+      setLatencyMs(null);
+      return;
+    }
+    pingIntervalRef.current = setInterval(() => {
+      sendRef.current({ type: "ping", sentAt: Date.now() });
+    }, 2000);
+    return () => {
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = undefined;
+    };
+  }, [isConnected]);
 
   const doAction = useCallback((action: ActionType, amount: number = 0) => {
     if (myIndexRef.current === 0) doProcessAction(0, action, amount);
@@ -132,7 +169,9 @@ export function usePokerGame() {
   return {
     gameMode, setGameMode, displayView, myIndex, isGameOver,
     phase, localPeerId, error, isConnected,
-    connect, clearError, retryLastConnection, reinitialize, joinPeerId,
+    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
+    latencyMs, lastRemoteMessageAt,
+    chatMessages, addMyMessage,
     doAction, requestNextHand, requestRematch, exitToMenu,
   };
 }

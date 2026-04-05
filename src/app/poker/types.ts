@@ -62,4 +62,6 @@ export type PokerPacket =
   | { type: "sync"; view: PlayerView; timestamp: number }
   | { type: "action"; action: ActionType; amount: number; timestamp: number }
   | { type: "next_hand"; timestamp: number }
-  | { type: "rematch"; timestamp: number };
+  | { type: "rematch"; timestamp: number }
+  | { type: "ping"; sentAt: number }
+  | { type: "pong"; sentAt: number };

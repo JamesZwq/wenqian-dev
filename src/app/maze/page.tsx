@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
 import { P2PStatusPanel } from "../../features/p2p/components/P2PStatusPanel";
+import { P2PChat } from "../../features/p2p/components/P2PChat";
 import SettingsPanel from "./SettingsPanel";
 import { ITEM_META, type InventorySlot } from "./items";
 import { formatTime } from "./types";
@@ -44,9 +45,11 @@ export default function MazePage() {
     dpadVisible,
 
     // P2P connection
-    phase, localPeerId, error, isConnected, connect,
+    phase, localPeerId, error, isConnected, connect, sendChat,
     clearError, retryLastConnection, reinitialize,
     joinPeerId,
+    // Chat
+    chatMessages, addMyMessage,
 
     // Handlers
     startSingleGame, startAiGame, startLocalGame, startRemoteRound,
@@ -878,6 +881,12 @@ export default function MazePage() {
           lastRemoteMessageAt={lastRemoteMessageAt}
         />
       )}
+
+      <P2PChat
+        messages={chatMessages}
+        onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
+        isConnected={mode === "remote" && isConnected}
+      />
 
       {/* Mobile D-pad — double-tap maze to toggle, fixed at bottom center */}
       {mode !== "menu" && (mode !== "remote" || isConnected) && displayMaze && (

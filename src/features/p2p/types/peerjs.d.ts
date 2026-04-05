@@ -12,6 +12,7 @@ declare module 'peerjs' {
   export interface DataConnection {
     peer: string;
     open: boolean;
+    metadata: any;
     send(data: any): void;
     close(): void;
     on(event: 'data', callback: (data: any) => void): void;

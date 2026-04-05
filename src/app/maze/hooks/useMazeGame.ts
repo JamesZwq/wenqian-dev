@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generateMaze, generateGoal, canMove } from "../mazeGenerator";
 import type { Maze } from "../mazeGenerator";
 import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection";
+import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { DEFAULT_SETTINGS, type GameSettings } from "../SettingsPanel";
@@ -818,6 +819,8 @@ export function useMazeGame() {
     [runBuildAnimation, resetItemState, applyItemEffect]
   );
 
+  const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
+
   const {
     phase,
     localPeerId,
@@ -825,12 +828,15 @@ export function useMazeGame() {
     isConnected,
     connect,
     send,
+    sendChat,
     clearError,
     retryLastConnection,
     reinitialize,
   } = usePeerConnection<MazePacket>({
     connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+    handshake: { site: "wenqian.me", game: "maze" },
     onData: handleRemotePacket,
+    onChat,
     acceptIncomingConnections: true,
     onConnected: ({ direction }) => {
       const assignedPlayerId = direction === "outgoing" ? 1 : 2;
@@ -1734,9 +1740,11 @@ export function useMazeGame() {
     dpadVisible, setDpadVisible,
 
     // P2P connection
-    phase, localPeerId, error, isConnected, connect,
+    phase, localPeerId, error, isConnected, connect, sendChat,
     clearError, retryLastConnection, reinitialize,
     joinPeerId,
+    // Chat
+    chatMessages, addMyMessage,
 
     // Handlers
     startSingleGame, startAiGame, startLocalGame, startRemoteRound,

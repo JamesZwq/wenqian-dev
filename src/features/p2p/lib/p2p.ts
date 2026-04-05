@@ -40,6 +40,9 @@ export interface UsePeerConnectionOptions<TData = unknown> {
   peerOptions?: PeerJSOption;
   connectTimeoutMs?: number;
   acceptIncomingConnections?: boolean;
+  /** Key-value pairs sent as PeerJS connection metadata and validated on incoming connections */
+  handshake?: Record<string, string>;
+  onChat?: (text: string) => void;
   onData?: (data: TData, meta: { peerId: string; receivedAt: number }) => void;
   onConnected?: (meta: {
     peerId: string;

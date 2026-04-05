@@ -4,6 +4,8 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState, useEffect, useCallback, useRef } from "react";
 import P2PConnectionPanel from "@/features/p2p/components/P2PConnectionPanel";
+import { P2PStatusPanel } from "@/features/p2p/components/P2PStatusPanel";
+import { P2PChat } from "@/features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
@@ -98,7 +100,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3 space-y-2"
+          className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md p-3 space-y-2"
         >
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">RAISE TO</span>
@@ -127,7 +129,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
             </button>
             <button
               onClick={() => setShowRaise(false)}
-              className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]"
+              className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-3 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]"
             >
               CANCEL
             </button>
@@ -138,21 +140,21 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
       <div className="flex gap-2">
         <button
           onClick={() => onAction("fold")}
-          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 dark:bg-red-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-red-400 dark:text-red-300 transition-all hover:bg-red-500/20 dark:hover:bg-red-500/30"
+          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 dark:bg-red-500/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-red-400 dark:text-red-300 transition-all hover:bg-red-500/20 dark:hover:bg-red-500/30"
         >
           FOLD
         </button>
         {acts.canCheck ? (
           <button
             onClick={() => onAction("check")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
           >
             CHECK
           </button>
         ) : (
           <button
             onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
           >
             {acts.callIsAllIn ? `ALL IN $${acts.callAmount}` : `CALL $${acts.callAmount}`}
           </button>
@@ -160,7 +162,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         {acts.canRaise && !showRaise && (
           <button
             onClick={() => setShowRaise(true)}
-            className="flex-1 rounded-xl border border-yellow-500/60 dark:border-yellow-400/50 bg-yellow-500/10 dark:bg-yellow-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-yellow-500 dark:text-yellow-300 transition-all hover:bg-yellow-500/20 dark:hover:bg-yellow-500/30"
+            className="flex-1 rounded-xl border border-yellow-500/60 dark:border-yellow-400/50 bg-yellow-500/10 dark:bg-yellow-500/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-yellow-500 dark:text-yellow-300 transition-all hover:bg-yellow-500/20 dark:hover:bg-yellow-500/30"
           >
             RAISE
           </button>
@@ -195,7 +197,7 @@ function EquityOverlay({ result, loading }: { result: EquityResult | null; loadi
       transition={{ duration: 0.15 }}
       className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl"
     >
-      <div className="w-full max-w-xs mx-3 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4 shadow-2xl">
+      <div className="w-full max-w-xs mx-3 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-xl p-4 shadow-2xl">
         <div className="flex items-center gap-2 mb-3">
           <span className="font-mono text-[10px] font-semibold tracking-widest text-[var(--pixel-accent)]">HAND ANALYSIS</span>
         </div>
@@ -379,7 +381,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       </div>
 
       {/* Opponent area */}
-      <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3">
+      <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={!view.amDealer} />
@@ -418,7 +420,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       </div>
 
       {/* Community cards + pot */}
-      <div className="rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 p-4 flex flex-col items-center gap-3">
+      <div className="rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 backdrop-blur-md p-4 flex flex-col items-center gap-3">
         <div className="flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for community cards...</span>
@@ -446,7 +448,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           initial={{ opacity: 0, y: 20, scale: 0.92 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
-          className={`rounded-xl border p-4 text-center overflow-hidden relative ${
+          className={`rounded-xl border p-4 text-center overflow-hidden relative backdrop-blur-md ${
             view.result.iWon === true
               ? "border-green-500/60 bg-green-500/10 dark:bg-green-500/15"
               : view.result.iWon === false
@@ -540,7 +542,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       )}
 
       {/* My area */}
-      <div className="rounded-xl border border-[var(--pixel-accent)]/40 dark:border-[var(--pixel-accent)]/50 bg-[var(--pixel-card-bg)] p-3">
+      <div className="rounded-xl border border-[var(--pixel-accent)]/40 dark:border-[var(--pixel-accent)]/50 bg-[var(--pixel-card-bg)] backdrop-blur-md p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={view.amDealer} />
@@ -616,7 +618,9 @@ export default function PokerPage() {
   const {
     gameMode, setGameMode, displayView, isGameOver,
     phase, localPeerId, error, isConnected,
-    connect, clearError, retryLastConnection, reinitialize, joinPeerId,
+    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
+    latencyMs, lastRemoteMessageAt,
+    chatMessages, addMyMessage,
     doAction, requestNextHand, requestRematch, exitToMenu,
   } = usePokerGame();
 
@@ -685,7 +689,7 @@ export default function PokerPage() {
                   onReinitialize={reinitialize}
                 />
                 <div className="mt-4 flex justify-center">
-                  <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">
+                  <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">
                     MENU
                   </button>
                 </div>
@@ -702,7 +706,7 @@ export default function PokerPage() {
                   onRematch={requestRematch}
                 />
                 <div className="mt-4 flex justify-center">
-                  <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">
+                  <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">
                     MENU
                   </button>
                 </div>
@@ -717,6 +721,23 @@ export default function PokerPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      {gameMode === "p2p" && isConnected && (
+        <P2PStatusPanel
+          isConnected={isConnected}
+          phase={phase}
+          role={localPeerId ? "connected" : "unknown"}
+          localPeerId={localPeerId}
+          latencyMs={latencyMs}
+          lastRemoteMessageAt={lastRemoteMessageAt}
+        />
+      )}
+
+      <P2PChat
+        messages={chatMessages}
+        onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
+        isConnected={gameMode === "p2p" && isConnected}
+      />
     </div>
   );
 }

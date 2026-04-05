@@ -50,6 +50,20 @@ export default function FloatingNav() {
       color: "var(--pixel-warn)",
       description: "Heads-up P2P poker, blinds escalate"
     },
+    {
+      href: "/sudoku",
+      label: "Sudoku",
+      icon: "🔢",
+      color: "var(--pixel-accent)",
+      description: "Solo or P2P race — same puzzle, fastest wins"
+    },
+    {
+      href: "/halli-galli",
+      label: "Halli Galli",
+      icon: "🔔",
+      color: "var(--pixel-warn)",
+      description: "Ring the bell when any fruit totals exactly 5!"
+    },
   ];
 
   return (
