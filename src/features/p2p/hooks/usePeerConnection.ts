@@ -15,6 +15,11 @@ import {
   type P2PState,
   type UsePeerConnectionOptions,
 } from "../lib/p2p";
+import { ICE_SERVERS } from "../config";
+
+function peerOpts(custom?: import("peerjs").PeerJSOption) {
+  return { ...custom, config: { ...custom?.config, iceServers: ICE_SERVERS } };
+}
 
 const INITIAL_STATE: P2PState = {
   phase: "initializing",
@@ -230,6 +235,11 @@ export function usePeerConnection<TData = unknown>(
       connection.on("error", handleError);
       connection.on("close", handleClose);
 
+      // Incoming connections may already be open before listeners are attached
+      if (connection.open) {
+        handleOpen();
+      }
+
       connectionCleanupRef.current = () => {
         const conn = connection as DataConnection & {
           off?: (event: string, handler: (...args: unknown[]) => void) => void;
@@ -298,7 +308,7 @@ export function usePeerConnection<TData = unknown>(
 
     // Classic mode: create peer on mount
     const localPeerId = options.peerId ?? generateShortPeerId();
-    const peer = new Peer(localPeerId, options.peerOptions);
+    const peer = new Peer(localPeerId, peerOpts(options.peerOptions));
     peerRef.current = peer;
 
     const handleOpen = (openedPeerId: string) => {
@@ -386,7 +396,7 @@ export function usePeerConnection<TData = unknown>(
       teardown();
 
       // Attempt 1: register as host with roomId
-      const hostPeer = new Peer(roomId, optionsRef.current.peerOptions);
+      const hostPeer = new Peer(roomId, peerOpts(optionsRef.current.peerOptions));
       let hostHandled = false;
 
       hostPeer.on("open", () => {
@@ -421,7 +431,7 @@ export function usePeerConnection<TData = unknown>(
           hostHandled = true;
           try { hostPeer.destroy(); } catch {}
 
-          const guestPeer = new Peer(generateShortPeerId(), optionsRef.current.peerOptions);
+          const guestPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
           guestPeer.on("open", () => {
             peerRef.current = guestPeer;
             setState((prev) => ({ ...prev, roomCode: sanitized }));
