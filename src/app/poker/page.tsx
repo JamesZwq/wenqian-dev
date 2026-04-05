@@ -20,8 +20,8 @@ function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
   const w = small ? "w-9 h-[52px]" : "w-[52px] h-[74px]";
   if (faceDown || !card) {
     return (
-      <div className={`${w} rounded-lg border-2 border-blue-400/30 bg-gradient-to-br from-blue-900 to-indigo-800 flex items-center justify-center shadow-md ${dimmed ? "opacity-40" : ""}`}>
-        <div className="w-3/5 h-3/5 rounded-sm border border-blue-400/20 bg-blue-800/60" />
+      <div className={`${w} rounded-lg border-2 border-blue-400/40 bg-gradient-to-br from-blue-900 to-indigo-800 flex items-center justify-center shadow-md ${dimmed ? "opacity-40" : ""}`}>
+        <div className="w-3/5 h-3/5 rounded-sm border border-blue-400/30 bg-blue-800/60" />
       </div>
     );
   }
@@ -37,7 +37,7 @@ function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
       transition={highlight
         ? { rotateY: { duration: 0.3, delay: delay ?? 0 }, scale: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, boxShadow: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, opacity: { duration: 0.3, delay: delay ?? 0 } }
         : { duration: 0.3, delay: delay ?? 0 }}
-      className={`${w} rounded-lg border-2 ${highlight ? "border-yellow-400" : "border-gray-300"} bg-white flex flex-col items-center justify-center relative shadow-md`}
+      className={`${w} rounded-lg border-2 ${highlight ? "border-yellow-400" : "border-gray-300 dark:border-gray-500"} bg-white flex flex-col items-center justify-center relative shadow-md dark:shadow-black/30`}
       style={highlight ? { zIndex: 2 } : undefined}
     >
       <span className={`absolute top-0.5 left-1 font-bold ${fs}`} style={{ color: c }}>{rankStr(card.rank)}</span>
@@ -78,8 +78,19 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
   if (!acts) return null;
 
   const potTotal = view.pot + view.myBet + view.opponentBet;
-  const halfPot = Math.max(Math.floor(potTotal / 2), acts.minRaiseTo);
-  const fullPot = Math.max(potTotal, acts.minRaiseTo);
+  const clamp = (v: number) => Math.min(Math.max(v, acts.minRaiseTo), acts.maxRaiseTo);
+  const presets = [
+    { label: "MIN", val: acts.minRaiseTo },
+    { label: "1/2", val: clamp(Math.floor(potTotal / 2)) },
+    { label: "POT", val: clamp(potTotal) },
+    { label: "2x", val: clamp(potTotal * 2) },
+    { label: "3x", val: clamp(potTotal * 3) },
+    { label: "4x", val: clamp(potTotal * 4) },
+    { label: "ALL IN", val: acts.maxRaiseTo },
+  ].filter((p, i, arr) => {
+    if (i === 0 || i === arr.length - 1) return true; // always show MIN & ALL IN
+    return p.val > acts.minRaiseTo && p.val < acts.maxRaiseTo; // skip if same as MIN or ALL IN
+  });
 
   return (
     <div className="w-full space-y-2">
@@ -103,10 +114,9 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
             className="w-full accent-[var(--pixel-accent)]"
           />
           <div className="flex gap-1.5 flex-wrap">
-            <button onClick={() => setRaiseVal(acts.minRaiseTo)} className="raise-quick-btn">MIN</button>
-            {halfPot <= acts.maxRaiseTo && <button onClick={() => setRaiseVal(Math.min(halfPot, acts.maxRaiseTo))} className="raise-quick-btn">1/2 POT</button>}
-            {fullPot <= acts.maxRaiseTo && <button onClick={() => setRaiseVal(Math.min(fullPot, acts.maxRaiseTo))} className="raise-quick-btn">POT</button>}
-            <button onClick={() => setRaiseVal(acts.maxRaiseTo)} className="raise-quick-btn">ALL IN</button>
+            {presets.map(p => (
+              <button key={p.label} onClick={() => setRaiseVal(p.val)} className="raise-quick-btn">{p.label}</button>
+            ))}
           </div>
           <div className="flex gap-2">
             <button
@@ -128,21 +138,21 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
       <div className="flex gap-2">
         <button
           onClick={() => onAction("fold")}
-          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 px-3 py-3 font-sans font-semibold text-[11px] text-red-400 transition-all hover:bg-red-500/20"
+          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 dark:bg-red-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-red-400 dark:text-red-300 transition-all hover:bg-red-500/20 dark:hover:bg-red-500/30"
         >
           FOLD
         </button>
         {acts.canCheck ? (
           <button
             onClick={() => onAction("check")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
           >
             CHECK
           </button>
         ) : (
           <button
             onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)]/10 dark:bg-[var(--pixel-accent)]/20 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-accent)]/20 dark:hover:bg-[var(--pixel-accent)]/30"
           >
             {acts.callIsAllIn ? `ALL IN $${acts.callAmount}` : `CALL $${acts.callAmount}`}
           </button>
@@ -150,7 +160,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         {acts.canRaise && !showRaise && (
           <button
             onClick={() => setShowRaise(true)}
-            className="flex-1 rounded-xl border border-yellow-500/60 bg-yellow-500/10 px-3 py-3 font-sans font-semibold text-[11px] text-yellow-400 transition-all hover:bg-yellow-500/20"
+            className="flex-1 rounded-xl border border-yellow-500/60 dark:border-yellow-400/50 bg-yellow-500/10 dark:bg-yellow-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-yellow-500 dark:text-yellow-300 transition-all hover:bg-yellow-500/20 dark:hover:bg-yellow-500/30"
           >
             RAISE
           </button>
@@ -408,7 +418,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       </div>
 
       {/* Community cards + pot */}
-      <div className="rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/30 to-emerald-950/30 p-4 flex flex-col items-center gap-3">
+      <div className="rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 p-4 flex flex-col items-center gap-3">
         <div className="flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for community cards...</span>
@@ -422,7 +432,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-[var(--pixel-muted)]">POT</span>
-          <span className="font-mono text-lg font-bold text-yellow-400">${potTotal}</span>
+          <span className="font-mono text-lg font-bold text-yellow-500 dark:text-yellow-300">${potTotal}</span>
         </div>
         {/* Last action */}
         {view.lastAction && (
@@ -438,10 +448,10 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           transition={{ type: "spring", stiffness: 300, damping: 24 }}
           className={`rounded-xl border p-4 text-center overflow-hidden relative ${
             view.result.iWon === true
-              ? "border-green-500/60 bg-green-500/10"
+              ? "border-green-500/60 bg-green-500/10 dark:bg-green-500/15"
               : view.result.iWon === false
-                ? "border-red-500/60 bg-red-500/10"
-                : "border-yellow-500/60 bg-yellow-500/10"
+                ? "border-red-500/60 bg-red-500/10 dark:bg-red-500/15"
+                : "border-yellow-500/60 bg-yellow-500/10 dark:bg-yellow-500/15"
           }`}
         >
           {/* Shimmer overlay for winner */}
@@ -492,7 +502,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
               <span className={view.result.iWon === true ? "text-green-400" : "text-[var(--pixel-muted)]"}>
                 You: {view.result.myHandDesc}
               </span>
-              <span className="text-[var(--pixel-border)]">vs</span>
+              <span className="text-[var(--pixel-muted)]">vs</span>
               <span className={view.result.iWon === false ? "text-red-400" : "text-[var(--pixel-muted)]"}>
                 Opp: {view.result.opponentHandDesc}
               </span>
@@ -530,7 +540,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       )}
 
       {/* My area */}
-      <div className="rounded-xl border border-[var(--pixel-accent)]/30 bg-[var(--pixel-card-bg)] p-3">
+      <div className="rounded-xl border border-[var(--pixel-accent)]/40 dark:border-[var(--pixel-accent)]/50 bg-[var(--pixel-card-bg)] p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={view.amDealer} />
@@ -583,7 +593,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       {/* Help hint */}
       {canShowEquity && !isShowdown && (
         <div className="text-center">
-          <span className="font-mono text-[8px] text-[var(--pixel-muted)]/50">
+          <span className="font-mono text-[8px] text-[var(--pixel-muted)] opacity-60">
             <span className="hidden md:inline">Hold SPACE for hand analysis</span>
             <span className="md:hidden">Hold [?] for hand analysis</span>
           </span>
