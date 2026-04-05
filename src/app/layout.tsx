@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://wenqian.dev"
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://wenqian.me"
   ),
   title: {
     default: "Wenqian Zhang | Ph.D. @ UNSW",
