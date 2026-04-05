@@ -262,7 +262,10 @@ export function usePeerConnection<TData = unknown>(
         attachConnection(connection, "incoming");
       };
       const handleErr = (raw: unknown) => emitError(normalizePeerError(raw));
-      const handleDisc = () => emitError(createPeerServerDisconnectedError());
+      const handleDisc = () => {
+        // Auto-reconnect to the signaling server (WebRTC data channel may still be alive)
+        try { peer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
+      };
       peer.on("connection", handleIncoming);
       peer.on("error", handleErr);
       peer.on("disconnected", handleDisc);
@@ -384,38 +387,61 @@ export function usePeerConnection<TData = unknown>(
 
       // Attempt 1: register as host with roomId
       const hostPeer = new Peer(roomId, optionsRef.current.peerOptions);
+      let hostHandled = false;
 
       hostPeer.on("open", () => {
         // We are the host — wait for opponent
         peerRef.current = hostPeer;
         setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
-        setupPeerListeners(hostPeer);
+      });
+
+      // Auto-reconnect host peer on signaling disconnect
+      hostPeer.on("disconnected", () => {
+        if (hostHandled) return;
+        try { hostPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
+      });
+
+      // Incoming connection handler for host
+      hostPeer.on("connection", (conn: DataConnection) => {
+        if (optionsRef.current.acceptIncomingConnections === false) { conn.close(); return; }
+        if (connectionRef.current?.open) { conn.close(); return; }
+        const expected = optionsRef.current.handshake;
+        if (expected) {
+          const meta = conn.metadata as Record<string, string> | undefined;
+          if (!meta || !Object.entries(expected).every(([k, v]) => meta[k] === v)) { conn.close(); return; }
+        }
+        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: conn.peer, error: null }));
+        attachConnection(conn, "incoming");
       });
 
       hostPeer.on("error", (err) => {
         const raw = err as { type?: string };
         if (raw.type === "unavailable-id") {
-          // Room exists → join as guest
+          // Room already exists → join as guest
+          hostHandled = true;
           try { hostPeer.destroy(); } catch {}
 
           const guestPeer = new Peer(generateShortPeerId(), optionsRef.current.peerOptions);
           guestPeer.on("open", () => {
             peerRef.current = guestPeer;
             setState((prev) => ({ ...prev, roomCode: sanitized }));
-            setupPeerListeners(guestPeer);
             connectToPeer(guestPeer, roomId);
           });
           guestPeer.on("error", (e) => emitError(normalizePeerError(e)));
+          guestPeer.on("disconnected", () => {
+            try { guestPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
+          });
           return;
         }
         // Other error
+        hostHandled = true;
         try { hostPeer.destroy(); } catch {}
         emitError(normalizePeerError(err));
       });
 
       return true;
     },
-    [state.phase, emitError, teardown, setupPeerListeners, connectToPeer],
+    [state.phase, emitError, teardown, attachConnection, connectToPeer],
   );
 
   const retryLastConnection = useCallback(() => {
