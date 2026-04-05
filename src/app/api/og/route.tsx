@@ -498,19 +498,21 @@ function HalliGalliVisual() {
                 gap: 4,
               }}
             >
-              <div style={{ fontSize: 26 }}>{card.fruit}</div>
+              <div style={{ display: "flex", fontSize: 26, lineHeight: 1 }}>{card.fruit}</div>
               <div
                 style={{
+                  display: "flex",
                   fontSize: 18,
                   fontWeight: 700,
                   color: isWinner ? "#ca8a04" : "#374151",
                 }}
               >
-                ×{card.count}
+                {String(card.count)}
               </div>
               {isWinner && (
                 <div
                   style={{
+                    display: "flex",
                     fontSize: 9,
                     color: "#ca8a04",
                     fontWeight: 700,
@@ -532,9 +534,10 @@ function HalliGalliVisual() {
           gap: 4,
         }}
       >
-        <div style={{ fontSize: 50 }}>🔔</div>
+        <div style={{ display: "flex", fontSize: 50, lineHeight: 1 }}>🔔</div>
         <div
           style={{
+            display: "flex",
             color: "#eab308",
             fontSize: 10,
             fontWeight: 700,
