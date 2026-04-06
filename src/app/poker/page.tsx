@@ -42,10 +42,10 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
   return <span className={className}>${display}</span>;
 }
 
-// ── Phase announcement ──
+// ── Phase flash (light sweep on the table when new cards come) ──
 
-function PhaseAnnounce({ phase, handNumber }: { phase: string; handNumber: number }) {
-  const [show, setShow] = useState<string | null>(null);
+function PhaseFlash({ phase, handNumber }: { phase: string; handNumber: number }) {
+  const [flash, setFlash] = useState(false);
   const prevPhase = useRef(phase);
   const prevHand = useRef(handNumber);
 
@@ -53,34 +53,31 @@ function PhaseAnnounce({ phase, handNumber }: { phase: string; handNumber: numbe
     if (phase === prevPhase.current && handNumber === prevHand.current) return;
     prevPhase.current = phase;
     prevHand.current = handNumber;
-    const labels: Record<string, string> = { flop: "FLOP", turn: "TURN", river: "RIVER", showdown: "SHOWDOWN" };
-    const label = labels[phase];
-    if (!label) return;
-    setShow(label);
-    const t = setTimeout(() => setShow(null), 1200);
-    return () => clearTimeout(t);
+    if (phase === "flop" || phase === "turn" || phase === "river") {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 700);
+      return () => clearTimeout(t);
+    }
   }, [phase, handNumber]);
 
   return (
     <AnimatePresence>
-      {show && (
+      {flash && (
         <motion.div
-          key={show}
-          className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
+          key={`${phase}-${handNumber}`}
+          className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15 }}
         >
-          <motion.span
-            initial={{ scale: 2.5, opacity: 0, filter: "blur(12px)" }}
-            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-            exit={{ scale: 0.7, opacity: 0, filter: "blur(8px)" }}
-            transition={{ type: "spring" as const, stiffness: 300, damping: 22 }}
-            className="font-sans font-black text-5xl md:text-7xl tracking-tight text-[var(--pixel-accent)] drop-shadow-[0_0_32px_var(--pixel-glow)]"
-          >
-            {show}
-          </motion.span>
+          <motion.div
+            className="absolute inset-y-0 w-[60%]"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }}
+            initial={{ left: "-60%" }}
+            animate={{ left: "100%" }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+          />
         </motion.div>
       )}
     </AnimatePresence>
@@ -544,8 +541,6 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       {/* Confetti on win */}
       <Confetti active={didWin} />
 
-      {/* Phase announcement */}
-      <PhaseAnnounce phase={view.phase} handNumber={view.handNumber} />
 
       {/* All-in flash overlay */}
       <AnimatePresence>
@@ -624,7 +619,8 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       </div>
 
       {/* Community cards + pot */}
-      <div className="rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 backdrop-blur-md p-4 flex flex-col items-center gap-3">
+      <div className="relative rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 backdrop-blur-md p-4 flex flex-col items-center gap-3">
+        <PhaseFlash phase={view.phase} handNumber={view.handNumber} />
         <div className="flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for community cards...</span>
