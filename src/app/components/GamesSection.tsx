@@ -48,7 +48,7 @@ function GomokuIcon() {
 }
 
 // ── Card component (no animation yet) ─────────────────────
-function GameCard({ game, index: _index }: { game: Game; index: number }) {
+function GameCard({ game }: { game: Game }) {
   return (
     <Link href={game.href} className="block" style={{ width: 152, flexShrink: 0 }}>
       <div
@@ -185,8 +185,8 @@ export default function GamesSection() {
 
       {/* Card grid */}
       <div className="flex flex-wrap gap-3 sm:gap-4">
-        {GAMES.map((game, i) => (
-          <GameCard key={game.href} game={game} index={i} />
+        {GAMES.map((game) => (
+          <GameCard key={game.href} game={game} />
         ))}
       </div>
     </motion.section>
