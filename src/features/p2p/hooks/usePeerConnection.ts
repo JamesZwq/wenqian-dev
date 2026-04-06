@@ -74,11 +74,14 @@ export function usePeerConnection<TData = unknown>(
   }, []);
 
   const emitError = useCallback((error: P2PErrorState) => {
-    setState((prev) => ({
-      ...prev,
-      phase: "error",
-      error,
-    }));
+    setState((prev) => {
+      // Don't override "reconnecting" phase with recoverable errors
+      // (e.g., signaling server disconnect during active reconnection attempt)
+      if (prev.phase === "reconnecting" && error.recoverable) {
+        return { ...prev, error };
+      }
+      return { ...prev, phase: "error", error };
+    });
     optionsRef.current.onError?.(error);
   }, []);
 
