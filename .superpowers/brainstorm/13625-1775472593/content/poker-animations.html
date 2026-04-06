@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Animations</title>
+<style>
+:root {
+  --bg:#060410; --bg2:rgba(4,3,12,.96); --bg3:rgba(8,6,20,.85);
+  --border:rgba(139,92,246,0.25); --border-hi:rgba(129,140,248,.6);
+  --text:#e8e5f5; --muted:#8b8fa3;
+  --accent:#818cf8; --accent2:#a78bfa;
+  --warn:#fbbf24; --green:#4ade80; --red:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif;padding:28px 16px 80px;}
+
+h1{text-align:center;font-family:monospace;font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:6px;}
+.subtitle{text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.5);margin-bottom:32px;}
+
+/* ── layout ── */
+.section{margin-bottom:48px;}
+.section-title{font-family:monospace;font-size:10px;letter-spacing:.12em;color:var(--accent);margin-bottom:16px;padding-bottom:6px;border-bottom:1px solid rgba(129,140,248,.15);}
+.demo-grid{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-start;}
+.demo{
+  background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  min-width:160px;
+}
+.demo-label{font-family:monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;text-align:center;}
+.demo-desc{font-family:monospace;font-size:8px;color:rgba(139,92,246,.5);text-align:center;max-width:160px;line-height:1.5;}
+.replay-btn{
+  font-family:monospace;font-size:8px;color:var(--accent);
+  border:1px solid rgba(129,140,248,.3);background:rgba(129,140,248,.06);
+  border-radius:6px;padding:3px 10px;cursor:pointer;
+  transition:all .15s;
+}
+.replay-btn:hover{background:rgba(129,140,248,.12);border-color:var(--accent);}
+
+/* ── card atoms ── */
+.cf{
+  width:38px;height:54px;border-radius:6px;
+  background:white;border:1.5px solid #d1d5db;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;flex-shrink:0;font-weight:800;
+}
+.cf .rt{position:absolute;top:2px;left:3px;font-size:8px;line-height:1;}
+.cf .sb{font-size:15px;}
+.cf .rb{position:absolute;bottom:2px;right:3px;font-size:8px;transform:rotate(180deg);}
+.cf.back{background:linear-gradient(135deg,#1e1b4b,#312e81);border-color:rgba(129,140,248,.35);}
+.cf.back::after{content:'';width:55%;height:55%;border-radius:3px;border:1px solid rgba(129,140,248,.22);background:rgba(99,102,241,.1);}
+.cf.hl{border-color:var(--warn);box-shadow:0 0 12px rgba(251,191,36,.55);}
+.cf.dim{opacity:.22;}
+.cf.ghost{opacity:0;}
+
+/* ── 1. FLOP: cards fan in sequentially ── */
+.flop-stage{display:flex;gap:5px;height:60px;align-items:center;position:relative;}
+.flop-card{opacity:0;transform:translateY(-18px) scale(.85);}
+.flop-card.run{animation:flopIn .35s cubic-bezier(.22,1,.36,1) forwards;}
+@keyframes flopIn{
+  0%{opacity:0;transform:translateY(-18px) scale(.85);}
+  100%{opacity:1;transform:translateY(0) scale(1);}
+}
+
+/* ── 2. TURN: single card drops with bounce ── */
+.turn-stage{display:flex;gap:5px;height:60px;align-items:center;}
+.turn-new{opacity:0;transform:scale(.6) rotate(-8deg);}
+.turn-new.run{animation:turnDrop .45s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes turnDrop{
+  0%{opacity:0;transform:scale(.6) rotate(-8deg);}
+  100%{opacity:1;transform:scale(1) rotate(0deg);}
+}
+
+/* ── 3. RIVER: dramatic slow reveal with glow burst ── */
+.river-stage{display:flex;gap:5px;height:60px;align-items:center;position:relative;}
+.river-new{opacity:0;transform:scale(1.2);filter:blur(4px);}
+.river-new.run{animation:riverReveal .5s cubic-bezier(.16,1,.3,1) forwards;}
+@keyframes riverReveal{
+  0%{opacity:0;transform:scale(1.2);filter:blur(4px);}
+  60%{opacity:1;transform:scale(1.04);filter:blur(0);}
+  100%{opacity:1;transform:scale(1);filter:blur(0);}
+}
+.river-glow{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:0;height:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(167,139,250,.5),transparent 70%);
+  opacity:0;
+}
+.river-glow.run{animation:glowBurst .6s ease-out forwards;}
+@keyframes glowBurst{
+  0%{width:0;height:0;opacity:.8;}
+  100%{width:120px;height:80px;opacity:0;}
+}
+
+/* ── 4. WIN BY FOLD: opponent cards collapse + fly ── */
+.fold-stage{display:flex;gap:5px;height:60px;align-items:center;}
+.fold-card-a{animation:none;}
+.fold-card-a.run{animation:foldFly .5s ease-in forwards;}
+.fold-card-b{animation:none;}
+.fold-card-b.run{animation:foldFly .5s .06s ease-in forwards;}
+@keyframes foldFly{
+  0%{opacity:1;transform:translateY(0) rotate(0);}
+  100%{opacity:0;transform:translateY(-30px) rotate(-20deg);}
+}
+
+/* ── 5. WIN BY HAND: winner cards pulse gold ── */
+.hand-win-stage{display:flex;gap:5px;height:60px;align-items:center;}
+.win-card{border-color:var(--warn)!important;box-shadow:0 0 0 var(--warn);}
+.win-card.run{animation:winPulse 1.4s ease-in-out infinite;}
+@keyframes winPulse{
+  0%,100%{box-shadow:0 0 6px rgba(251,191,36,.4);transform:scale(1);}
+  50%{box-shadow:0 0 18px rgba(251,191,36,.8),0 0 30px rgba(251,191,36,.3);transform:scale(1.06);}
+}
+
+/* ── 6. WIN BANNER: spring pop ── */
+.banner-stage{width:200px;}
+.win-banner{
+  border-radius:10px;border:1px solid rgba(74,222,128,.4);
+  background:rgba(74,222,128,.08);
+  padding:10px 14px;text-align:center;opacity:0;transform:scale(.6) translateY(10px);
+}
+.win-banner.run{animation:bannerPop .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes bannerPop{
+  0%{opacity:0;transform:scale(.6) translateY(10px);}
+  100%{opacity:1;transform:scale(1) translateY(0);}
+}
+.lose-banner{
+  border-radius:10px;border:1px solid rgba(239,68,68,.4);
+  background:rgba(239,68,68,.08);
+  padding:10px 14px;text-align:center;opacity:0;
+}
+.lose-banner.run{animation:loseShake .5s cubic-bezier(.36,.07,.19,.97) forwards;}
+@keyframes loseShake{
+  0%{opacity:0;transform:translateX(0);}
+  10%{opacity:1;transform:translateX(-6px);}
+  30%{transform:translateX(6px);}
+  50%{transform:translateX(-4px);}
+  70%{transform:translateX(4px);}
+  90%{transform:translateX(-2px);}
+  100%{opacity:1;transform:translateX(0);}
+}
+.split-banner{
+  border-radius:10px;border:1px solid rgba(251,191,36,.4);
+  background:rgba(251,191,36,.08);
+  padding:10px 14px;text-align:center;opacity:0;transform:translateY(8px);
+}
+.split-banner.run{animation:splitIn .45s ease-out forwards;}
+@keyframes splitIn{
+  0%{opacity:0;transform:translateY(8px);}
+  100%{opacity:1;transform:translateY(0);}
+}
+
+/* ── 7. ALL-IN: yellow flash ring ── */
+.allin-stage{position:relative;width:100px;height:60px;display:flex;align-items:center;justify-content:center;}
+.allin-ring{
+  position:absolute;width:50px;height:50px;border-radius:50%;
+  border:2px solid rgba(251,191,36,0);opacity:0;
+}
+.allin-ring.run{animation:allinRing .7s ease-out forwards;}
+@keyframes allinRing{
+  0%{opacity:1;transform:scale(.4);border-color:rgba(251,191,36,.9);}
+  100%{opacity:0;transform:scale(2.2);border-color:rgba(251,191,36,0);}
+}
+.allin-badge{
+  font-family:monospace;font-size:9px;font-weight:700;
+  color:var(--warn);border:1px solid rgba(251,191,36,.5);
+  background:rgba(251,191,36,.12);border-radius:6px;padding:2px 8px;
+  opacity:0;transform:scale(.7);
+}
+.allin-badge.run{animation:badgePop .4s .15s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes badgePop{
+  0%{opacity:0;transform:scale(.7);}
+  100%{opacity:1;transform:scale(1);}
+}
+
+/* ── 8. RARE HAND: royal flush burst ── */
+.rare-stage{position:relative;width:220px;height:70px;display:flex;align-items:center;justify-content:center;gap:4px;overflow:visible;}
+.rare-card{opacity:0;transform:scale(.5);}
+.rare-card.run{animation:rarePop .4s cubic-bezier(.34,1.56,.64,1) forwards;}
+.rare-card:nth-child(1).run{animation-delay:0s;}
+.rare-card:nth-child(2).run{animation-delay:.07s;}
+.rare-card:nth-child(3).run{animation-delay:.14s;}
+.rare-card:nth-child(4).run{animation-delay:.21s;}
+.rare-card:nth-child(5).run{animation-delay:.28s;}
+@keyframes rarePop{
+  0%{opacity:0;transform:scale(.5);}
+  60%{transform:scale(1.1);}
+  100%{opacity:1;transform:scale(1);}
+}
+.rare-label{
+  position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);
+  font-family:monospace;font-size:10px;font-weight:700;white-space:nowrap;
+  background:linear-gradient(90deg,var(--warn),var(--accent2),var(--warn));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;
+}
+.rare-label.run{animation:labelShine .5s .4s ease-out forwards;}
+@keyframes labelShine{
+  0%{opacity:0;letter-spacing:0;}
+  100%{opacity:1;letter-spacing:.06em;}
+}
+
+/* shimmer */
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+.shimmer{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(74,222,128,.07),transparent);animation:shimmer 2s ease-in-out infinite;}
+
+/* text util */
+.mono{font-family:monospace;}
+.g{color:var(--green);}
+.r{color:var(--red);}
+.w{color:var(--warn);}
+.a{color:var(--accent);}
+.a2{color:var(--accent2);}
+</style>
+</head>
+<body>
+
+<h1>POKER ANIMATIONS — 动画效果预览</h1>
+<p class="subtitle">点击「重播」查看动画效果 · 所有动画基于 Framer Motion 实现</p>
+
+<!-- ══ SECTION 1: 发牌动画 ══ -->
+<div class="section">
+  <div class="section-title">▸ 翻牌 / 发牌动画</div>
+  <div class="demo-grid">
+
+    <!-- Flop -->
+    <div class="demo">
+      <div class="demo-label">FLOP · 翻牌</div>
+      <div class="flop-stage" id="flop">
+        <div class="cf flop-card"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf flop-card"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf flop-card"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+      </div>
+      <div class="demo-desc">3张顺序滑落，间隔 80ms</div>
+      <button class="replay-btn" onclick="replayFlop()">重播</button>
+    </div>
+
+    <!-- Turn -->
+    <div class="demo">
+      <div class="demo-label">TURN · 转牌</div>
+      <div class="turn-stage">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf turn-new" id="turn-card" style="border-color:rgba(167,139,250,.6);"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+      </div>
+      <div class="demo-desc">单张旋转弹入，有回弹感</div>
+      <button class="replay-btn" onclick="replayTurn()">重播</button>
+    </div>
+
+    <!-- River -->
+    <div class="demo">
+      <div class="demo-label">RIVER · 河牌</div>
+      <div class="river-stage" id="river-stage">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="river-glow" id="river-glow"></div>
+        <div class="cf river-new" id="river-card" style="border-color:rgba(167,139,250,.7);box-shadow:0 0 10px rgba(167,139,250,.3);"><span class="rt" style="color:#ef4444">3</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">3</span></div>
+      </div>
+      <div class="demo-desc">模糊扩散 + 紫色光晕爆发</div>
+      <button class="replay-btn" onclick="replayRiver()">重播</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ SECTION 2: 赢牌动画 ══ -->
+<div class="section">
+  <div class="section-title">▸ 赢牌动画（不同胜利方式）</div>
+  <div class="demo-grid">
+
+    <!-- Win by fold -->
+    <div class="demo">
+      <div class="demo-label">WIN · 对手弃牌</div>
+      <div class="fold-stage">
+        <div class="cf fold-card-a back" id="fold-a"></div>
+        <div class="cf fold-card-b back" id="fold-b"></div>
+      </div>
+      <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:8px;padding:6px 12px;font-family:monospace;font-size:11px;font-weight:700;color:var(--green);">Opponent Folded</div>
+      <div class="demo-desc">对手牌飞走，绿色提示</div>
+      <button class="replay-btn" onclick="replayFold()">重播</button>
+    </div>
+
+    <!-- Win by hand -->
+    <div class="demo">
+      <div class="demo-label">WIN · 比牌获胜</div>
+      <div class="hand-win-stage">
+        <div class="cf win-card" id="wc1"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf win-card" id="wc2"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf dim"><span class="rt" style="color:#1e293b">7</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">7</span></div>
+        <div class="cf dim"><span class="rt" style="color:#ef4444">2</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">2</span></div>
+      </div>
+      <div class="demo-desc">赢的牌金色脉冲，输的牌变暗</div>
+      <button class="replay-btn" onclick="replayHandWin()">重播</button>
+    </div>
+
+    <!-- ALL IN win -->
+    <div class="demo">
+      <div class="demo-label">ALL IN · 全押摊牌</div>
+      <div class="allin-stage">
+        <div class="allin-ring" id="allin-ring"></div>
+        <div class="allin-ring" id="allin-ring2" style="animation-delay:.15s;"></div>
+        <div class="cf" style="border-color:var(--warn);box-shadow:0 0 8px rgba(251,191,36,.4);">
+          <span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span>
+        </div>
+        <div class="allin-badge" id="allin-badge">ALL IN</div>
+      </div>
+      <div class="demo-desc">黄色双圈扩散 + 徽章弹出</div>
+      <button class="replay-btn" onclick="replayAllin()">重播</button>
+    </div>
+
+    <!-- RARE: Royal Flush -->
+    <div class="demo" style="min-width:240px;">
+      <div class="demo-label">RARE · 稀有大牌</div>
+      <div class="rare-stage" id="rare">
+        <div class="cf rare-card hl"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf rare-card hl"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf rare-card hl"><span class="rt" style="color:#ef4444">Q</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">Q</span></div>
+        <div class="cf rare-card hl"><span class="rt" style="color:#ef4444">J</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">J</span></div>
+        <div class="cf rare-card hl"><span class="rt" style="color:#ef4444">10</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">10</span></div>
+        <div class="rare-label" id="rare-label">✦ ROYAL FLUSH ✦</div>
+      </div>
+      <div class="demo-desc">顺序弹入 + 渐变文字标题<br>(四条、同花顺、皇家同花顺)</div>
+      <button class="replay-btn" onclick="replayRare()">重播</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ SECTION 3: 结算 banner ══ -->
+<div class="section">
+  <div class="section-title">▸ 结算 Banner</div>
+  <div class="demo-grid">
+
+    <div class="demo">
+      <div class="demo-label">YOU WIN!</div>
+      <div class="banner-stage">
+        <div class="win-banner" id="win-banner" style="position:relative;overflow:hidden;">
+          <div class="shimmer"></div>
+          <div class="mono g" style="font-size:20px;font-weight:700;position:relative;">YOU WIN!</div>
+          <div class="mono muted" style="font-size:9px;margin-top:4px;position:relative;">Royal Flush</div>
+        </div>
+      </div>
+      <div class="demo-desc">弹簧弹入 + 持续光泽扫过</div>
+      <button class="replay-btn" onclick="replayWin()">重播</button>
+    </div>
+
+    <div class="demo">
+      <div class="demo-label">YOU LOSE</div>
+      <div class="banner-stage">
+        <div class="lose-banner" id="lose-banner">
+          <div class="mono r" style="font-size:20px;font-weight:700;">YOU LOSE</div>
+          <div class="mono muted" style="font-size:9px;margin-top:4px;">Opponent: Full House</div>
+        </div>
+      </div>
+      <div class="demo-desc">横向震动（X轴 shake）</div>
+      <button class="replay-btn" onclick="replayLose()">重播</button>
+    </div>
+
+    <div class="demo">
+      <div class="demo-label">SPLIT POT</div>
+      <div class="banner-stage">
+        <div class="split-banner" id="split-banner">
+          <div class="mono w" style="font-size:20px;font-weight:700;">SPLIT POT</div>
+          <div class="mono muted" style="font-size:9px;margin-top:4px;">Both: Straight</div>
+        </div>
+      </div>
+      <div class="demo-desc">平稳滑入，黄色 — 不赢不输</div>
+      <button class="replay-btn" onclick="replaySplit()">重播</button>
+    </div>
+
+  </div>
+</div>
+
+<div style="text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.4);margin-top:16px;line-height:2.2;">
+  发牌 3 种 · 胜利方式 4 种 · 结算 Banner 3 种 · 共 10 个动画<br>
+  稀有大牌（四条+同花顺+皇家同花顺）可触发特殊动画
+</div>
+
+<script>
+function restart(el) {
+  el.classList.remove('run');
+  void el.offsetWidth; // reflow
+  el.classList.add('run');
+}
+
+function replayFlop() {
+  const cards = document.querySelectorAll('#flop .flop-card');
+  cards.forEach((c,i) => {
+    c.classList.remove('run');
+    void c.offsetWidth;
+    setTimeout(() => c.classList.add('run'), i * 100);
+  });
+}
+
+function replayTurn() {
+  restart(document.getElementById('turn-card'));
+}
+
+function replayRiver() {
+  restart(document.getElementById('river-card'));
+  restart(document.getElementById('river-glow'));
+}
+
+function replayFold() {
+  restart(document.getElementById('fold-a'));
+  restart(document.getElementById('fold-b'));
+}
+
+function replayHandWin() {
+  ['wc1','wc2'].forEach(id => restart(document.getElementById(id)));
+}
+
+function replayAllin() {
+  restart(document.getElementById('allin-ring'));
+  const r2 = document.getElementById('allin-ring2');
+  r2.classList.remove('run');
+  void r2.offsetWidth;
+  setTimeout(() => r2.classList.add('run'), 150);
+  setTimeout(() => restart(document.getElementById('allin-badge')), 0);
+}
+
+function replayRare() {
+  const cards = document.querySelectorAll('#rare .rare-card');
+  cards.forEach((c,i) => {
+    c.classList.remove('run');
+    void c.offsetWidth;
+    setTimeout(() => c.classList.add('run'), i * 80);
+  });
+  const lbl = document.getElementById('rare-label');
+  lbl.classList.remove('run');
+  void lbl.offsetWidth;
+  setTimeout(() => lbl.classList.add('run'), 400);
+}
+
+function replayWin() { restart(document.getElementById('win-banner')); }
+function replayLose() { restart(document.getElementById('lose-banner')); }
+function replaySplit() { restart(document.getElementById('split-banner')); }
+
+// auto-play on load
+window.addEventListener('load', () => {
+  setTimeout(replayFlop, 300);
+  setTimeout(replayTurn, 600);
+  setTimeout(replayRiver, 900);
+  setTimeout(replayFold, 1200);
+  setTimeout(replayHandWin, 1500);
+  setTimeout(replayAllin, 1800);
+  setTimeout(replayRare, 2100);
+  setTimeout(replayWin, 2800);
+  setTimeout(replayLose, 3100);
+  setTimeout(replaySplit, 3400);
+});
+</script>
+</body>
+</html>

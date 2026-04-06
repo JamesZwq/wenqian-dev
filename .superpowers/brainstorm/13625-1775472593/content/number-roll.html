@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Number Roll</title>
+<style>
+:root{
+  --bg:#060410;--bg2:rgba(4,3,12,.96);
+  --border:rgba(139,92,246,0.25);
+  --text:#e8e5f5;--muted:#8b8fa3;
+  --accent:#818cf8;--accent2:#a78bfa;--warn:#fbbf24;--green:#4ade80;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,sans-serif;padding:32px 20px 80px;}
+h1{text-align:center;font-family:monospace;font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:4px;}
+.sub{text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.5);margin-bottom:36px;}
+
+/* ── layout ── */
+.section{margin-bottom:44px;}
+.section-title{font-family:monospace;font-size:10px;letter-spacing:.12em;color:var(--accent);margin-bottom:16px;padding-bottom:6px;border-bottom:1px solid rgba(129,140,248,.15);}
+.demo-row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+.demo{
+  background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:18px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;
+  min-width:170px;
+}
+.demo-label{font-family:monospace;font-size:9px;color:var(--muted);letter-spacing:.08em;}
+.demo-desc{font-family:monospace;font-size:8px;color:rgba(139,92,246,.5);text-align:center;max-width:160px;line-height:1.5;}
+.trigger-btn{
+  font-family:monospace;font-size:8px;color:var(--accent);
+  border:1px solid rgba(129,140,248,.3);background:rgba(129,140,248,.06);
+  border-radius:6px;padding:3px 12px;cursor:pointer;transition:all .15s;
+}
+.trigger-btn:hover{background:rgba(129,140,248,.14);border-color:var(--accent);}
+
+/* ─────────────────────────────────────────
+   APPROACH A: Odometer / slot-machine roll
+   Each digit is a column that slides vertically
+   ───────────────────────────────────────── */
+.odometer{
+  display:inline-flex;align-items:center;
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-weight:700;
+  overflow:hidden;
+  line-height:1;
+}
+.odometer-prefix{
+  /* $ sign, %, etc */
+  display:inline-block;
+}
+.odometer-digit{
+  display:inline-block;
+  overflow:hidden;
+  position:relative;
+}
+.odometer-tape{
+  display:flex;flex-direction:column;
+  transition:transform .45s cubic-bezier(.22,1,.36,1);
+  /* each .tape-char is 1em tall */
+}
+.tape-char{
+  display:block;text-align:center;
+  height:1.2em;line-height:1.2em;
+  min-width:.65em;
+}
+.odometer-digit{height:1.2em;}
+
+/* ─────────────────────────────────────────
+   APPROACH B: Vertical slide (whole number)
+   Old number slides up, new slides in from below
+   ───────────────────────────────────────── */
+.vslide-wrap{
+  position:relative;overflow:hidden;
+  height:1.3em;
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-weight:700;
+}
+.vslide-inner{
+  position:absolute;width:100%;
+  transition:transform .4s cubic-bezier(.22,1,.36,1), opacity .4s;
+}
+.vslide-inner.out-up{transform:translateY(-110%);opacity:0;}
+.vslide-inner.in-from-below{transform:translateY(110%);opacity:0;}
+.vslide-inner.visible{transform:translateY(0);opacity:1;}
+
+/* ─────────────────────────────────────────
+   APPROACH C: Current (linear count-up)
+   For comparison
+   ───────────────────────────────────────── */
+
+/* shared size utilities */
+.sz-lg{font-size:28px;}
+.sz-md{font-size:18px;}
+.sz-sm{font-size:13px;}
+.sz-xs{font-size:11px;}
+.warn{color:var(--warn);}
+.accent{color:var(--accent);}
+.accent2{color:var(--accent2);}
+.green{color:var(--green);}
+.muted{color:var(--muted);}
+
+/* ── live context mockup ── */
+.context-box{
+  background:rgba(4,3,12,.9);border:1px solid rgba(129,140,248,.2);border-radius:12px;
+  padding:14px 18px;display:flex;flex-direction:column;gap:8px;min-width:220px;
+}
+.ctx-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ctx-label{font-family:monospace;font-size:8px;color:var(--muted);letter-spacing:.08em;}
+.ctx-val{font-family:monospace;font-weight:700;}
+
+/* bar */
+.bar-track{height:4px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;flex:1;}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.22,1,.36,1);}
+</style>
+</head>
+<body>
+
+<h1>NUMBER ANIMATION — 三种方案对比</h1>
+<p class="sub">对比当前方式 vs 两种滚动效果 · 点击触发变化</p>
+
+<!-- ══ SECTION 1: Three approaches side by side ══ -->
+<div class="section">
+  <div class="section-title">▸ 单个数字变化效果对比</div>
+  <div class="demo-row">
+
+    <!-- A: Odometer -->
+    <div class="demo">
+      <div class="demo-label">A · 老虎机 (Odometer)</div>
+      <div id="odo-a" class="odometer sz-lg warn">
+        <!-- built by JS -->
+      </div>
+      <div class="demo-desc">每位数字独立滚动柱<br>像真实码表 / 老虎机</div>
+      <button class="trigger-btn" onclick="triggerOdo()">变化 →</button>
+    </div>
+
+    <!-- B: Vertical slide whole -->
+    <div class="demo">
+      <div class="demo-label">B · 整体上滑 (VSlide)</div>
+      <div class="vslide-wrap sz-lg warn" style="width:90px;text-align:center;" id="vslide-wrap">
+        <div class="vslide-inner visible" id="vslide-cur">$180</div>
+        <div class="vslide-inner in-from-below" id="vslide-next">$320</div>
+      </div>
+      <div class="demo-desc">旧值上滑消失<br>新值从下方滑入</div>
+      <button class="trigger-btn" onclick="triggerVslide()">变化 →</button>
+    </div>
+
+    <!-- C: Current linear counter -->
+    <div class="demo">
+      <div class="demo-label">C · 当前：线性计数</div>
+      <div id="linear-display" class="sz-lg warn" style="font-family:monospace;font-weight:700;">$180</div>
+      <div class="demo-desc">从旧值逐帧累加到新值<br>（现有 AnimatedNumber）</div>
+      <button class="trigger-btn" onclick="triggerLinear()">变化 →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ SECTION 2: In context (D+ALL mockup) ══ -->
+<div class="section">
+  <div class="section-title">▸ 在 D+ALL 界面里的实际效果（方案 B · 整体上滑）</div>
+  <div class="demo-row" style="align-items:stretch;">
+
+    <div class="context-box">
+      <!-- Chip ratio -->
+      <div class="ctx-row">
+        <span class="ctx-label accent2">OPP</span>
+        <div class="vslide-wrap" style="width:50px;" id="vs-opp-pct">
+          <div class="vslide-inner visible ctx-val accent2">64%</div>
+          <div class="vslide-inner in-from-below ctx-val accent2">36%</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-opp" style="width:64%;background:linear-gradient(90deg,var(--accent2),rgba(167,139,250,.4));"></div></div>
+        <div class="bar-track"><div class="bar-fill" id="bar-me" style="width:36%;background:linear-gradient(90deg,rgba(129,140,248,.4),var(--accent));"></div></div>
+        <div class="vslide-wrap" style="width:50px;text-align:right;" id="vs-me-pct">
+          <div class="vslide-inner visible ctx-val accent">36%</div>
+          <div class="vslide-inner in-from-below ctx-val accent">64%</div>
+        </div>
+        <span class="ctx-label accent">YOU</span>
+      </div>
+
+      <!-- POT / BETS / TOTAL -->
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:2px 0;"></div>
+      <div class="ctx-row">
+        <div style="text-align:center;flex:1;">
+          <div class="ctx-label muted" style="margin-bottom:2px;">POT</div>
+          <div class="vslide-wrap sz-md" style="width:60px;text-align:center;" id="vs-pot">
+            <div class="vslide-inner visible warn">$160</div>
+            <div class="vslide-inner in-from-below warn">$0</div>
+          </div>
+        </div>
+        <div style="width:1px;height:28px;background:rgba(255,255,255,.07);"></div>
+        <div style="text-align:center;flex:1;">
+          <div class="ctx-label muted" style="margin-bottom:2px;">BETS</div>
+          <div class="vslide-wrap sz-md" style="width:50px;text-align:center;" id="vs-bets">
+            <div class="vslide-inner visible accent2">+$80</div>
+            <div class="vslide-inner in-from-below accent2">+$240</div>
+          </div>
+        </div>
+        <div style="width:1px;height:28px;background:rgba(255,255,255,.07);"></div>
+        <div style="text-align:center;flex:1;">
+          <div class="ctx-label muted" style="margin-bottom:2px;">TOTAL</div>
+          <div class="vslide-wrap sz-md" style="width:60px;text-align:center;" id="vs-total">
+            <div class="vslide-inner visible warn">$240</div>
+            <div class="vslide-inner in-from-below warn">$240</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Win rate -->
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:2px 0;"></div>
+      <div class="ctx-row">
+        <span class="ctx-label">WIN</span>
+        <div class="bar-track" style="flex:1;">
+          <div class="bar-fill" id="bar-win" style="width:74%;background:linear-gradient(90deg,var(--green),rgba(74,222,128,.5));"></div>
+        </div>
+        <div class="vslide-wrap" style="width:38px;text-align:right;" id="vs-win">
+          <div class="vslide-inner visible green" style="font-family:monospace;font-size:12px;font-weight:700;">74%</div>
+          <div class="vslide-inner in-from-below green" style="font-family:monospace;font-size:12px;font-weight:700;">58%</div>
+        </div>
+      </div>
+
+      <!-- Chip counts -->
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:2px 0;"></div>
+      <div class="ctx-row">
+        <span class="ctx-label muted">OPP CHIPS</span>
+        <div class="vslide-wrap" style="width:50px;text-align:right;" id="vs-opp-chips">
+          <div class="vslide-inner visible ctx-val accent" style="font-size:13px;">$320</div>
+          <div class="vslide-inner in-from-below ctx-val accent" style="font-size:13px;">$180</div>
+        </div>
+      </div>
+      <div class="ctx-row">
+        <span class="ctx-label muted">MY CHIPS</span>
+        <div class="vslide-wrap" style="width:50px;text-align:right;" id="vs-my-chips">
+          <div class="vslide-inner visible ctx-val accent" style="font-size:13px;">$180</div>
+          <div class="vslide-inner in-from-below ctx-val accent" style="font-size:13px;">$320</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:8px;">
+      <button class="trigger-btn" onclick="triggerContext()" style="font-size:9px;padding:6px 16px;">模拟：赢得这手牌</button>
+      <div style="font-family:monospace;font-size:8px;color:rgba(139,92,246,.4);text-align:center;max-width:120px;line-height:1.6;">所有数字同时滚动更新<br>bar 也同步动画</div>
+    </div>
+
+  </div>
+</div>
+
+<div style="text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.35);margin-top:8px;line-height:2;">
+  推荐方案 B（整体上滑）— 实现简单，适合所有数字<br>
+  方案 A（Odometer）视觉更炫但实现复杂，适合 POT 主数字单独使用
+</div>
+
+<script>
+/* ── Odometer (A) ── */
+const odoValues = [180, 320, 45, 500, 73];
+let odoIdx = 0;
+
+function buildOdo(container, value, color) {
+  const s = String(value);
+  container.innerHTML = `<span class="odometer-prefix" style="color:${color}">$</span>`;
+  for (const ch of s) {
+    const digit = document.createElement('div');
+    digit.className = 'odometer-digit';
+    const tape = document.createElement('div');
+    tape.className = 'odometer-tape';
+    // put 0-9 digits in tape
+    for (let d = 9; d >= 0; d--) {
+      const span = document.createElement('span');
+      span.className = 'tape-char';
+      span.textContent = d;
+      span.style.color = color;
+      tape.appendChild(span);
+    }
+    digit.appendChild(tape);
+    container.appendChild(digit);
+    // set tape to show correct digit
+    const idx = 9 - parseInt(ch);
+    tape.style.transform = `translateY(${idx * 1.2}em)`;
+    tape.style.transition = 'none';
+  }
+}
+
+function setOdo(container, value, color) {
+  const s = String(value);
+  const digits = container.querySelectorAll('.odometer-digit');
+  // if digit count changed, rebuild
+  if (digits.length !== s.length) {
+    buildOdo(container, value, color);
+    return;
+  }
+  [...s].forEach((ch, i) => {
+    const tape = digits[i].querySelector('.odometer-tape');
+    const idx = 9 - parseInt(ch);
+    tape.style.transition = `transform .45s cubic-bezier(.22,1,.36,1)`;
+    tape.style.transitionDelay = `${i * 0.04}s`;
+    tape.style.transform = `translateY(${idx * 1.2}em)`;
+  });
+}
+
+buildOdo(document.getElementById('odo-a'), 180, 'var(--warn)');
+
+function triggerOdo() {
+  odoIdx = (odoIdx + 1) % odoValues.length;
+  setOdo(document.getElementById('odo-a'), odoValues[odoIdx], 'var(--warn)');
+}
+
+/* ── VSlide (B) ── */
+function vslide(wrapId, newVal) {
+  const wrap = document.getElementById(wrapId);
+  const cur = wrap.querySelector('.vslide-inner.visible');
+  const nxt = wrap.querySelector('.vslide-inner.in-from-below');
+  if (!cur || !nxt) return;
+  nxt.textContent = newVal;
+  nxt.classList.remove('in-from-below');
+  cur.classList.add('out-up');
+  void nxt.offsetWidth;
+  nxt.classList.add('visible');
+  setTimeout(() => {
+    cur.classList.remove('visible','out-up');
+    cur.classList.add('in-from-below');
+    cur.textContent = newVal;
+  }, 500);
+}
+
+const vslideVals = ['$320','$180','$500','$45','$230'];
+let vslideIdx = 0;
+function triggerVslide() {
+  vslideIdx = (vslideIdx + 1) % vslideVals.length;
+  vslide('vslide-wrap', vslideVals[vslideIdx]);
+  // also fix the inner IDs
+  const wrap = document.getElementById('vslide-wrap');
+  const [a,b] = wrap.querySelectorAll('.vslide-inner');
+}
+
+/* ── Linear counter (C) ── */
+let linearCurrent = 180;
+const linearTargets = [320, 45, 500, 73, 180];
+let linearIdx = 0;
+function triggerLinear() {
+  linearIdx = (linearIdx + 1) % linearTargets.length;
+  const target = linearTargets[linearIdx];
+  const from = linearCurrent;
+  const dur = Math.min(Math.abs(target - from) * 2.5, 600);
+  const start = performance.now();
+  const el = document.getElementById('linear-display');
+  function tick(now) {
+    const t = Math.min((now - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const cur = Math.round(from + (target - from) * ease);
+    el.textContent = '$' + cur;
+    if (t < 1) requestAnimationFrame(tick);
+    else linearCurrent = target;
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── Context demo ── */
+let ctxState = 0;
+const ctxStates = [
+  // [opp-pct, me-pct, pot, bets, total, win, opp-chips, my-chips, bar-opp, bar-me, bar-win]
+  ['64%','36%','$160','+$80','$240','74%','$320','$180', 64, 36, 74],
+  ['36%','64%','$0','+$0','$0','58%','$180','$320', 36, 64, 58],
+  ['58%','42%','$80','+$40','$120','62%','$290','$210', 58, 42, 62],
+];
+function triggerContext() {
+  ctxState = (ctxState + 1) % ctxStates.length;
+  const s = ctxStates[ctxState];
+  vslide('vs-opp-pct', s[0]);
+  vslide('vs-me-pct', s[1]);
+  vslide('vs-pot', s[2]);
+  vslide('vs-bets', s[3]);
+  vslide('vs-total', s[4]);
+  vslide('vs-win', s[5]);
+  vslide('vs-opp-chips', s[6]);
+  vslide('vs-my-chips', s[7]);
+  document.getElementById('bar-opp').style.width = s[8] + '%';
+  document.getElementById('bar-me').style.width = s[9] + '%';
+  document.getElementById('bar-win').style.width = s[10] + '%';
+}
+</script>
+</body>
+</html>

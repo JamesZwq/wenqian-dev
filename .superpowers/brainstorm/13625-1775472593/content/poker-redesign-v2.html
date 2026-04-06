@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker UI Redesign — In Your Style</title>
+<style>
+  :root {
+    --pixel-bg: #0c0a1d;
+    --pixel-bg-alt: #13112b;
+    --pixel-card-bg: rgba(22,18,52,0.92);
+    --pixel-border: rgba(139,92,246,0.25);
+    --pixel-text: #e8e5f5;
+    --pixel-muted: #8b8fa3;
+    --pixel-accent: #818cf8;
+    --pixel-accent-2: #a78bfa;
+    --pixel-warn: #fbbf24;
+    --pixel-glow: rgba(129,140,248,0.2);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--pixel-bg);
+    color: var(--pixel-text);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── Layout ── */
+  .page-title {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--pixel-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .column-label {
+    font-family: monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--pixel-muted);
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 4px 12px;
+    border: 1px solid var(--pixel-border);
+    border-radius: 6px;
+    display: inline-block;
+    width: 100%;
+  }
+
+  /* Glass card — matches your .glass-card */
+  .glass {
+    border-radius: 12px;
+    border: 1px solid var(--pixel-border);
+    background: var(--pixel-card-bg);
+    backdrop-filter: blur(12px);
+  }
+
+  /* ── Card component ── */
+  .card-face {
+    width: 38px; height: 54px;
+    border-radius: 6px;
+    border: 1.5px solid #e5e7eb;
+    background: white;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .card-face .rank-top {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 9px; font-weight: 700; line-height: 1;
+  }
+  .card-face .suit-center { font-size: 16px; }
+  .card-face .rank-bot {
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 9px; font-weight: 700; line-height: 1;
+    transform: rotate(180deg);
+  }
+  .card-face.small { width: 28px; height: 40px; }
+  .card-face.small .rank-top { font-size: 7px; }
+  .card-face.small .suit-center { font-size: 12px; }
+  .card-face.small .rank-bot { font-size: 7px; }
+
+  .card-back {
+    width: 38px; height: 54px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(129,140,248,0.4);
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-back::after {
+    content: '';
+    width: 60%; height: 60%;
+    border-radius: 3px;
+    border: 1px solid rgba(129,140,248,0.3);
+    background: rgba(99,102,241,0.15);
+  }
+  .card-back.small { width: 28px; height: 40px; }
+
+  /* highlight card */
+  .card-face.highlight {
+    border-color: var(--pixel-warn);
+    box-shadow: 0 0 10px rgba(251,191,36,0.5), 0 0 3px rgba(251,191,36,0.3);
+  }
+  .card-face.dimmed { opacity: 0.35; }
+
+  /* ── Chip badge ── */
+  .chip-badge {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pixel-accent);
+  }
+  .pot-badge {
+    font-family: monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--pixel-warn);
+  }
+
+  /* ── Dealer D ── */
+  .dealer-d {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--pixel-warn);
+    border: 2px solid #b45309;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 900; color: #78350f;
+    flex-shrink: 0;
+  }
+  .dealer-placeholder { width: 20px; height: 20px; }
+
+  /* ── Action buttons OLD ── */
+  .btn-row { display: flex; gap: 6px; }
+  .btn-old {
+    flex: 1;
+    border-radius: 10px;
+    padding: 8px 4px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid;
+    cursor: pointer;
+  }
+  .btn-fold-old { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.1); color: #f87171; }
+  .btn-check-old { border-color: rgba(129,140,248,0.4); background: rgba(22,18,52,0.92); color: var(--pixel-accent); }
+  .btn-raise-old { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.08); color: var(--pixel-warn); }
+
+  /* ── Action buttons NEW ── */
+  .btn-new {
+    flex: 1;
+    border-radius: 12px;
+    padding: 10px 6px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    border: 1px solid;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    letter-spacing: 0.05em;
+  }
+  .btn-fold-new {
+    border-color: rgba(239,68,68,0.55);
+    background: rgba(239,68,68,0.12);
+    color: #f87171;
+    transition: all 0.15s;
+  }
+  .btn-call-new {
+    border-color: rgba(167,139,250,0.7);
+    background: rgba(167,139,250,0.15);
+    color: var(--pixel-accent-2);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-call-new::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 12px;
+    border: 1px solid var(--pixel-accent-2);
+    animation: ripple-in 1.8s ease-in-out infinite;
+  }
+  @keyframes ripple-in {
+    0% { transform: scale(1.12); opacity: 0; }
+    40% { opacity: 0.5; }
+    100% { transform: scale(1.0); opacity: 0; }
+  }
+  .btn-raise-new {
+    border-color: rgba(251,191,36,0.55);
+    background: rgba(251,191,36,0.1);
+    color: var(--pixel-warn);
+  }
+  .btn-sub { font-size: 8px; opacity: 0.75; font-weight: 500; }
+
+  /* ── Turn indicator ── */
+  .turn-glow {
+    box-shadow: 0 0 0 2px rgba(129,140,248,0.4), 0 0 16px rgba(129,140,248,0.2);
+    border-color: rgba(129,140,248,0.6) !important;
+  }
+  .turn-indicator-bar {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--pixel-accent), transparent);
+    border-radius: 1px;
+    margin-bottom: 8px;
+    animation: pulse-bar 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-bar {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Table oval hint ── */
+  .table-center {
+    background: linear-gradient(180deg, rgba(99,102,241,0.06) 0%, rgba(16,185,129,0.08) 100%);
+    border: 1px solid var(--pixel-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .table-center::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, rgba(129,140,248,0.04), transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Phase badge ── */
+  .phase-badge {
+    font-family: monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--pixel-muted);
+    background: rgba(139,92,246,0.12);
+    border: 1px solid rgba(139,92,246,0.2);
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+
+  /* ── Last action pill ── */
+  .action-pill {
+    font-family: monospace;
+    font-size: 9px;
+    color: var(--pixel-muted);
+    background: rgba(255,255,255,0.04);
+    border-radius: 20px;
+    padding: 2px 10px;
+    border: 1px solid var(--pixel-border);
+  }
+
+  /* ── Bet chip ── */
+  .bet-chip {
+    font-family: monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--pixel-accent-2);
+    background: rgba(167,139,250,0.1);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 20px;
+    padding: 1px 7px;
+  }
+
+  /* ── Hand label ── */
+  .hand-label {
+    font-family: monospace;
+    font-size: 9px;
+    color: var(--pixel-accent);
+    margin-top: 4px;
+  }
+
+  /* ── Showdown banner ── */
+  .win-banner {
+    border-radius: 10px;
+    border: 1px solid rgba(34,197,94,0.5);
+    background: rgba(34,197,94,0.08);
+    padding: 10px 16px;
+    text-align: center;
+  }
+  .win-text { font-weight: 700; font-size: 18px; color: #4ade80; }
+  .win-sub { font-family: monospace; font-size: 10px; color: var(--pixel-muted); margin-top: 4px; }
+
+  /* ── Section label ── */
+  .slabel {
+    font-family: monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--pixel-muted);
+    margin-bottom: 8px;
+  }
+
+  /* divider */
+  hr { border: none; border-top: 1px solid var(--pixel-border); margin: 8px 0; }
+
+  /* ── Annotation ── */
+  .annotation {
+    position: absolute;
+    background: rgba(251,191,36,0.15);
+    border: 1px solid rgba(251,191,36,0.4);
+    color: var(--pixel-warn);
+    font-size: 9px;
+    font-family: monospace;
+    border-radius: 6px;
+    padding: 2px 7px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .compare-note {
+    font-family: monospace;
+    font-size: 10px;
+    color: var(--pixel-muted);
+    text-align: center;
+    margin-top: 24px;
+    padding: 12px;
+    border: 1px solid var(--pixel-border);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.8;
+  }
+  .compare-note strong { color: var(--pixel-accent); }
+</style>
+</head>
+<body>
+
+<div class="page-title">POKER UI — 现在 vs 改进后（在你的设计风格内）</div>
+
+<div class="compare-grid">
+
+  <!-- LEFT: CURRENT -->
+  <div>
+    <div class="column-label">▸ 现在</div>
+
+    <!-- Opponent area -->
+    <div class="glass" style="padding:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="dealer-placeholder"></div>
+          <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;">OPPONENT</span>
+        </div>
+        <span class="chip-badge">$320</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="card-back small"></div>
+        <div class="card-back small"></div>
+        <span class="bet-chip" style="margin-left:auto;">Bet: $40</span>
+      </div>
+    </div>
+
+    <!-- Community + Pot -->
+    <div class="glass table-center" style="margin-bottom:8px;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div class="card-face"><span class="rank-top" style="color:#ef4444">A</span><span class="suit-center" style="color:#ef4444">♥</span><span class="rank-bot" style="color:#ef4444">A</span></div>
+        <div class="card-face"><span class="rank-top" style="color:#ef4444">K</span><span class="suit-center" style="color:#ef4444">♦</span><span class="rank-bot" style="color:#ef4444">K</span></div>
+        <div class="card-face"><span class="rank-top" style="color:#1e293b">Q</span><span class="suit-center" style="color:#1e293b">♣</span><span class="rank-bot" style="color:#1e293b">Q</span></div>
+        <div class="card-back"></div>
+        <div class="card-back"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-family:monospace;font-size:11px;color:var(--pixel-muted);">POT</span>
+        <span class="pot-badge">$240</span>
+      </div>
+      <span class="action-pill">Opponent: RAISE to $40</span>
+    </div>
+
+    <!-- My area -->
+    <div class="glass" style="padding:12px;border-color:rgba(129,140,248,0.4);margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="dealer-d">D</div>
+          <span style="font-size:11px;font-weight:600;color:var(--pixel-accent);letter-spacing:0.08em;">YOU</span>
+        </div>
+        <span class="chip-badge">$180</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="card-face small"><span class="rank-top" style="color:#ef4444">A</span><span class="suit-center" style="color:#ef4444">♥</span><span class="rank-bot" style="color:#ef4444">A</span></div>
+        <div class="card-face small"><span class="rank-top" style="color:#ef4444">K</span><span class="suit-center" style="color:#ef4444">♦</span><span class="rank-bot" style="color:#ef4444">K</span></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-row">
+      <div class="btn-old btn-fold-old">FOLD</div>
+      <div class="btn-old btn-check-old">CALL<br><span style="font-size:8px;opacity:0.7;">$40</span></div>
+      <div class="btn-old btn-raise-old">RAISE</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: IMPROVED -->
+  <div>
+    <div class="column-label" style="color:var(--pixel-accent);border-color:rgba(129,140,248,0.4);">▸ 改进后（同一风格）</div>
+
+    <!-- Header bar: Hand + Phase + Equity btn -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-family:monospace;font-size:9px;color:var(--pixel-muted);">Hand #7 · Blinds 2/4</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="phase-badge">TURN</span>
+        <div style="width:18px;height:18px;border-radius:50%;border:1px solid var(--pixel-border);background:var(--pixel-card-bg);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8px;color:var(--pixel-muted);">?</div>
+      </div>
+    </div>
+
+    <!-- Opponent area — NOT my turn, no glow -->
+    <div class="glass" style="padding:12px;margin-bottom:8px;position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="dealer-placeholder"></div>
+          <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;">OPPONENT</span>
+          <!-- Bet inline instead of separate line -->
+          <span class="bet-chip">bet $40</span>
+        </div>
+        <span class="chip-badge">$320</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="card-back small"></div>
+        <div class="card-back small"></div>
+      </div>
+    </div>
+
+    <!-- Community + Pot — tighter, with phase flash hint -->
+    <div class="glass table-center" style="margin-bottom:8px;">
+      <div style="display:flex;gap:5px;align-items:center;">
+        <div class="card-face"><span class="rank-top" style="color:#ef4444">A</span><span class="suit-center" style="color:#ef4444">♥</span><span class="rank-bot" style="color:#ef4444">A</span></div>
+        <div class="card-face"><span class="rank-top" style="color:#ef4444">K</span><span class="suit-center" style="color:#ef4444">♦</span><span class="rank-bot" style="color:#ef4444">K</span></div>
+        <div class="card-face"><span class="rank-top" style="color:#1e293b">Q</span><span class="suit-center" style="color:#1e293b">♣</span><span class="rank-bot" style="color:#1e293b">Q</span></div>
+        <!-- Turn card — freshly dealt, subtle accent border -->
+        <div class="card-face" style="border-color:rgba(167,139,250,0.6);box-shadow:0 0 8px rgba(167,139,250,0.25);">
+          <span class="rank-top" style="color:#1e293b">J</span><span class="suit-center" style="color:#1e293b">♠</span><span class="rank-bot" style="color:#1e293b">J</span>
+        </div>
+        <div class="card-back"></div>
+      </div>
+      <!-- Pot split: actual pot + bets clearly labeled -->
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="text-align:center;">
+          <div style="font-family:monospace;font-size:8px;color:var(--pixel-muted);margin-bottom:1px;">POT</div>
+          <span class="pot-badge" style="font-size:14px;">$160</span>
+        </div>
+        <div style="width:1px;height:24px;background:var(--pixel-border);"></div>
+        <div style="text-align:center;">
+          <div style="font-family:monospace;font-size:8px;color:var(--pixel-muted);margin-bottom:1px;">BETS</div>
+          <span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--pixel-accent-2);">+$80</span>
+        </div>
+        <div style="width:1px;height:24px;background:var(--pixel-border);"></div>
+        <div style="text-align:center;">
+          <div style="font-family:monospace;font-size:8px;color:var(--pixel-muted);margin-bottom:1px;">TOTAL</div>
+          <span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--pixel-warn);">$240</span>
+        </div>
+      </div>
+      <span class="action-pill">Opponent: RAISE to $40</span>
+    </div>
+
+    <!-- My area — IS my turn, glow highlight -->
+    <div class="glass turn-glow" style="padding:12px;margin-bottom:8px;position:relative;">
+      <div class="turn-indicator-bar"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="dealer-d">D</div>
+          <span style="font-size:11px;font-weight:600;color:var(--pixel-accent);letter-spacing:0.08em;">YOU</span>
+          <span style="font-family:monospace;font-size:8px;color:var(--pixel-accent);background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.25);border-radius:4px;padding:1px 5px;">YOUR TURN</span>
+          <!-- Bet inline -->
+          <span class="bet-chip">bet $0</span>
+        </div>
+        <span class="chip-badge">$180</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="card-face small"><span class="rank-top" style="color:#ef4444">A</span><span class="suit-center" style="color:#ef4444">♥</span><span class="rank-bot" style="color:#ef4444">A</span></div>
+        <div class="card-face small"><span class="rank-top" style="color:#ef4444">K</span><span class="suit-center" style="color:#ef4444">♦</span><span class="rank-bot" style="color:#ef4444">K</span></div>
+      </div>
+    </div>
+
+    <!-- Actions — taller, clearer hierarchy -->
+    <div class="btn-row">
+      <div class="btn-new btn-fold-new">
+        FOLD
+      </div>
+      <div class="btn-new btn-call-new">
+        CALL
+        <span class="btn-sub">$40</span>
+      </div>
+      <div class="btn-new btn-raise-new">
+        RAISE
+        <span class="btn-sub">→</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Change summary -->
+<div class="compare-note">
+  <strong>改进点摘要</strong>（完全在你的设计语言内）<br>
+  1 · 我的回合时面板边框发光 + 顶部脉冲条 · 对手回合无高亮<br>
+  2 · Bet 金额内联显示（不换行），信息密度更高<br>
+  3 · POT / BETS / TOTAL 三列分拆，不再混淆<br>
+  4 · 最新发牌的社区牌有淡紫色边框+微发光<br>
+  5 · Action 按钮更高、CALL 有波纹动画<br>
+  6 · "YOUR TURN" 徽章明确标示<br>
+  7 · 各 bug 修复（equity 触摸、lastAction、pot 计算）
+</div>
+
+</body>
+</html>

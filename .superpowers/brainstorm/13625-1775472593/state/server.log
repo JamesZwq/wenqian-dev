@@ -1,0 +1,9 @@
+{"type":"server-started","port":56971,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:56971","screen_dir":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content","state_dir":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/state"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/design-direction.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/poker-redesign-v2.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/poker-v3.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/poker-versions.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/poker-d-info.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/poker-animations.html"}
+{"type":"screen-added","file":"/Users/zhangwenqian/my-web/.superpowers/brainstorm/13625-1775472593/content/number-roll.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,161 @@
+<h2>포커 게임 UI — 디자인 방향성 선택</h2>
+<p class="subtitle">3가지 방향 중 마음에 드는 분위기를 선택해주세요 (복수 선택 가능)</p>
+
+<div class="cards" data-multiselect>
+
+  <!-- Option A -->
+  <div class="card" data-choice="A" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a1628;padding:16px;min-height:220px;position:relative;overflow:hidden;">
+      <!-- Felt table -->
+      <div style="position:absolute;inset:12px;border-radius:50%/35%;background:radial-gradient(ellipse at center,#1a4a2e 60%,#0d3020);border:4px solid #8b6914;box-shadow:0 0 24px rgba(0,0,0,0.8)"></div>
+      <!-- Community cards -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);display:flex;gap:4px;">
+        <div style="width:26px;height:38px;background:white;border-radius:3px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e00;font-weight:bold;">A♥</div>
+        <div style="width:26px;height:38px;background:white;border-radius:3px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e00;font-weight:bold;">K♦</div>
+        <div style="width:26px;height:38px;background:white;border-radius:3px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:10px;color:#222;font-weight:bold;">Q♣</div>
+        <div style="width:26px;height:38px;background:linear-gradient(135deg,#1a237e,#283593);border-radius:3px;border:1px solid #3949ab"></div>
+        <div style="width:26px;height:38px;background:linear-gradient(135deg,#1a237e,#283593);border-radius:3px;border:1px solid #3949ab"></div>
+      </div>
+      <!-- Pot chips -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,10%);background:#8b6914;color:#ffd700;font-size:9px;font-weight:bold;padding:2px 8px;border-radius:10px;white-space:nowrap;">POT $240</div>
+      <!-- My cards -->
+      <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;">
+        <div style="width:32px;height:46px;background:white;border-radius:4px;border:2px solid #ffd700;display:flex;align-items:center;justify-content:center;font-size:11px;color:#e00;font-weight:bold;box-shadow:0 0 8px rgba(255,215,0,0.6);">A♥</div>
+        <div style="width:32px;height:46px;background:white;border-radius:4px;border:2px solid #ffd700;display:flex;align-items:center;justify-content:center;font-size:11px;color:#e00;font-weight:bold;box-shadow:0 0 8px rgba(255,215,0,0.6);">K♦</div>
+      </div>
+      <!-- Opponent area -->
+      <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;">
+        <div style="width:26px;height:38px;background:linear-gradient(135deg,#1a237e,#283593);border-radius:3px;border:1px solid #3949ab"></div>
+        <div style="width:26px;height:38px;background:linear-gradient(135deg,#1a237e,#283593);border-radius:3px;border:1px solid #3949ab"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — 카지노 리얼리즘</h3>
+      <p>타원형 펠트 테이블, 나무 레일, 진짜 카지노 칩 시각화. 포커 앱 느낌.</p>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="background:#1a4a2e;color:#4ade80;padding:2px 7px;border-radius:10px;font-size:11px;">진짜 포커 테이블</span>
+        <span style="background:#1a237e;color:#90caf9;padding:2px 7px;border-radius:10px;font-size:11px;">칩 스택 시각화</span>
+        <span style="background:#4a1a00;color:#ffb74d;padding:2px 7px;border-radius:10px;font-size:11px;">골드 액센트</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="B" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#090912;padding:16px;min-height:220px;position:relative;overflow:hidden;">
+      <!-- Glow bg -->
+      <div style="position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);width:160px;height:80px;background:rgba(99,102,241,0.15);border-radius:50%;filter:blur(20px)"></div>
+      <!-- Opponent -->
+      <div style="position:absolute;top:16px;left:16px;right:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px;">
+        <div style="display:flex;justify-content:between;align-items:center;margin-bottom:6px;">
+          <span style="color:#a78bfa;font-size:9px;font-weight:bold;letter-spacing:1px;">OPPONENT</span>
+          <span style="color:#818cf8;font-size:9px;float:right;">$320</span>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <div style="width:24px;height:34px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:3px;border:1px solid rgba(129,140,248,0.3)"></div>
+          <div style="width:24px;height:34px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:3px;border:1px solid rgba(129,140,248,0.3)"></div>
+        </div>
+      </div>
+      <!-- Community + pot -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+        <div style="display:flex;gap:3px;margin-bottom:6px;">
+          <div style="width:28px;height:40px;background:white;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6366f1;font-weight:bold;">A</div>
+          <div style="width:28px;height:40px;background:white;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ef4444;font-weight:bold;">K</div>
+          <div style="width:28px;height:40px;background:white;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6366f1;font-weight:bold;">Q</div>
+          <div style="width:28px;height:40px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:3px;"></div>
+          <div style="width:28px;height:40px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:3px;"></div>
+        </div>
+        <div style="color:#fbbf24;font-size:11px;font-weight:bold;letter-spacing:1px;">$240</div>
+      </div>
+      <!-- My cards -->
+      <div style="position:absolute;bottom:50px;left:16px;right:16px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:8px;">
+        <div style="display:flex;gap:4px;margin-bottom:4px;">
+          <div style="width:28px;height:40px;background:white;border-radius:3px;border:1px solid #6366f1;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ef4444;font-weight:bold;">A♥</div>
+          <div style="width:28px;height:40px;background:white;border-radius:3px;border:1px solid #6366f1;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ef4444;font-weight:bold;">K♦</div>
+        </div>
+      </div>
+      <!-- Action buttons -->
+      <div style="position:absolute;bottom:8px;left:16px;right:16px;display:flex;gap:4px;">
+        <div style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:4px;text-align:center;font-size:8px;color:#f87171;font-weight:bold;">FOLD</div>
+        <div style="flex:1;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.5);border-radius:8px;padding:4px;text-align:center;font-size:8px;color:#818cf8;font-weight:bold;">CALL $40</div>
+        <div style="flex:1;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:8px;padding:4px;text-align:center;font-size:8px;color:#fbbf24;font-weight:bold;">RAISE</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 프리미엄 다크 UI</h3>
+      <p>현재 사이트 컬러 팔레트(인디고/바이올렛) 유지. 더 세련되고 대담한 레이아웃.</p>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="background:#1e1b4b;color:#a5b4fc;padding:2px 7px;border-radius:10px;font-size:11px;">기존 팔레트 활용</span>
+        <span style="background:#292524;color:#d6d3d1;padding:2px 7px;border-radius:10px;font-size:11px;">글래스모피즘</span>
+        <span style="background:#422006;color:#fde68a;padding:2px 7px;border-radius:10px;font-size:11px;">네온 강조</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="C" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f1117;padding:16px;min-height:220px;position:relative;overflow:hidden;">
+      <!-- Minimal oval table suggestion -->
+      <div style="position:absolute;top:10px;left:10px;right:10px;bottom:10px;border:2px solid rgba(74,222,128,0.2);border-radius:50%/35%;"></div>
+      <!-- Opponent zone -->
+      <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center;">
+        <div style="color:#6b7280;font-size:8px;margin-bottom:4px;">OPPONENT · $320</div>
+        <div style="display:flex;gap:3px;justify-content:center;">
+          <div style="width:20px;height:28px;background:#1c1f2e;border:1px solid #2d3149;border-radius:2px;"></div>
+          <div style="width:20px;height:28px;background:#1c1f2e;border:1px solid #2d3149;border-radius:2px;"></div>
+        </div>
+      </div>
+      <!-- Community center -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+        <div style="display:flex;gap:3px;margin-bottom:4px;justify-content:center;">
+          <div style="width:22px;height:32px;background:white;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:bold;">A</div>
+          <div style="width:22px;height:32px;background:white;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:bold;">K</div>
+          <div style="width:22px;height:32px;background:white;border-radius:3px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#111;font-weight:bold;">Q</div>
+          <div style="width:22px;height:32px;background:#1c1f2e;border:1px dashed #3d4166;border-radius:3px;"></div>
+          <div style="width:22px;height:32px;background:#1c1f2e;border:1px dashed #3d4166;border-radius:3px;"></div>
+        </div>
+        <div style="color:#4ade80;font-size:10px;font-weight:bold;">POT $240</div>
+      </div>
+      <!-- My zone -->
+      <div style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);text-align:center;">
+        <div style="display:flex;gap:4px;justify-content:center;margin-bottom:4px;">
+          <div style="width:26px;height:36px;background:white;border:2px solid #4ade80;border-radius:3px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:bold;box-shadow:0 0 6px rgba(74,222,128,0.4)">A</div>
+          <div style="width:26px;height:36px;background:white;border:2px solid #4ade80;border-radius:3px;font-size:10px;display:flex;align-items:center;justify-content:center;color:#ef4444;font-weight:bold;box-shadow:0 0 6px rgba(74,222,128,0.4)">K</div>
+        </div>
+        <div style="color:#4ade80;font-size:8px;">YOU · $180</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — 포커 그린 + 미니멀</h3>
+      <p>타원형 테이블 윤곽선, 초록 액센트로 포커 감성. 깔끔하고 읽기 쉬운 정보 구조.</p>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="background:#052e16;color:#4ade80;padding:2px 7px;border-radius:10px;font-size:11px;">포커 그린</span>
+        <span style="background:#111827;color:#9ca3af;padding:2px 7px;border-radius:10px;font-size:11px;">미니멀</span>
+        <span style="background:#1c1917;color:#d6d3d1;padding:2px 7px;border-radius:10px;font-size:11px;">명확한 구조</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <div class="label">현재 확인된 버그 목록 (모두 수정 예정)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;font-size:12px;">
+      <div style="color:#f87171;font-weight:bold;margin-bottom:4px;">🐛 터치 equity 오버레이</div>
+      <div style="color:#9ca3af;">포인터 이동 시 즉시 닫힘</div>
+    </div>
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;font-size:12px;">
+      <div style="color:#f87171;font-weight:bold;margin-bottom:4px;">🐛 POT 표시 혼동</div>
+      <div style="color:#9ca3af;">bet 포함 합산이지만 POT라 표기</div>
+    </div>
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;font-size:12px;">
+      <div style="color:#f87171;font-weight:bold;margin-bottom:4px;">🐛 내 턴 표시 불명확</div>
+      <div style="color:#9ca3af;">시각적 강조 없음</div>
+    </div>
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;font-size:12px;">
+      <div style="color:#f87171;font-weight:bold;margin-bottom:4px;">🐛 lastActionLabel 패턴</div>
+      <div style="color:#9ca3af;">useCallback이 함수로 호출됨</div>
+    </div>
+  </div>
+</div>

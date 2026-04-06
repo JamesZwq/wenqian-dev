@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Versions</title>
+<style>
+:root {
+  --bg:#0c0a1d; --bg-alt:#13112b;
+  --card-bg:rgba(22,18,52,0.92);
+  --border:rgba(139,92,246,0.25);
+  --text:#e8e5f5; --muted:#8b8fa3;
+  --accent:#818cf8; --accent2:#a78bfa;
+  --warn:#fbbf24; --glow:rgba(129,140,248,0.2);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#080614;
+  color:var(--text);
+  font-family:ui-sans-serif,system-ui,sans-serif;
+  padding:28px 20px 60px;
+}
+h1{
+  text-align:center;font-family:monospace;font-size:11px;
+  letter-spacing:.15em;color:var(--muted);margin-bottom:28px;
+}
+.grid{
+  display:flex;gap:20px;justify-content:center;
+  flex-wrap:wrap;align-items:flex-start;
+}
+
+/* ── Phone shell ── */
+.phone{
+  width:310px;
+  background:var(--bg);
+  border-radius:26px;
+  border:1.5px solid var(--border);
+  overflow:hidden;
+  box-shadow:0 0 50px rgba(129,140,248,0.07),0 24px 64px rgba(0,0,0,0.55);
+}
+.version-label{
+  text-align:center;font-family:monospace;font-size:10px;
+  letter-spacing:.1em;margin-bottom:10px;
+  color:var(--muted);
+}
+.version-label strong{color:var(--accent);}
+
+/* ── shared atoms ── */
+.glass{
+  border-radius:12px;border:1px solid var(--border);
+  background:var(--card-bg);padding:11px 13px;
+}
+.mono{font-family:monospace;}
+.muted{color:var(--muted);}
+.accent{color:var(--accent);}
+.accent2{color:var(--accent2);}
+.warn{color:var(--warn);}
+
+/* card face */
+.cf{
+  width:32px;height:46px;border-radius:5px;
+  background:white;border:1.5px solid #d1d5db;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  position:relative;flex-shrink:0;
+}
+.cf .rt{position:absolute;top:2px;left:3px;font-size:7px;font-weight:800;line-height:1;}
+.cf .sb{font-size:13px;}
+.cf .rb{position:absolute;bottom:2px;right:3px;font-size:7px;font-weight:800;transform:rotate(180deg);}
+.cf.sm{width:24px;height:35px;}
+.cf.sm .rt,.cf.sm .rb{font-size:6px;}
+.cf.sm .sb{font-size:10px;}
+.cf.lg{width:42px;height:60px;}
+.cf.lg .rt,.cf.lg .rb{font-size:9px;}
+.cf.lg .sb{font-size:18px;}
+.cf.back{background:linear-gradient(135deg,#1e1b4b,#312e81);border-color:rgba(129,140,248,.3);}
+.cf.back::after{content:'';width:52%;height:52%;border-radius:2px;border:1px solid rgba(129,140,248,.2);background:rgba(99,102,241,.1);}
+.cf.hl{border-color:var(--warn);box-shadow:0 0 8px rgba(251,191,36,.45);}
+.cf.fresh{border-color:rgba(167,139,250,.65);box-shadow:0 0 7px rgba(167,139,250,.28);}
+.cf.dim{opacity:.28;}
+
+/* dealer */
+.dd{width:17px;height:17px;border-radius:50%;background:var(--warn);border:1.5px solid #92400e;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#78350f;flex-shrink:0;}
+.ds{width:17px;height:17px;flex-shrink:0;}
+
+/* pill */
+.pill{font-family:monospace;font-size:8px;font-weight:700;color:var(--accent2);background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:20px;padding:1px 6px;}
+.pill.green{color:#4ade80;background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.25);}
+.pill.red{color:#f87171;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);}
+.pill.turn{color:var(--accent);background:rgba(129,140,248,.1);border-color:rgba(129,140,248,.25);}
+
+/* pulse bar */
+.pb{height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);border-radius:1px;margin-bottom:8px;animation:pb 1.6s ease-in-out infinite;}
+@keyframes pb{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* glow border */
+.my-turn{border-color:rgba(129,140,248,.55)!important;box-shadow:0 0 0 1px rgba(129,140,248,.1),0 0 18px rgba(129,140,248,.08);}
+
+/* pot */
+.pot-num{font-family:monospace;font-weight:700;color:var(--warn);}
+
+/* action buttons */
+.abar{display:flex;gap:5px;}
+.btn{
+  flex:1;border-radius:11px;padding:10px 4px;
+  font-family:monospace;font-size:9px;font-weight:700;
+  letter-spacing:.04em;border:1px solid;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  text-align:center;
+}
+.btn-sub{font-size:7px;opacity:.7;font-weight:500;}
+.fold{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1);color:#f87171;}
+.call{border-color:rgba(167,139,250,.6);background:rgba(167,139,250,.13);color:var(--accent2);position:relative;overflow:hidden;}
+.call::before{content:'';position:absolute;inset:0;border-radius:11px;border:1px solid var(--accent2);animation:rip 1.8s ease-in-out infinite;}
+@keyframes rip{0%{transform:scale(1.1);opacity:0}40%{opacity:.4}100%{transform:scale(1);opacity:0}}
+.raise{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08);color:var(--warn);}
+.allin{border-color:rgba(239,68,68,.7);background:rgba(239,68,68,.18);color:#fca5a5;font-size:8px;}
+
+/* table variants */
+.table-emerald{
+  border-radius:12px;border:1px solid rgba(16,185,129,.2);
+  background:linear-gradient(160deg,rgba(6,78,59,.2),rgba(4,47,46,.25));
+  padding:13px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  position:relative;overflow:hidden;
+}
+.table-emerald::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(16,185,129,.05),transparent 70%);}
+
+.table-glow{
+  border-radius:12px;border:1px solid var(--border);
+  background:var(--card-bg);
+  padding:13px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  position:relative;overflow:hidden;
+}
+.table-glow::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(129,140,248,.08),transparent 70%);}
+
+.table-dark{
+  border-radius:12px;border:1px solid rgba(255,255,255,.06);
+  background:rgba(5,4,14,.6);
+  padding:13px;display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+
+/* phase tag */
+.phase{font-family:monospace;font-size:8px;letter-spacing:.1em;color:var(--muted);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:5px;padding:2px 7px;}
+
+/* last action */
+.la{font-family:monospace;font-size:8px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:2px 9px;}
+
+/* avatar circle (version C) */
+.avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--bg-alt);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:var(--muted);flex-shrink:0;
+}
+.avatar.me{border-color:rgba(129,140,248,.5);color:var(--accent);}
+
+/* chip stack visual (version D) */
+.chip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:monospace;font-size:11px;font-weight:700;
+}
+.chip-icon{
+  width:14px;height:14px;border-radius:50%;
+  border:1.5px solid;display:flex;align-items:center;justify-content:center;
+  font-size:5px;font-weight:900;
+}
+
+/* separator */
+.sep{width:1px;height:18px;background:rgba(255,255,255,.08);}
+
+/* waiting */
+.waiting{text-align:center;font-family:monospace;font-size:8px;color:var(--muted);padding:6px 0;}
+
+.page-chrome{padding:12px 12px 8px;}
+.page-chrome-title{font-size:18px;font-weight:700;color:var(--accent);text-align:center;letter-spacing:-.01em;}
+.page-chrome-sub{font-family:monospace;font-size:8px;color:var(--muted);text-align:center;margin-top:2px;}
+.page-chrome-meta{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.game-body{padding:0 10px 14px;display:flex;flex-direction:column;gap:7px;}
+.back-btn{font-family:monospace;font-size:9px;color:var(--accent);border:1px solid var(--border);background:var(--card-bg);border-radius:7px;padding:3px 8px;}
+
+/* next hand button */
+.next-btn{display:inline-block;border-radius:9px;border:1px solid var(--accent);background:var(--accent);padding:7px 20px;font-family:monospace;font-size:9px;font-weight:700;color:var(--bg);cursor:pointer;margin-top:8px;}
+.win-shimmer{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(74,222,128,.06),transparent);animation:sh 2.2s ease-in-out infinite;}
+@keyframes sh{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+</style>
+</head>
+<body>
+
+<h1>POKER UI — 4 个版本对比 · 选你最喜欢的</h1>
+
+<div class="grid">
+
+<!-- ═══════════════════ VERSION A ═══════════════════ -->
+<div>
+<div class="version-label"><strong>A</strong> · 绿色桌面 + 紧凑信息</div>
+<div class="phone">
+  <div class="page-chrome">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P</div>
+    </div>
+    <div class="page-chrome-title">TEXAS HOLD'EM</div>
+    <div class="page-chrome-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+    <div class="page-chrome-meta">
+      <span class="mono muted" style="font-size:8px;">Hand #7 · Blinds 2/4</span>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="phase">TURN</span>
+        <div style="width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:var(--card-bg);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--muted);">?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-body">
+    <!-- Opponent -->
+    <div class="glass">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="ds"></div>
+          <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.07em;">OPPONENT</span>
+          <span class="pill">bet $40</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$320</span>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <div class="cf sm back"></div>
+        <div class="cf sm back"></div>
+      </div>
+    </div>
+
+    <!-- Table: emerald green -->
+    <div class="table-emerald">
+      <div style="display:flex;gap:4px;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;margin-bottom:1px;">POT</div><span class="pot-num" style="font-size:16px;">$160</span></div>
+        <div class="sep"></div>
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;margin-bottom:1px;">BETS</div><span class="mono accent2" style="font-size:12px;font-weight:700;">+$80</span></div>
+        <div class="sep"></div>
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;margin-bottom:1px;">TOTAL</div><span class="mono warn" style="font-size:12px;font-weight:700;">$240</span></div>
+      </div>
+      <span class="la">Opp: RAISE to $40</span>
+    </div>
+
+    <!-- Me — my turn -->
+    <div class="glass my-turn">
+      <div class="pb"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="dd">D</div>
+          <span class="mono accent" style="font-size:10px;font-weight:600;letter-spacing:.07em;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+          <span class="pill">bet $0</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$180</span>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <div class="cf sm"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf sm"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+      </div>
+    </div>
+
+    <div class="abar">
+      <div class="btn fold">FOLD</div>
+      <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ═══════════════════ VERSION B ═══════════════════ -->
+<div>
+<div class="version-label"><strong>B</strong> · 大牌 + 居中 Pot 为主角</div>
+<div class="phone">
+  <div class="page-chrome">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P · Hand #7</div>
+    </div>
+    <div class="page-chrome-title">TEXAS HOLD'EM</div>
+    <div class="page-chrome-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+  </div>
+
+  <div class="game-body">
+    <!-- Opponent: avatar + chip + cards horizontal -->
+    <div class="glass" style="display:flex;align-items:center;gap:10px;">
+      <div class="ds"></div>
+      <div style="flex:1;">
+        <div class="mono muted" style="font-size:8px;letter-spacing:.07em;margin-bottom:5px;">OPPONENT</div>
+        <div style="display:flex;gap:4px;">
+          <div class="cf back"></div>
+          <div class="cf back"></div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mono muted" style="font-size:7px;margin-bottom:2px;">CHIPS</div>
+        <div class="mono warn" style="font-size:15px;font-weight:700;">$320</div>
+        <div class="pill" style="margin-top:3px;">bet $40</div>
+      </div>
+    </div>
+
+    <!-- Table: HUGE pot as hero, cards below -->
+    <div class="table-glow">
+      <!-- Phase + last action -->
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="phase">TURN</span>
+        <span class="la">Opp: RAISE $40</span>
+      </div>
+      <!-- Community: bigger cards -->
+      <div style="display:flex;gap:5px;">
+        <div class="cf lg"><span class="rt" style="color:#ef4444;font-size:9px;">A</span><span class="sb" style="color:#ef4444;font-size:18px;">♥</span><span class="rb" style="color:#ef4444;font-size:9px;">A</span></div>
+        <div class="cf lg"><span class="rt" style="color:#ef4444;font-size:9px;">K</span><span class="sb" style="color:#ef4444;font-size:18px;">♦</span><span class="rb" style="color:#ef4444;font-size:9px;">K</span></div>
+        <div class="cf lg"><span class="rt" style="color:#1e293b;font-size:9px;">Q</span><span class="sb" style="color:#1e293b;font-size:18px;">♣</span><span class="rb" style="color:#1e293b;font-size:9px;">Q</span></div>
+        <div class="cf lg fresh"><span class="rt" style="color:#1e293b;font-size:9px;">J</span><span class="sb" style="color:#1e293b;font-size:18px;">♠</span><span class="rb" style="color:#1e293b;font-size:9px;">J</span></div>
+        <div class="cf lg back"></div>
+      </div>
+      <!-- Pot HUGE and centered -->
+      <div style="text-align:center;padding:2px 0;">
+        <div class="mono muted" style="font-size:8px;letter-spacing:.15em;margin-bottom:2px;">TOTAL POT</div>
+        <div class="pot-num" style="font-size:28px;">$240</div>
+      </div>
+    </div>
+
+    <!-- Me: avatar + chip + cards -->
+    <div class="glass my-turn" style="display:flex;align-items:center;gap:10px;">
+      <div class="dd">D</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
+          <span class="mono accent" style="font-size:8px;letter-spacing:.07em;font-weight:600;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+          <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="mono muted" style="font-size:7px;margin-bottom:2px;">CHIPS</div>
+        <div class="mono warn" style="font-size:15px;font-weight:700;">$180</div>
+        <div class="pill" style="margin-top:3px;">bet $0</div>
+      </div>
+    </div>
+
+    <!-- Actions: 4 buttons -->
+    <div class="abar">
+      <div class="btn fold">FOLD</div>
+      <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+      <div class="btn allin">ALL<br>IN</div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ═══════════════════ VERSION C ═══════════════════ -->
+<div>
+<div class="version-label"><strong>C</strong> · 极简 · 去掉冗余信息</div>
+<div class="phone">
+  <div class="page-chrome">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="phase">TURN</span>
+        <div style="font-family:monospace;font-size:8px;color:var(--muted);">H#7 · 2/4</div>
+      </div>
+    </div>
+    <div class="page-chrome-title">TEXAS HOLD'EM</div>
+    <div class="page-chrome-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+  </div>
+
+  <div class="game-body">
+
+    <!-- Opponent: single tight row -->
+    <div class="glass" style="display:flex;align-items:center;gap:8px;padding:9px 12px;">
+      <div class="ds"></div>
+      <div style="display:flex;gap:3px;">
+        <div class="cf sm back"></div>
+        <div class="cf sm back"></div>
+      </div>
+      <div class="pill" style="margin-left:2px;">$40</div>
+      <div style="flex:1;"></div>
+      <span class="mono" style="font-size:13px;font-weight:700;color:var(--accent);">$320</span>
+    </div>
+
+    <!-- Table: dark + minimal -->
+    <div class="table-dark">
+      <div style="display:flex;gap:4px;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <!-- Just the total, clean -->
+      <div style="display:flex;align-items:baseline;gap:6px;">
+        <span class="mono muted" style="font-size:9px;letter-spacing:.1em;">POT</span>
+        <span class="pot-num" style="font-size:22px;">$240</span>
+      </div>
+    </div>
+
+    <!-- Me: single tight row + my turn indicator on left border -->
+    <div class="glass my-turn" style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-left:3px solid var(--accent);">
+      <div class="dd">D</div>
+      <div style="display:flex;gap:3px;">
+        <div class="cf sm"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf sm"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+      </div>
+      <span class="pill turn">YOUR TURN</span>
+      <div style="flex:1;"></div>
+      <span class="mono" style="font-size:13px;font-weight:700;color:var(--accent);">$180</span>
+    </div>
+
+    <!-- Action: just 3 big buttons, tall -->
+    <div class="abar" style="gap:6px;">
+      <div class="btn fold" style="padding:14px 4px;">FOLD</div>
+      <div class="btn call" style="padding:14px 4px;">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise" style="padding:14px 4px;">RAISE<span class="btn-sub">→</span></div>
+    </div>
+
+    <!-- Equity hint, very subtle -->
+    <div class="waiting">Hold <span class="accent">SPACE</span> for hand analysis</div>
+  </div>
+</div>
+</div>
+
+
+<!-- ═══════════════════ VERSION D ═══════════════════ -->
+<div>
+<div class="version-label"><strong>D</strong> · 全黑暗 · 强 glow 氛围</div>
+<div class="phone" style="border-color:rgba(129,140,248,.35);box-shadow:0 0 60px rgba(129,140,248,.12),0 24px 64px rgba(0,0,0,.6);">
+  <div style="background:rgba(4,3,12,.95);padding:12px 12px 8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn" style="background:rgba(4,3,12,.95);">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P Connected</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.05em;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TEXAS HOLD'EM</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);margin-top:2px;">> Heads-up No-Limit Poker | P2P Connected</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+      <span class="mono muted" style="font-size:8px;">Hand #7 · Blinds 2/4</span>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="phase" style="background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.3);">TURN</span>
+        <div style="width:16px;height:16px;border-radius:50%;border:1px solid rgba(129,140,248,.3);background:rgba(4,3,12,.95);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--muted);">?</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:0 10px 14px;display:flex;flex-direction:column;gap:7px;">
+
+    <!-- Opponent: dark glass -->
+    <div style="border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(8,6,20,.8);padding:10px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="ds"></div>
+          <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:rgba(232,229,245,.6);">OPPONENT</span>
+          <span class="pill">bet $40</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$320</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm back" style="border-color:rgba(129,140,248,.2);"></div>
+        <div class="cf sm back" style="border-color:rgba(129,140,248,.2);"></div>
+      </div>
+    </div>
+
+    <!-- Table: deep black with glow -->
+    <div style="border-radius:12px;border:1px solid rgba(129,140,248,.2);background:rgba(4,3,12,.9);padding:13px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:40px;background:radial-gradient(ellipse,rgba(129,140,248,.12),transparent);filter:blur(8px);"></div>
+      <div style="display:flex;gap:4px;position:relative;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh" style="border-color:var(--accent2);box-shadow:0 0 10px rgba(167,139,250,.35);"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;position:relative;">
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;">POT</div><span class="pot-num" style="font-size:17px;">$160</span></div>
+        <div class="sep"></div>
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;">BETS</div><span class="mono accent2" style="font-size:13px;font-weight:700;">+$80</span></div>
+        <div class="sep"></div>
+        <div style="text-align:center;"><div class="mono muted" style="font-size:7px;">TOTAL</div><span class="mono warn" style="font-size:13px;font-weight:700;">$240</span></div>
+      </div>
+      <span class="la" style="font-size:8px;">Opp: RAISE to $40</span>
+    </div>
+
+    <!-- Me: glowing border -->
+    <div style="border-radius:12px;border:1px solid rgba(129,140,248,.6);background:rgba(8,6,20,.85);box-shadow:0 0 24px rgba(129,140,248,.1);padding:10px 12px;">
+      <div class="pb"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="dd">D</div>
+          <span class="mono accent" style="font-size:10px;font-weight:600;letter-spacing:.07em;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+          <span class="pill">bet $0</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$180</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm" style="box-shadow:0 0 6px rgba(129,140,248,.15);"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf sm" style="box-shadow:0 0 6px rgba(129,140,248,.15);"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="abar">
+      <div class="btn fold" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.14);">FOLD</div>
+      <div class="btn call" style="border-color:rgba(167,139,250,.7);background:rgba(167,139,250,.18);">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise" style="border-color:rgba(251,191,36,.6);background:rgba(251,191,36,.12);">RAISE<span class="btn-sub">→</span></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+</div><!-- /grid -->
+
+<div style="text-align:center;font-family:monospace;font-size:9px;color:var(--muted);margin-top:32px;line-height:2;">
+  A · 绿色桌布 + 紧凑三列 POT &nbsp;|&nbsp; B · 大社区牌 + POT 超大居中 &nbsp;|&nbsp; C · 极简单行 + 左边框标示回合 &nbsp;|&nbsp; D · 全深黑 + 渐变标题 + 更强 glow<br>
+  所有版本使用完全相同的代码结构和 CSS 变量，只需调整样式
+</div>
+
+</body>
+</html>

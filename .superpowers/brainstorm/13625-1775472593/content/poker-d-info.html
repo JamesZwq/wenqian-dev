@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker D — 信息密度方案</title>
+<style>
+:root {
+  --bg:#0c0a1d; --bg2:rgba(4,3,12,.95); --bg3:rgba(8,6,20,.85);
+  --card-bg:rgba(22,18,52,0.92);
+  --border:rgba(139,92,246,0.25);
+  --border-hi:rgba(129,140,248,.6);
+  --text:#e8e5f5; --muted:#8b8fa3;
+  --accent:#818cf8; --accent2:#a78bfa;
+  --warn:#fbbf24; --green:#4ade80;
+  --red:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#060410;color:var(--text);
+  font-family:ui-sans-serif,system-ui,sans-serif;
+  padding:24px 16px 60px;
+}
+h1{text-align:center;font-family:monospace;font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:6px;}
+.subtitle{text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.6);margin-bottom:28px;}
+
+.grid{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;align-items:flex-start;}
+
+.phone{width:310px;background:var(--bg2);border-radius:26px;border:1.5px solid rgba(129,140,248,.35);overflow:hidden;box-shadow:0 0 60px rgba(129,140,248,.12),0 24px 64px rgba(0,0,0,.6);}
+.vlabel{text-align:center;font-family:monospace;font-size:10px;letter-spacing:.1em;margin-bottom:10px;color:var(--muted);}
+.vlabel strong{color:var(--accent);}
+
+/* shared */
+.mono{font-family:monospace;}
+.muted{color:var(--muted);}
+.glass-d{border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(8,6,20,.8);padding:10px 12px;}
+.glass-me{border-radius:12px;border:1px solid var(--border-hi);background:var(--bg3);box-shadow:0 0 24px rgba(129,140,248,.1);padding:10px 12px;}
+.glass-table{border-radius:12px;border:1px solid rgba(129,140,248,.2);background:rgba(4,3,12,.9);padding:12px;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;overflow:hidden;}
+.glass-table::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:180px;height:50px;background:radial-gradient(ellipse,rgba(129,140,248,.1),transparent);filter:blur(10px);}
+.game-body{padding:0 10px 14px;display:flex;flex-direction:column;gap:7px;}
+.page-top{background:var(--bg2);padding:12px 12px 8px;}
+.page-title{font-size:18px;font-weight:700;letter-spacing:.04em;text-align:center;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.page-sub{font-family:monospace;font-size:8px;color:var(--muted);text-align:center;margin-top:2px;}
+.top-meta{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.back-btn{font-family:monospace;font-size:9px;color:var(--accent);border:1px solid var(--border);background:rgba(4,3,12,.9);border-radius:7px;padding:3px 8px;}
+.phase{font-family:monospace;font-size:8px;letter-spacing:.1em;color:var(--muted);background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:5px;padding:2px 7px;}
+
+/* cards */
+.cf{width:32px;height:46px;border-radius:5px;background:white;border:1.5px solid #d1d5db;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+.cf .rt{position:absolute;top:2px;left:3px;font-size:7px;font-weight:800;line-height:1;}
+.cf .sb{font-size:13px;}
+.cf .rb{position:absolute;bottom:2px;right:3px;font-size:7px;font-weight:800;transform:rotate(180deg);}
+.cf.sm{width:24px;height:35px;}.cf.sm .rt,.cf.sm .rb{font-size:6px;}.cf.sm .sb{font-size:10px;}
+.cf.back{background:linear-gradient(135deg,#1e1b4b,#312e81);border-color:rgba(129,140,248,.3);}
+.cf.back::after{content:'';width:52%;height:52%;border-radius:2px;border:1px solid rgba(129,140,248,.2);background:rgba(99,102,241,.1);}
+.cf.fresh{border-color:var(--accent2);box-shadow:0 0 10px rgba(167,139,250,.35);}
+.cf.hl{border-color:var(--warn);box-shadow:0 0 8px rgba(251,191,36,.45);}
+.cf.glow-me{box-shadow:0 0 6px rgba(129,140,248,.2);}
+
+.dd{width:17px;height:17px;border-radius:50%;background:var(--warn);border:1.5px solid #92400e;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:900;color:#78350f;flex-shrink:0;}
+.ds{width:17px;height:17px;flex-shrink:0;}
+.pill{font-family:monospace;font-size:8px;font-weight:700;color:var(--accent2);background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:20px;padding:1px 6px;}
+.pill.turn{color:var(--accent);background:rgba(129,140,248,.1);border-color:rgba(129,140,248,.25);}
+.pb{height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);border-radius:1px;margin-bottom:8px;animation:pb 1.6s ease-in-out infinite;}
+@keyframes pb{0%,100%{opacity:.3}50%{opacity:1}}
+.player-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.pl{display:flex;align-items:center;gap:6px;}
+.sep{width:1px;height:16px;background:rgba(255,255,255,.08);}
+
+/* actions */
+.abar{display:flex;gap:5px;}
+.btn{flex:1;border-radius:11px;padding:10px 4px;font-family:monospace;font-size:9px;font-weight:700;letter-spacing:.04em;border:1px solid;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.btn-sub{font-size:7px;opacity:.7;font-weight:500;}
+.fold{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.14);color:var(--red);}
+.call{border-color:rgba(167,139,250,.7);background:rgba(167,139,250,.18);color:var(--accent2);position:relative;overflow:hidden;}
+.call::before{content:'';position:absolute;inset:0;border-radius:11px;border:1px solid var(--accent2);animation:rip 1.8s ease-in-out infinite;}
+@keyframes rip{0%{transform:scale(1.1);opacity:0}40%{opacity:.4}100%{transform:scale(1);opacity:0}}
+.raise{border-color:rgba(251,191,36,.6);background:rgba(251,191,36,.12);color:var(--warn);}
+
+/* ── INFO ELEMENTS ── */
+
+/* equity bar (thin, always visible) */
+.eq-bar-wrap{display:flex;align-items:center;gap:5px;}
+.eq-label{font-family:monospace;font-size:7px;color:var(--muted);width:22px;text-align:right;}
+.eq-track{flex:1;height:5px;border-radius:3px;background:rgba(239,68,68,.25);overflow:hidden;position:relative;}
+.eq-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--green),rgba(74,222,128,.6));border-radius:3px;}
+.eq-pct{font-family:monospace;font-size:8px;font-weight:700;width:28px;}
+
+/* hand strength badge */
+.hand-str{
+  display:inline-flex;align-items:center;gap:4px;margin-top:5px;
+  font-family:monospace;font-size:8px;font-weight:700;
+  color:var(--accent2);
+  background:rgba(167,139,250,.08);
+  border:1px solid rgba(167,139,250,.2);
+  border-radius:6px;padding:2px 7px;
+}
+
+/* pot odds badge */
+.pot-odds{
+  font-family:monospace;font-size:8px;font-weight:700;
+  padding:2px 7px;border-radius:6px;
+  border:1px solid rgba(74,222,128,.25);
+  background:rgba(74,222,128,.07);
+  color:var(--green);
+}
+.pot-odds.bad{border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.07);color:var(--red);}
+
+/* SPR */
+.spr-badge{font-family:monospace;font-size:8px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:6px;padding:2px 7px;}
+
+/* action log */
+.action-log{
+  border-radius:8px;border:1px solid rgba(255,255,255,.06);
+  background:rgba(4,3,12,.6);padding:6px 9px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.log-row{display:flex;align-items:center;gap:5px;font-family:monospace;font-size:8px;color:var(--muted);}
+.log-row .who{font-weight:700;width:22px;}
+.log-row .who.me{color:var(--accent);}
+.log-row .who.opp{color:var(--accent2);}
+.log-row .action{color:var(--text);}
+.log-row .amt{color:var(--warn);margin-left:auto;}
+.log-dot{width:4px;height:4px;border-radius:50%;background:var(--border);flex-shrink:0;}
+
+/* chip progress bar */
+.chip-bar-wrap{display:flex;flex-direction:column;gap:3px;width:100%;}
+.chip-bar-track{width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;}
+.chip-bar-me{position:absolute;right:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(129,140,248,.4),var(--accent));border-radius:2px;}
+.chip-bar-opp{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent2),rgba(167,139,250,.4));border-radius:2px;}
+.chip-bar-labels{display:flex;justify-content:space-between;font-family:monospace;font-size:7px;color:var(--muted);}
+
+/* blind progress */
+.blind-progress{
+  display:flex;align-items:center;gap:6px;
+  font-family:monospace;font-size:8px;color:var(--muted);
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(4,3,12,.5);
+  border-radius:7px;padding:4px 9px;
+}
+.blind-track{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;}
+.blind-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(251,191,36,.4),var(--warn));width:40%;}
+.blind-num{color:var(--warn);font-weight:700;}
+
+/* info row inside table */
+.info-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;}
+.la{font-family:monospace;font-size:8px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:2px 9px;}
+
+.pot-row{display:flex;align-items:center;gap:9px;}
+.pot-block{text-align:center;}
+.pot-block .l{font-family:monospace;font-size:7px;color:var(--muted);}
+.pot-block .v{font-family:monospace;font-weight:700;}
+</style>
+</head>
+<body>
+
+<h1>VERSION D — 信息密度方案对比</h1>
+<p class="subtitle">三种加信息的思路，可以混搭 · 基础 D 风格不变</p>
+
+<div class="grid">
+
+<!-- ═══ D+1: 胜率条 + 手牌强度 + 赔率 ═══ -->
+<div>
+<div class="vlabel"><strong>D+1</strong> · 胜率 + 手牌强度 + 底池赔率</div>
+<div class="phone">
+  <div class="page-top">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P Connected</div>
+    </div>
+    <div class="page-title">TEXAS HOLD'EM</div>
+    <div class="page-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+    <div class="top-meta">
+      <span class="mono muted" style="font-size:8px;">Hand #7 · Blinds 2/4</span>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="phase">TURN</span>
+        <div style="width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:rgba(4,3,12,.9);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--muted);">?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-body">
+
+    <!-- Opponent -->
+    <div class="glass-d">
+      <div class="player-row">
+        <div class="pl"><div class="ds"></div><span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:rgba(232,229,245,.6);">OPPONENT</span><span class="pill">bet $40</span></div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$320</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm back"></div>
+        <div class="cf sm back"></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="glass-table">
+      <div style="display:flex;gap:4px;position:relative;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <div class="pot-row">
+        <div class="pot-block"><div class="l">POT</div><div class="v" style="font-size:16px;color:var(--warn);">$240</div></div>
+        <div class="sep"></div>
+        <!-- 赔率 badge，嵌在桌面 -->
+        <div style="text-align:center;">
+          <div class="l mono muted">POT ODDS</div>
+          <div class="pot-odds" style="margin-top:2px;">25% · 好赔率</div>
+        </div>
+        <div class="sep"></div>
+        <div class="pot-block"><div class="l">SPR</div><div class="v" style="font-size:12px;color:var(--muted);">2.4</div></div>
+      </div>
+      <span class="la">Opp: RAISE to $40</span>
+    </div>
+
+    <!-- Me -->
+    <div class="glass-me">
+      <div class="pb"></div>
+      <div class="player-row">
+        <div class="pl">
+          <div class="dd">D</div>
+          <span class="mono accent" style="font-size:10px;font-weight:600;letter-spacing:.07em;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+          <span class="pill">bet $0</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$180</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;gap:4px;">
+          <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+          <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        </div>
+        <!-- 手牌强度 badge -->
+        <div class="hand-str">TOP TWO PAIR</div>
+      </div>
+      <!-- 胜率条 -->
+      <div class="eq-bar-wrap" style="margin-top:7px;">
+        <span class="eq-label mono muted">WIN</span>
+        <div class="eq-track">
+          <div class="eq-fill" style="width:74%"></div>
+        </div>
+        <span class="eq-pct mono" style="color:var(--green);">74%</span>
+      </div>
+    </div>
+
+    <div class="abar">
+      <div class="btn fold">FOLD</div>
+      <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ═══ D+2: 行动记录 + 筹码进度条 ═══ -->
+<div>
+<div class="vlabel"><strong>D+2</strong> · 行动日志 + 筹码比例条</div>
+<div class="phone">
+  <div class="page-top">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P Connected</div>
+    </div>
+    <div class="page-title">TEXAS HOLD'EM</div>
+    <div class="page-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+    <div class="top-meta">
+      <span class="mono muted" style="font-size:8px;">Hand #7 · Blinds 2/4</span>
+      <span class="phase">TURN</span>
+    </div>
+
+    <!-- 筹码比例条 -->
+    <div class="chip-bar-wrap" style="margin-top:8px;">
+      <div class="chip-bar-labels">
+        <span style="color:var(--accent2);">OPP $320 (64%)</span>
+        <span style="color:var(--accent);">YOU $180 (36%)</span>
+      </div>
+      <div class="chip-bar-track">
+        <div class="chip-bar-opp" style="width:64%"></div>
+        <div class="chip-bar-me" style="width:36%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-body">
+    <!-- Opponent -->
+    <div class="glass-d">
+      <div class="player-row">
+        <div class="pl"><div class="ds"></div><span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:rgba(232,229,245,.6);">OPPONENT</span><span class="pill">bet $40</span></div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$320</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm back"></div>
+        <div class="cf sm back"></div>
+      </div>
+    </div>
+
+    <!-- Table + action log 合并 -->
+    <div class="glass-table">
+      <div style="display:flex;gap:4px;position:relative;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <div class="pot-row">
+        <div class="pot-block"><div class="l mono muted">POT</div><div class="v warn" style="font-size:18px;">$240</div></div>
+      </div>
+
+      <!-- 本局行动日志 -->
+      <div class="action-log" style="width:100%;">
+        <div class="log-row"><span class="who opp">OPP</span><div class="log-dot"></div><span class="action">BLIND</span><span class="amt">$4</span></div>
+        <div class="log-row"><span class="who me">YOU</span><div class="log-dot"></div><span class="action">BLIND</span><span class="amt">$2</span></div>
+        <div class="log-row"><span class="who me">YOU</span><div class="log-dot"></div><span class="action">RAISE</span><span class="amt">$12</span></div>
+        <div class="log-row"><span class="who opp">OPP</span><div class="log-dot"></div><span class="action">CALL</span><span class="amt">$12</span></div>
+        <div class="log-row" style="opacity:.5;"><span class="mono muted" style="font-size:7px;margin-left:2px;">─── TURN ───</span></div>
+        <div class="log-row"><span class="who opp">OPP</span><div class="log-dot"></div><span class="action">RAISE</span><span class="amt">$40</span></div>
+        <div class="log-row"><span class="who me">YOU</span><div class="log-dot" style="background:var(--accent);"></div><span class="action mono accent">to act…</span></div>
+      </div>
+    </div>
+
+    <!-- Me -->
+    <div class="glass-me">
+      <div class="pb"></div>
+      <div class="player-row">
+        <div class="pl">
+          <div class="dd">D</div>
+          <span class="mono accent" style="font-size:10px;font-weight:600;letter-spacing:.07em;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$180</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+      </div>
+    </div>
+
+    <div class="abar">
+      <div class="btn fold">FOLD</div>
+      <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ═══ D+3: 全合并（以上都加上）═══ -->
+<div>
+<div class="vlabel"><strong>D+ALL</strong> · 全部信息合并（最密集）</div>
+<div class="phone">
+  <div class="page-top">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="back-btn">← BACK</div>
+      <div style="font-family:monospace;font-size:8px;color:var(--muted);">P2P Connected</div>
+    </div>
+    <div class="page-title">TEXAS HOLD'EM</div>
+    <div class="page-sub">> Heads-up No-Limit Poker | P2P Connected</div>
+    <div class="top-meta">
+      <span class="mono muted" style="font-size:8px;">Hand #7 · Blinds 2/4</span>
+      <div style="display:flex;gap:5px;align-items:center;">
+        <span class="phase">TURN</span>
+        <div style="width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:rgba(4,3,12,.9);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:7px;color:var(--muted);">?</div>
+      </div>
+    </div>
+    <!-- 筹码条 -->
+    <div class="chip-bar-wrap" style="margin-top:7px;">
+      <div class="chip-bar-labels">
+        <span style="color:var(--accent2);">OPP 64%</span>
+        <span style="color:var(--accent);">YOU 36%</span>
+      </div>
+      <div class="chip-bar-track"><div class="chip-bar-opp" style="width:64%"></div><div class="chip-bar-me" style="width:36%"></div></div>
+    </div>
+    <!-- 盲注进度 -->
+    <div class="blind-progress" style="margin-top:6px;">
+      <span>盲注</span>
+      <span class="blind-num">2/4</span>
+      <div class="blind-track"><div class="blind-fill"></div></div>
+      <span>3手后 → <span class="blind-num">4/8</span></span>
+    </div>
+  </div>
+
+  <div class="game-body">
+    <!-- Opponent -->
+    <div class="glass-d">
+      <div class="player-row">
+        <div class="pl"><div class="ds"></div><span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;color:rgba(232,229,245,.6);">OPPONENT</span><span class="pill">bet $40</span></div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$320</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <div class="cf sm back"></div><div class="cf sm back"></div>
+      </div>
+    </div>
+
+    <!-- Table: cards + pot + odds + log -->
+    <div class="glass-table">
+      <div style="display:flex;gap:4px;position:relative;">
+        <div class="cf"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+        <div class="cf"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        <div class="cf"><span class="rt" style="color:#1e293b">Q</span><span class="sb" style="color:#1e293b">♣</span><span class="rb" style="color:#1e293b">Q</span></div>
+        <div class="cf fresh"><span class="rt" style="color:#1e293b">J</span><span class="sb" style="color:#1e293b">♠</span><span class="rb" style="color:#1e293b">J</span></div>
+        <div class="cf back"></div>
+      </div>
+      <div class="pot-row">
+        <div class="pot-block"><div class="l mono muted">POT</div><div class="v warn" style="font-size:15px;">$160</div></div>
+        <div class="sep"></div>
+        <div class="pot-block"><div class="l mono muted">BETS</div><div class="v accent2" style="font-size:12px;">+$80</div></div>
+        <div class="sep"></div>
+        <div class="pot-block"><div class="l mono muted">TOTAL</div><div class="v warn" style="font-size:12px;">$240</div></div>
+        <div class="sep"></div>
+        <div class="pot-block"><div class="l mono muted">SPR</div><div class="v muted" style="font-size:12px;">2.4</div></div>
+      </div>
+      <!-- 底池赔率 -->
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="mono muted" style="font-size:7px;">赔率</span>
+        <div class="pot-odds">25% · 好赔率</div>
+        <span class="la">Opp: RAISE $40</span>
+      </div>
+      <!-- 行动日志 mini -->
+      <div class="action-log" style="width:100%;">
+        <div class="log-row"><span class="who me">YOU</span><div class="log-dot"></div><span class="action">RAISE</span><span class="amt">$12</span></div>
+        <div class="log-row"><span class="who opp">OPP</span><div class="log-dot"></div><span class="action">CALL</span><span class="amt">$12</span></div>
+        <div class="log-row"><span class="who opp">OPP</span><div class="log-dot"></div><span class="action">RAISE</span><span class="amt">$40</span></div>
+        <div class="log-row"><span class="who me">YOU</span><div class="log-dot" style="background:var(--accent);animation:pb 1s infinite;"></div><span class="mono accent" style="font-size:8px;">to act…</span></div>
+      </div>
+    </div>
+
+    <!-- Me: glow + equity + hand str -->
+    <div class="glass-me">
+      <div class="pb"></div>
+      <div class="player-row">
+        <div class="pl">
+          <div class="dd">D</div>
+          <span class="mono accent" style="font-size:10px;font-weight:600;letter-spacing:.07em;">YOU</span>
+          <span class="pill turn">YOUR TURN</span>
+          <span class="pill">$0</span>
+        </div>
+        <span class="mono warn" style="font-size:12px;font-weight:700;">$180</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;gap:4px;">
+          <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">A</span><span class="sb" style="color:#ef4444">♥</span><span class="rb" style="color:#ef4444">A</span></div>
+          <div class="cf sm glow-me"><span class="rt" style="color:#ef4444">K</span><span class="sb" style="color:#ef4444">♦</span><span class="rb" style="color:#ef4444">K</span></div>
+        </div>
+        <div class="hand-str">TOP TWO PAIR</div>
+      </div>
+      <!-- 胜率条 -->
+      <div class="eq-bar-wrap" style="margin-top:6px;">
+        <span class="eq-label mono muted">WIN</span>
+        <div class="eq-track"><div class="eq-fill" style="width:74%"></div></div>
+        <span class="eq-pct mono" style="color:var(--green);font-weight:700;">74%</span>
+      </div>
+    </div>
+
+    <div class="abar">
+      <div class="btn fold">FOLD</div>
+      <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+      <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div><!-- /grid -->
+
+<div style="text-align:center;font-family:monospace;font-size:9px;color:rgba(139,92,246,.5);margin-top:36px;line-height:2.2;">
+  D+1 · 实时胜率条 + 当前手牌强度 + 底池赔率 + SPR<br>
+  D+2 · 筹码比例进度条 + 完整行动日志<br>
+  D+ALL · 全部合并，最密集 — 可以根据你喜好选择性去掉某些元素<br>
+  <span style="color:rgba(129,140,248,.4);">以上信息都是根据现有代码中已有的数据计算，不需要额外后端</span>
+</div>
+
+</body>
+</html>

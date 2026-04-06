@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker V3</title>
+<style>
+  :root {
+    --bg:     #0c0a1d;
+    --bg-alt: #13112b;
+    --card-bg: rgba(22,18,52,0.92);
+    --border: rgba(139,92,246,0.25);
+    --text:   #e8e5f5;
+    --muted:  #8b8fa3;
+    --accent: #818cf8;
+    --accent2:#a78bfa;
+    --warn:   #fbbf24;
+    --glow:   rgba(129,140,248,0.2);
+    --green:  rgba(16,185,129,0.15);
+    --green-border: rgba(16,185,129,0.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:ui-sans-serif,system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+
+  /* ── Phone frame ── */
+  .phone{
+    width:360px;
+    background:var(--bg);
+    border-radius:28px;
+    border:1.5px solid var(--border);
+    overflow:hidden;
+    box-shadow:0 0 60px rgba(129,140,248,0.08), 0 20px 60px rgba(0,0,0,0.5);
+    position:relative;
+  }
+
+  /* ── Page chrome ── */
+  .page-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px 10px;
+  }
+  .back-btn{
+    font-family:monospace;font-size:10px;font-weight:600;
+    color:var(--accent);
+    border:1px solid var(--border);
+    background:var(--card-bg);
+    border-radius:8px;
+    padding:4px 10px;
+    letter-spacing:0.05em;
+  }
+  .page-title-row{
+    text-align:center;
+    padding:0 16px 12px;
+  }
+  .page-title-row h1{
+    font-size:20px;font-weight:700;letter-spacing:-0.02em;
+    color:var(--accent);
+  }
+  .page-title-row p{
+    font-family:monospace;font-size:9px;color:var(--muted);margin-top:2px;
+  }
+
+  /* ── Game body ── */
+  .game-body{ padding:0 12px 16px;display:flex;flex-direction:column;gap:8px; }
+
+  /* ── Glass panel ── */
+  .panel{
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:var(--card-bg);
+    backdrop-filter:blur(12px);
+    padding:12px 14px;
+  }
+  .panel.my-turn{
+    border-color:rgba(129,140,248,0.55);
+    box-shadow:0 0 0 1px rgba(129,140,248,0.15), 0 0 20px rgba(129,140,248,0.1);
+  }
+
+  /* ── Player row ── */
+  .player-row{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .player-left{display:flex;align-items:center;gap:7px;}
+  .player-name{font-size:11px;font-weight:600;letter-spacing:0.07em;}
+  .you-name{color:var(--accent);}
+  .dealer-chip{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--warn);border:2px solid #92400e;
+    display:flex;align-items:center;justify-content:center;
+    font-size:7px;font-weight:900;color:#78350f;flex-shrink:0;
+  }
+  .dealer-space{width:18px;height:18px;flex-shrink:0;}
+  .chip-count{font-family:monospace;font-size:13px;font-weight:700;color:var(--accent);}
+
+  /* ── Cards row ── */
+  .cards-row{display:flex;align-items:center;gap:6px;}
+
+  /* ── Card ── */
+  .c{
+    width:34px;height:48px;border-radius:5px;
+    background:white;border:1.5px solid #e5e7eb;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    position:relative;flex-shrink:0;
+  }
+  .c .r{position:absolute;font-size:8px;font-weight:800;line-height:1;}
+  .c .r.tl{top:2px;left:3px;}
+  .c .r.br{bottom:2px;right:3px;transform:rotate(180deg);}
+  .c .s{font-size:14px;}
+  .c.sm{width:26px;height:37px;}
+  .c.sm .r{font-size:7px;}
+  .c.sm .s{font-size:11px;}
+  .c.back{
+    background:linear-gradient(135deg,#1e1b4b,#312e81);
+    border-color:rgba(129,140,248,0.35);
+  }
+  .c.back::after{
+    content:'';width:55%;height:55%;border-radius:3px;
+    border:1px solid rgba(129,140,248,0.25);
+    background:rgba(99,102,241,0.12);
+  }
+  .c.fresh{
+    border-color:rgba(167,139,250,0.7);
+    box-shadow:0 0 8px rgba(167,139,250,0.3);
+  }
+  .c.hl{
+    border-color:var(--warn);
+    box-shadow:0 0 10px rgba(251,191,36,0.5);
+  }
+  .c.dim{opacity:0.3;}
+
+  /* ── Bet pill ── */
+  .bet-pill{
+    font-family:monospace;font-size:8px;font-weight:700;
+    color:var(--accent2);
+    background:rgba(167,139,250,0.1);
+    border:1px solid rgba(167,139,250,0.28);
+    border-radius:20px;padding:1px 7px;
+    margin-left:auto;
+  }
+
+  /* ── Turn badge ── */
+  .turn-badge{
+    font-family:monospace;font-size:8px;font-weight:700;
+    color:var(--accent);
+    background:rgba(129,140,248,0.1);
+    border:1px solid rgba(129,140,248,0.25);
+    border-radius:4px;padding:1px 5px;
+    letter-spacing:0.05em;
+  }
+  .turn-pulse{
+    height:2px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    border-radius:1px;margin-bottom:10px;
+    animation:pb 1.6s ease-in-out infinite;
+  }
+  @keyframes pb{0%,100%{opacity:.3}50%{opacity:1}}
+
+  /* ── Hand label ── */
+  .hand-label{
+    font-family:monospace;font-size:9px;color:var(--accent);
+    margin-top:6px;
+  }
+
+  /* ── Table (emerald green, matches your existing code) ── */
+  .table-center{
+    border-radius:14px;
+    border:1px solid var(--green-border);
+    background:linear-gradient(180deg,rgba(6,78,59,0.18) 0%,rgba(4,47,46,0.22) 100%);
+    padding:14px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    position:relative;overflow:hidden;
+  }
+  .table-center::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse at 50% 40%,rgba(16,185,129,0.06),transparent 70%);
+    pointer-events:none;
+  }
+
+  /* ── Pot display ── */
+  .pot-row{display:flex;align-items:center;gap:6px;}
+  .pot-label{font-family:monospace;font-size:9px;color:var(--muted);letter-spacing:0.1em;}
+  .pot-num{font-family:monospace;font-size:20px;font-weight:700;color:var(--warn);}
+  .pot-divider{width:1px;height:20px;background:rgba(255,255,255,0.1);}
+  .side-stack{text-align:center;}
+  .side-label{font-family:monospace;font-size:8px;color:var(--muted);margin-bottom:1px;}
+  .side-num{font-family:monospace;font-size:13px;font-weight:700;color:var(--accent2);}
+
+  /* ── Phase + action row ── */
+  .meta-row{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;
+  }
+  .phase-badge{
+    font-family:monospace;font-size:8px;letter-spacing:0.1em;
+    color:var(--muted);
+    background:rgba(139,92,246,0.1);
+    border:1px solid rgba(139,92,246,0.2);
+    border-radius:5px;padding:2px 7px;
+  }
+  .last-action{
+    font-family:monospace;font-size:8px;color:var(--muted);
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--border);
+    border-radius:20px;padding:2px 9px;
+  }
+
+  /* ── Header meta ── */
+  .header-meta{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 12px 6px;
+  }
+  .hand-info{font-family:monospace;font-size:9px;color:var(--muted);}
+  .equity-btn{
+    width:20px;height:20px;border-radius:50%;
+    border:1px solid var(--border);background:var(--card-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-family:monospace;font-size:8px;font-weight:700;color:var(--muted);
+    cursor:pointer;
+  }
+
+  /* ── Action bar ── */
+  .action-bar{display:flex;gap:6px;}
+  .btn{
+    flex:1;border-radius:12px;
+    padding:11px 6px;
+    font-family:monospace;font-size:10px;font-weight:700;
+    letter-spacing:0.04em;
+    border:1px solid;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .btn-sub{font-size:8px;opacity:0.7;font-weight:500;}
+  .fold{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.1);color:#f87171;}
+  .call{
+    border-color:rgba(167,139,250,0.6);background:rgba(167,139,250,0.14);
+    color:var(--accent2);position:relative;overflow:hidden;
+  }
+  .call::before{
+    content:'';position:absolute;inset:0;border-radius:12px;
+    border:1px solid var(--accent2);
+    animation:rip 1.8s ease-in-out infinite;
+  }
+  @keyframes rip{0%{transform:scale(1.1);opacity:0}40%{opacity:.45}100%{transform:scale(1);opacity:0}}
+  .raise{border-color:rgba(251,191,36,0.5);background:rgba(251,191,36,0.09);color:var(--warn);}
+
+  /* ── Waiting ── */
+  .waiting{
+    text-align:center;padding:8px 0;
+    font-family:monospace;font-size:9px;color:var(--muted);
+  }
+  .dot-pulse::after{
+    content:'...';
+    animation:dots 1.4s steps(4,end) infinite;
+  }
+  @keyframes dots{
+    0%,100%{content:''}
+    25%{content:'.'}
+    50%{content:'..'}
+    75%{content:'...'}
+  }
+
+  /* ── Exit button ── */
+  .exit-btn{
+    display:block;
+    margin:0 auto;
+    font-family:monospace;font-size:9px;font-weight:600;
+    color:var(--muted);
+    border:1px solid var(--border);background:var(--card-bg);
+    border-radius:8px;padding:5px 14px;
+    cursor:pointer;
+  }
+
+  /* annotation overlays */
+  .ann{
+    position:fixed;
+    background:rgba(251,191,36,0.12);
+    border:1px solid rgba(251,191,36,0.35);
+    color:var(--warn);font-size:9px;font-family:monospace;
+    border-radius:6px;padding:3px 8px;pointer-events:none;
+    max-width:140px;line-height:1.4;
+  }
+</style>
+</head>
+<body>
+
+<div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;justify-content:center;">
+
+  <!-- ── MY TURN state ── -->
+  <div>
+    <div style="font-family:monospace;font-size:10px;color:#8b8fa3;text-align:center;margin-bottom:10px;letter-spacing:0.1em;">我的回合</div>
+    <div class="phone">
+      <!-- Back + Share -->
+      <div class="page-header">
+        <div class="back-btn">← BACK</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--muted);">P2P Connected</div>
+        <div style="width:32px;height:20px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);"></div>
+      </div>
+
+      <!-- Title -->
+      <div class="page-title-row">
+        <h1>TEXAS HOLD'EM</h1>
+        <p>> Heads-up No-Limit Poker | P2P Connected</p>
+      </div>
+
+      <!-- Hand meta -->
+      <div class="header-meta">
+        <span class="hand-info">Hand #7 · Blinds 2/4</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="phase-badge">TURN</span>
+          <div class="equity-btn">?</div>
+        </div>
+      </div>
+
+      <div class="game-body">
+
+        <!-- Opponent -->
+        <div class="panel">
+          <div class="player-row">
+            <div class="player-left">
+              <div class="dealer-space"></div>
+              <span class="player-name">OPPONENT</span>
+              <span class="bet-pill">bet $40</span>
+            </div>
+            <span class="chip-count">$320</span>
+          </div>
+          <div class="cards-row">
+            <div class="c sm back"></div>
+            <div class="c sm back"></div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-center">
+          <div class="cards-row">
+            <div class="c"><span class="r tl" style="color:#ef4444">A</span><span class="s" style="color:#ef4444">♥</span><span class="r br" style="color:#ef4444">A</span></div>
+            <div class="c"><span class="r tl" style="color:#ef4444">K</span><span class="s" style="color:#ef4444">♦</span><span class="r br" style="color:#ef4444">K</span></div>
+            <div class="c"><span class="r tl" style="color:#1e293b">Q</span><span class="s" style="color:#1e293b">♣</span><span class="r br" style="color:#1e293b">Q</span></div>
+            <div class="c fresh"><span class="r tl" style="color:#1e293b">J</span><span class="s" style="color:#1e293b">♠</span><span class="r br" style="color:#1e293b">J</span></div>
+            <div class="c back"></div>
+          </div>
+          <div class="pot-row">
+            <span class="pot-label">POT</span>
+            <span class="pot-num">$160</span>
+            <div class="pot-divider"></div>
+            <div class="side-stack">
+              <div class="side-label">BETS</div>
+              <div class="side-num">+$80</div>
+            </div>
+            <div class="pot-divider"></div>
+            <div class="side-stack">
+              <div class="side-label">TOTAL</div>
+              <div class="side-num" style="color:var(--warn);">$240</div>
+            </div>
+          </div>
+          <span class="last-action">Opponent: RAISE to $40</span>
+        </div>
+
+        <!-- Me — my turn -->
+        <div class="panel my-turn">
+          <div class="turn-pulse"></div>
+          <div class="player-row">
+            <div class="player-left">
+              <div class="dealer-chip">D</div>
+              <span class="player-name you-name">YOU</span>
+              <span class="turn-badge">YOUR TURN</span>
+              <span class="bet-pill">bet $0</span>
+            </div>
+            <span class="chip-count">$180</span>
+          </div>
+          <div class="cards-row">
+            <div class="c sm"><span class="r tl" style="color:#ef4444">A</span><span class="s" style="color:#ef4444">♥</span><span class="r br" style="color:#ef4444">A</span></div>
+            <div class="c sm"><span class="r tl" style="color:#ef4444">K</span><span class="s" style="color:#ef4444">♦</span><span class="r br" style="color:#ef4444">K</span></div>
+          </div>
+        </div>
+
+        <!-- Action bar -->
+        <div class="action-bar">
+          <div class="btn fold">FOLD</div>
+          <div class="btn call">CALL<span class="btn-sub">$40</span></div>
+          <div class="btn raise">RAISE<span class="btn-sub">→</span></div>
+        </div>
+
+        <!-- Exit -->
+        <div class="exit-btn" style="text-align:center;margin-top:4px;">MENU</div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHOWDOWN state ── -->
+  <div>
+    <div style="font-family:monospace;font-size:10px;color:#8b8fa3;text-align:center;margin-bottom:10px;letter-spacing:0.1em;">摊牌 — 赢了</div>
+    <div class="phone">
+      <div class="page-header">
+        <div class="back-btn">← BACK</div>
+        <div style="font-family:monospace;font-size:9px;color:var(--muted);">P2P Connected</div>
+        <div style="width:32px;height:20px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);"></div>
+      </div>
+      <div class="page-title-row">
+        <h1>TEXAS HOLD'EM</h1>
+        <p>> Heads-up No-Limit Poker | P2P Connected</p>
+      </div>
+      <div class="header-meta">
+        <span class="hand-info">Hand #7 · Blinds 2/4</span>
+        <span class="phase-badge">SHOWDOWN</span>
+      </div>
+
+      <div class="game-body">
+
+        <!-- Opponent (revealed) -->
+        <div class="panel">
+          <div class="player-row">
+            <div class="player-left">
+              <div class="dealer-space"></div>
+              <span class="player-name">OPPONENT</span>
+            </div>
+            <span class="chip-count">$0</span>
+          </div>
+          <div class="cards-row">
+            <div class="c sm dim"><span class="r tl" style="color:#1e293b">7</span><span class="s" style="color:#1e293b">♠</span><span class="r br" style="color:#1e293b">7</span></div>
+            <div class="c sm dim"><span class="r tl" style="color:#ef4444">2</span><span class="s" style="color:#ef4444">♥</span><span class="r br" style="color:#ef4444">2</span></div>
+          </div>
+          <div class="hand-label">One Pair</div>
+        </div>
+
+        <!-- Table — all 5 cards, winner's 3 highlighted -->
+        <div class="table-center">
+          <div class="cards-row">
+            <div class="c hl"><span class="r tl" style="color:#ef4444">A</span><span class="s" style="color:#ef4444">♥</span><span class="r br" style="color:#ef4444">A</span></div>
+            <div class="c hl"><span class="r tl" style="color:#ef4444">K</span><span class="s" style="color:#ef4444">♦</span><span class="r br" style="color:#ef4444">K</span></div>
+            <div class="c hl"><span class="r tl" style="color:#1e293b">Q</span><span class="s" style="color:#1e293b">♣</span><span class="r br" style="color:#1e293b">Q</span></div>
+            <div class="c dim"><span class="r tl" style="color:#1e293b">J</span><span class="s" style="color:#1e293b">♠</span><span class="r br" style="color:#1e293b">J</span></div>
+            <div class="c dim"><span class="r tl" style="color:#1e293b">3</span><span class="s" style="color:#1e293b">♣</span><span class="r br" style="color:#1e293b">3</span></div>
+          </div>
+          <div class="pot-row">
+            <span class="pot-label">POT</span>
+            <span class="pot-num">$0</span>
+          </div>
+        </div>
+
+        <!-- Win banner -->
+        <div style="border-radius:12px;border:1px solid rgba(34,197,94,0.45);background:rgba(34,197,94,0.07);padding:14px;text-align:center;position:relative;overflow:hidden;">
+          <!-- shimmer -->
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(34,197,94,0.06),transparent);animation:sh 2s ease-in-out infinite;"></div>
+          <style>@keyframes sh{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}</style>
+          <div style="font-weight:700;font-size:22px;color:#4ade80;position:relative;">YOU WIN!</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:4px;position:relative;">
+            Your hand: <span style="color:#4ade80;font-weight:600;">Royal Flush</span>
+          </div>
+          <div style="font-family:monospace;font-size:9px;color:var(--muted);margin-top:6px;position:relative;">
+            <span style="color:#4ade80;">You: Royal Flush</span>
+            <span style="margin:0 6px;">vs</span>
+            <span>Opp: One Pair</span>
+          </div>
+          <div style="margin-top:12px;position:relative;">
+            <div style="display:inline-block;border-radius:10px;border:1px solid var(--accent);background:var(--accent);padding:8px 24px;font-family:monospace;font-size:10px;font-weight:700;color:var(--bg);cursor:pointer;">NEXT HAND</div>
+          </div>
+        </div>
+
+        <!-- Me (winner) -->
+        <div class="panel" style="border-color:rgba(34,197,94,0.4);">
+          <div class="player-row">
+            <div class="player-left">
+              <div class="dealer-chip">D</div>
+              <span class="player-name you-name">YOU</span>
+            </div>
+            <span class="chip-count" style="color:#4ade80;">$500</span>
+          </div>
+          <div class="cards-row">
+            <div class="c sm hl"><span class="r tl" style="color:#ef4444">A</span><span class="s" style="color:#ef4444">♥</span><span class="r br" style="color:#ef4444">A</span></div>
+            <div class="c sm hl"><span class="r tl" style="color:#ef4444">K</span><span class="s" style="color:#ef4444">♦</span><span class="r br" style="color:#ef4444">K</span></div>
+          </div>
+          <div class="hand-label" style="color:#4ade80;">Royal Flush ✓</div>
+        </div>
+
+        <div class="exit-btn" style="text-align:center;margin-top:4px;">MENU</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
