@@ -11,7 +11,7 @@ import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
-import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, getNextBlindLevel } from "./utils";
+import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, getNextBlindLevel, evaluateHand } from "./utils";
 import { calcEquity, type EquityResult } from "./equity";
 
 // ── Design tokens (Version D) ──
@@ -26,9 +26,11 @@ const D = {
   myTurnGlow:  "0 0 0 1px rgba(129,140,248,0.12), 0 0 22px rgba(129,140,248,0.1)",
 } as const;
 
+type LogEntry = { who: "YOU" | "OPP"; action: string; amount: number; phase: string };
+
 // ── Animated counter ──
 
-function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+function AnimatedNumber({ value, className, prefix = "$" }: { value: number; className?: string; prefix?: string }) {
   const [display, setDisplay] = useState(value);
   const prev = useRef(value);
 
@@ -51,7 +53,7 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
     return () => cancelAnimationFrame(raf);
   }, [value]);
 
-  return <span className={className}>${display}</span>;
+  return <span className={className}>{prefix}{display}</span>;
 }
 
 // ── Phase flash (light sweep on the table when new cards come) ──
@@ -430,6 +432,181 @@ function EquityOverlay({ result, loading }: { result: EquityResult | null; loadi
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// ── PotDisplay ──
+
+function PotDisplay({ pot, myBet, opponentBet, myChips, opponentChips }: {
+  pot: number; myBet: number; opponentBet: number; myChips: number; opponentChips: number;
+}) {
+  const bets = myBet + opponentBet;
+  const total = pot + bets;
+  const effectiveStack = Math.min(myChips, opponentChips);
+  const spr = total > 0 ? (effectiveStack / total).toFixed(1) : "—";
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-center">
+        <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">POT</div>
+        <AnimatedNumber value={pot} className="font-mono text-base font-bold text-[var(--pixel-warn)]" />
+      </div>
+      <div className="w-px h-5 bg-white/8" />
+      <div className="text-center">
+        <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">BETS</div>
+        <AnimatedNumber value={bets} className="font-mono text-sm font-bold text-[var(--pixel-accent-2)]" prefix="+" />
+      </div>
+      <div className="w-px h-5 bg-white/8" />
+      <div className="text-center">
+        <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">TOTAL</div>
+        <AnimatedNumber value={total} className="font-mono text-sm font-bold text-[var(--pixel-warn)]" />
+      </div>
+      <div className="w-px h-5 bg-white/8" />
+      <div className="text-center">
+        <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">SPR</div>
+        <span className="font-mono text-sm font-bold text-[var(--pixel-muted)]">{spr}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── PotOdds ──
+
+function PotOdds({ toCall, total, equityPct }: { toCall: number; total: number; equityPct: number | null }) {
+  if (toCall <= 0) return null;
+  const oddsPct = Math.round((toCall / (total + toCall)) * 100);
+  const isGood = equityPct !== null && equityPct > oddsPct;
+  return (
+    <div className={`font-mono text-[8px] font-bold px-2 py-0.5 rounded-md border ${
+      isGood
+        ? "text-[#4ade80] bg-[rgba(74,222,128,0.07)] border-[rgba(74,222,128,0.25)]"
+        : "text-[var(--pixel-muted)] bg-white/3 border-white/8"
+    }`}>
+      {oddsPct}% pot odds{isGood ? " · Good odds" : " · Poor odds"}
+    </div>
+  );
+}
+
+// ── ChipBar ──
+
+function ChipBar({ myChips, opponentChips }: { myChips: number; opponentChips: number }) {
+  const total = myChips + opponentChips;
+  if (total === 0) return null;
+  const mePct = Math.round((myChips / total) * 100);
+  const oppPct = 100 - mePct;
+  return (
+    <div className="flex flex-col gap-1 w-full">
+      <div className="flex items-center justify-between font-mono text-[8px]">
+        <span className="text-[var(--pixel-accent-2)]">OPP {oppPct}%</span>
+        <span className="text-[var(--pixel-accent)]">YOU {mePct}%</span>
+      </div>
+      <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          animate={{ width: `${mePct}%` }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          style={{ marginLeft: "auto", background: "linear-gradient(90deg, rgba(129,140,248,0.5), #818cf8)" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── BlindProgress ──
+
+function BlindProgress({ handNumber, smallBlind }: { handNumber: number; smallBlind: number }) {
+  const { nextSb, handsAway } = getNextBlindLevel(handNumber);
+  const currentLevel = Math.floor(Math.log2((handNumber + 4) / 5));
+  const levelStart = Math.round(5 * Math.pow(2, currentLevel) - 4);
+  const levelEnd   = Math.round(5 * Math.pow(2, currentLevel + 1) - 4);
+  const progress = (handNumber - levelStart) / Math.max(1, levelEnd - levelStart);
+
+  return (
+    <div className="flex items-center gap-2 w-full font-mono text-[8px] text-[var(--pixel-muted)]"
+         style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 7, padding: "4px 10px", background: "rgba(4,3,12,0.5)" }}>
+      <span>Blinds <span className="text-[var(--pixel-warn)] font-bold">{smallBlind}/{smallBlind * 2}</span></span>
+      <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          animate={{ width: `${Math.min(progress * 100, 100)}%` }}
+          transition={{ duration: 0.5 }}
+          style={{ background: "linear-gradient(90deg, rgba(251,191,36,0.4), #fbbf24)" }}
+        />
+      </div>
+      {handsAway > 0
+        ? <span>{handsAway} hand{handsAway !== 1 ? "s" : ""} → <span className="text-[var(--pixel-warn)] font-bold">{nextSb}/{nextSb * 2}</span></span>
+        : <span className="text-[var(--pixel-warn)] font-bold">↑ next hand</span>
+      }
+    </div>
+  );
+}
+
+// ── ActionLog ──
+
+function ActionLog({ entries, isMyTurn }: { entries: LogEntry[]; isMyTurn: boolean }) {
+  if (entries.length === 0 && !isMyTurn) return null;
+  const visible = entries.slice(-5);
+  return (
+    <div className="w-full rounded-lg border flex flex-col gap-[3px] px-2 py-1.5"
+         style={{ background: "rgba(4,3,12,0.6)", borderColor: "rgba(255,255,255,0.06)" }}>
+      {visible.map((e, i) => (
+        <div key={i} className="flex items-center gap-1.5 font-mono text-[8px] text-[var(--pixel-muted)]">
+          <span className={`font-bold w-6 ${e.who === "YOU" ? "text-[var(--pixel-accent)]" : "text-[var(--pixel-accent-2)]"}`}>
+            {e.who}
+          </span>
+          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgba(139,92,246,0.4)" }} />
+          <span className="text-[var(--pixel-text)]">{e.action.toUpperCase()}</span>
+          {e.amount > 0 && (
+            <span className="ml-auto text-[var(--pixel-warn)]">${e.amount}</span>
+          )}
+        </div>
+      ))}
+      {isMyTurn && (
+        <div className="flex items-center gap-1.5 font-mono text-[8px]">
+          <span className="font-bold w-6 text-[var(--pixel-accent)]">YOU</span>
+          <motion.div
+            className="w-1 h-1 rounded-full flex-shrink-0 bg-[var(--pixel-accent)]"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+          />
+          <span className="text-[var(--pixel-accent)]">to act…</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── HandStrengthBadge ──
+
+function HandStrengthBadge({ myCards, community }: { myCards: Card[]; community: Card[] }) {
+  if (myCards.length < 2 || community.length < 3) return null;
+  const { name } = evaluateHand(myCards, community);
+  return (
+    <div className="inline-flex items-center font-mono text-[8px] font-bold px-1.5 py-0.5 rounded-md"
+         style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+      {name.toUpperCase()}
+    </div>
+  );
+}
+
+// ── WinRateBar ──
+
+function WinRateBar({ equityPct }: { equityPct: number | null }) {
+  return (
+    <div className="flex items-center gap-1.5 w-full mt-1.5">
+      <span className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] w-6">WIN</span>
+      <div className="flex-1 h-[5px] rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.2)" }}>
+        <motion.div
+          className="h-full rounded-full"
+          animate={{ width: equityPct !== null ? `${Math.min(equityPct, 100)}%` : "0%" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          style={{ background: "linear-gradient(90deg, #4ade80, rgba(74,222,128,0.6))" }}
+        />
+      </div>
+      <span className="font-mono text-[8px] font-bold w-8 text-right"
+            style={{ color: equityPct !== null ? "#4ade80" : "var(--pixel-muted)" }}>
+        {equityPct !== null ? `${equityPct.toFixed(0)}%` : "…"}
+      </span>
+    </div>
   );
 }
 
