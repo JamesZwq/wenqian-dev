@@ -139,7 +139,18 @@ function Confetti({ active }: { active: boolean }) {
     }
 
     let raf = 0;
-    const draw = () => {
+    let cancelled = false;
+    const startTime = performance.now();
+    const MAX_DURATION = 4000; // safety: force clear after 4s
+
+    const draw = (now: number) => {
+      if (cancelled) return;
+      // Safety timeout: force clear if animation stuck
+      if (now - startTime > MAX_DURATION) {
+        ctx.clearRect(0, 0, W, H);
+        activeRef.current = false;
+        return;
+      }
       ctx.clearRect(0, 0, W, H);
       let alive = false;
       for (const p of particles) {
@@ -148,7 +159,7 @@ function Confetti({ active }: { active: boolean }) {
         p.x += p.vx;
         p.y += p.vy;
         p.rot += p.rv;
-        p.life -= 0.008;
+        p.life -= 0.012; // faster fade: ~83 frames ≈ 1.4s
         if (p.life <= 0) continue;
         alive = true;
         ctx.save();
@@ -163,7 +174,16 @@ function Confetti({ active }: { active: boolean }) {
       else { ctx.clearRect(0, 0, W, H); activeRef.current = false; }
     };
     raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); activeRef.current = false; };
+    return () => { cancelled = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, W, H); activeRef.current = false; };
+  }, [active]);
+
+  // Clear canvas when active becomes false (handles tab switch / interrupted animation)
+  useEffect(() => {
+    if (!active && canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d");
+      if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      activeRef.current = false;
+    }
   }, [active]);
 
   return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[100]" />;
@@ -189,30 +209,28 @@ function CardView({ card, faceDown, small, highlight, dimmed, delay, fresh }: {
   return (
     <motion.div
       initial={fresh
-        ? { opacity: 0, scale: 1.15, filter: "blur(4px)" }
+        ? { opacity: 0, scale: 1.12 }
         : { rotateY: 90, opacity: 0 }}
       animate={highlight
-        ? { rotateY: 0, opacity: 1, scale: [1, 1.08, 1], filter: "blur(0px)",
-            boxShadow: ["0 0 0px rgba(250,204,21,0)", "0 0 18px rgba(250,204,21,0.7)", "0 0 10px rgba(250,204,21,0.5)"] }
+        ? { rotateY: 0, opacity: 1, scale: [1, 1.06, 1] }
         : fresh
-          ? { opacity: 1, scale: 1, filter: "blur(0px)" }
+          ? { opacity: 1, scale: 1 }
           : { rotateY: 0, opacity: dimmed ? 0.35 : 1 }}
       transition={fresh
-        ? { duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: delay ?? 0 }
+        ? { duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: delay ?? 0 }
         : highlight
           ? { rotateY: { duration: 0.3, delay: delay ?? 0 },
-              scale: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" as const },
-              boxShadow: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" as const },
+              scale: { duration: 0.6, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" as const },
               opacity: { duration: 0.3, delay: delay ?? 0 } }
           : { duration: 0.3, delay: delay ?? 0 }}
       className={`${w} rounded-lg border-2 ${
         fresh ? "border-[var(--pixel-accent-2)]"
         : highlight ? "border-yellow-400"
         : "border-gray-300 dark:border-gray-500"
-      } bg-white flex flex-col items-center justify-center relative shadow-md dark:shadow-black/30`}
+      } bg-white flex flex-col items-center justify-center relative dark:shadow-black/30`}
       style={fresh
-        ? { boxShadow: "0 0 10px rgba(167,139,250,0.35)" }
-        : highlight ? { zIndex: 2 } : undefined}
+        ? { boxShadow: "0 0 10px rgba(167,139,250,0.35)", willChange: "transform, opacity" }
+        : highlight ? { zIndex: 2, boxShadow: "0 0 12px rgba(250,204,21,0.5)" } : { willChange: "transform, opacity" }}
     >
       <span className={`absolute top-0.5 left-1 font-bold ${fs}`} style={{ color: c }}>{rankStr(card.rank)}</span>
       <span className={ss} style={{ color: c }}>{suitSymbol(card.suit)}</span>
@@ -272,7 +290,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md p-3 space-y-2"
+          className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3 space-y-2"
         >
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">RAISE TO</span>
@@ -301,7 +319,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
             </button>
             <button
               onClick={() => setShowRaise(false)}
-              className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-3 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]"
+              className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]"
             >
               CANCEL
             </button>
@@ -312,14 +330,14 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
       <div className="flex gap-2">
         <button
           onClick={() => onAction("fold")}
-          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 dark:bg-red-500/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-red-400 dark:text-red-300 transition-all hover:bg-red-500/20 dark:hover:bg-red-500/30"
+          className="flex-1 rounded-xl border border-red-500/60 bg-red-500/10 dark:bg-red-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-red-400 dark:text-red-300 transition-colors hover:bg-red-500/20 dark:hover:bg-red-500/30"
         >
           FOLD
         </button>
         {acts.canCheck ? (
           <button
             onClick={() => onAction("check")}
-            className="flex-1 rounded-xl border border-[var(--pixel-accent)]/40 bg-[var(--pixel-card-bg)] backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-all hover:border-[var(--pixel-accent)] hover:bg-[var(--pixel-accent)]/10"
+            className="flex-1 rounded-xl border border-[var(--pixel-accent)]/40 bg-[var(--pixel-card-bg)] px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent)] transition-colors hover:border-[var(--pixel-accent)] hover:bg-[var(--pixel-accent)]/10"
           >
             CHECK
           </button>
@@ -336,7 +354,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
             ))}
             <button
               onClick={() => onAction(acts.callIsAllIn ? "allin" : "call")}
-              className="relative z-10 w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/15 dark:bg-[var(--pixel-accent-2)]/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)] transition-all hover:bg-[var(--pixel-accent-2)]/25 dark:hover:bg-[var(--pixel-accent-2)]/30"
+              className="relative z-10 w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-accent-2)]/15 dark:bg-[var(--pixel-accent-2)]/20 px-3 py-3 font-sans font-semibold text-[11px] text-[var(--pixel-accent-2)] transition-colors hover:bg-[var(--pixel-accent-2)]/25 dark:hover:bg-[var(--pixel-accent-2)]/30"
             >
               <span className="block">{acts.callIsAllIn ? "ALL IN" : "CALL"}</span>
               <span className="block text-[9px] font-mono opacity-80">${acts.callAmount}</span>
@@ -346,7 +364,7 @@ function ActionBar({ view, onAction }: { view: PlayerView; onAction: (a: string,
         {acts.canRaise && !showRaise && (
           <button
             onClick={() => setShowRaise(true)}
-            className="flex-1 rounded-xl border border-yellow-500/60 dark:border-yellow-400/50 bg-yellow-500/10 dark:bg-yellow-500/20 backdrop-blur-md px-3 py-3 font-sans font-semibold text-[11px] text-yellow-500 dark:text-yellow-300 transition-all hover:bg-yellow-500/20 dark:hover:bg-yellow-500/30"
+            className="flex-1 rounded-xl border border-yellow-500/60 dark:border-yellow-400/50 bg-yellow-500/10 dark:bg-yellow-500/20 px-3 py-3 font-sans font-semibold text-[11px] text-yellow-500 dark:text-yellow-300 transition-colors hover:bg-yellow-500/20 dark:hover:bg-yellow-500/30"
           >
             RAISE
           </button>
@@ -775,11 +793,12 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     const key = view.myCards.map(c => `${c.rank}${c.suit}`).join(",") + "|" + view.community.map(c => `${c.rank}${c.suit}`).join(",");
     if (eqKey.current === key) return;
     eqKey.current = key;
-    const raf = requestAnimationFrame(() => {
+    // Delay 400ms so card deal animations finish before heavy computation
+    const timer = setTimeout(() => {
       const r = calcEquity(view.myCards, view.community);
       setEquityPct(Math.round(r.winPct));
-    });
-    return () => cancelAnimationFrame(raf);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [view.phase, view.myCards, view.community]);
 
   const myTurn = view.isMyTurn && !isShowdown;
@@ -924,10 +943,10 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
                 transition={{ duration: 0.6 }}
               >
                 <motion.div
-                  initial={{ width: 0, height: 0 }}
-                  animate={{ width: 140, height: 90 }}
+                  initial={{ opacity: 0, scale: 0.3 }}
+                  animate={{ opacity: [0, 0.8, 0], scale: 1 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  style={{ borderRadius: "50%", background: "radial-gradient(ellipse, rgba(167,139,250,0.25), transparent 70%)", filter: "blur(8px)" }}
+                  style={{ width: 140, height: 90, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(167,139,250,0.3), transparent 70%)" }}
                 />
               </motion.div>
             )}
@@ -1139,21 +1158,35 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         )}
       </div>
 
-      {/* Action buttons */}
-      {myTurn && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <ActionBar view={view} onAction={onAction} />
-        </motion.div>
-      )}
-
-      {/* Waiting indicator */}
-      {!view.isMyTurn && !isShowdown && view.phase !== "waiting" && (
-        <div className="text-center py-2">
-          <span className="font-mono text-[10px] text-[var(--pixel-muted)] animate-pulse">
-            Waiting for opponent...
-          </span>
-        </div>
-      )}
+      {/* Action buttons — fixed height container prevents layout shift */}
+      <div style={{ minHeight: myTurn && !isShowdown ? undefined : 0 }}>
+        <AnimatePresence mode="wait">
+          {myTurn && !isShowdown ? (
+            <motion.div
+              key="actions"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ActionBar view={view} onAction={onAction} />
+            </motion.div>
+          ) : !isShowdown && view.phase !== "waiting" ? (
+            <motion.div
+              key="waiting"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="text-center py-3"
+            >
+              <span className="font-mono text-[10px] text-[var(--pixel-muted)] animate-pulse">
+                Waiting for opponent...
+              </span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
 
       {/* Equity hint */}
       {canShowEquity && !isShowdown && (
