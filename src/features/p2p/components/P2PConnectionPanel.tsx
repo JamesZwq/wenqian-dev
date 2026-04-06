@@ -63,7 +63,8 @@ export default function P2PConnectionPanel({
 
   // Auto-connect when autoConnectPeerId is provided and phase is ready
   useEffect(() => {
-    if (autoConnectPeerId && phase === "ready" && autoConnectRetries < MAX_AUTO_RETRIES) {
+    // Don't retry if we're already the host (roomCode set + phase ready = waiting for opponent)
+    if (autoConnectPeerId && phase === "ready" && !roomCode && autoConnectRetries < MAX_AUTO_RETRIES) {
       const delay = autoConnectRetries === 0 ? 0 : 1000 * autoConnectRetries;
       const timer = setTimeout(() => {
         setAutoConnectRetries(prev => prev + 1);
@@ -71,7 +72,7 @@ export default function P2PConnectionPanel({
       }, delay);
       return () => clearTimeout(timer);
     }
-  }, [autoConnectPeerId, phase, autoConnectRetries, onConnect]);
+  }, [autoConnectPeerId, phase, roomCode, autoConnectRetries, onConnect]);
 
   useEffect(() => {
     if (!error) return;
@@ -269,6 +270,7 @@ export default function P2PConnectionPanel({
                       disabled={phase === "initializing" || phase === "connecting"}
                       status={codeInputStatus}
                       resetSignal={resetSignal}
+                      initialValue={autoConnectPeerId ?? undefined}
                       onComplete={handleConnect}
                     />
                   </div>

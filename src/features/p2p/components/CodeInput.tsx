@@ -9,6 +9,7 @@ interface CodeInputProps {
   disabled?: boolean;
   status?: "idle" | "connecting" | "error" | "success";
   resetSignal?: number;
+  initialValue?: string;
   onComplete: (code: string) => void;
 }
 
@@ -25,13 +26,27 @@ export default function CodeInput({
   disabled = false,
   status = "idle",
   resetSignal = 0,
+  initialValue,
   onComplete,
 }: CodeInputProps) {
-  const [chars, setChars] = useState<string[]>(() => Array(length).fill(""));
+  const [chars, setChars] = useState<string[]>(() => {
+    if (initialValue) {
+      const upper = initialValue.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      return Array.from({ length }, (_, i) => upper[i] || "");
+    }
+    return Array(length).fill("");
+  });
   const [focusedIndex, setFocusedIndex] = useState(0);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const isFilled = useMemo(() => chars.every(Boolean), [chars]);
+
+  useEffect(() => {
+    if (initialValue) {
+      const upper = initialValue.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      setChars(Array.from({ length }, (_, i) => upper[i] || ""));
+    }
+  }, [initialValue, length]);
 
   useEffect(() => {
     // 只在 error 状态且 resetSignal 变化时才清空

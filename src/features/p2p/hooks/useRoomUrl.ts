@@ -11,9 +11,9 @@ import type { P2PPhase } from "../lib/p2p";
  */
 export function useRoomUrl(roomCode: string | null, phase: P2PPhase) {
   useEffect(() => {
-    if (roomCode && (phase === "connected" || phase === "reconnecting" || phase === "connecting")) {
+    if (roomCode) {
       setRoomInUrl(roomCode);
-    } else if (phase === "ready") {
+    } else if (phase === "ready" || phase === "disconnected") {
       setRoomInUrl(null);
     }
   }, [roomCode, phase]);

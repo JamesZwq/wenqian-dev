@@ -73,7 +73,7 @@ export function generateShortPeerId(length = 6): string {
 }
 
 export function sanitizePeerId(value: string): string {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 export function normalizePeerError(error: unknown): P2PErrorState {
