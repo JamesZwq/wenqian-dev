@@ -171,9 +171,9 @@ function Confetti({ active }: { active: boolean }) {
 
 // ── Card component ──
 
-function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
+function CardView({ card, faceDown, small, highlight, dimmed, delay, fresh }: {
   card?: Card | null; faceDown?: boolean; small?: boolean;
-  highlight?: boolean; dimmed?: boolean; delay?: number;
+  highlight?: boolean; dimmed?: boolean; delay?: number; fresh?: boolean;
 }) {
   const w = small ? "w-9 h-[52px]" : "w-[52px] h-[74px]";
   if (faceDown || !card) {
@@ -188,15 +188,31 @@ function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
   const ss = small ? "text-base" : "text-xl";
   return (
     <motion.div
-      initial={{ rotateY: 90, opacity: 0 }}
+      initial={fresh
+        ? { opacity: 0, scale: 1.15, filter: "blur(4px)" }
+        : { rotateY: 90, opacity: 0 }}
       animate={highlight
-        ? { rotateY: 0, opacity: 1, scale: [1, 1.08, 1], boxShadow: ["0 0 0px rgba(250,204,21,0)", "0 0 18px rgba(250,204,21,0.7)", "0 0 10px rgba(250,204,21,0.5)"] }
-        : { rotateY: 0, opacity: dimmed ? 0.35 : 1 }}
-      transition={highlight
-        ? { rotateY: { duration: 0.3, delay: delay ?? 0 }, scale: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, boxShadow: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" }, opacity: { duration: 0.3, delay: delay ?? 0 } }
-        : { duration: 0.3, delay: delay ?? 0 }}
-      className={`${w} rounded-lg border-2 ${highlight ? "border-yellow-400" : "border-gray-300 dark:border-gray-500"} bg-white flex flex-col items-center justify-center relative shadow-md dark:shadow-black/30`}
-      style={highlight ? { zIndex: 2 } : undefined}
+        ? { rotateY: 0, opacity: 1, scale: [1, 1.08, 1], filter: "blur(0px)",
+            boxShadow: ["0 0 0px rgba(250,204,21,0)", "0 0 18px rgba(250,204,21,0.7)", "0 0 10px rgba(250,204,21,0.5)"] }
+        : fresh
+          ? { opacity: 1, scale: 1, filter: "blur(0px)" }
+          : { rotateY: 0, opacity: dimmed ? 0.35 : 1 }}
+      transition={fresh
+        ? { duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: delay ?? 0 }
+        : highlight
+          ? { rotateY: { duration: 0.3, delay: delay ?? 0 },
+              scale: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" as const },
+              boxShadow: { duration: 0.5, delay: (delay ?? 0) + 0.3, repeat: Infinity, repeatType: "reverse" as const },
+              opacity: { duration: 0.3, delay: delay ?? 0 } }
+          : { duration: 0.3, delay: delay ?? 0 }}
+      className={`${w} rounded-lg border-2 ${
+        fresh ? "border-[var(--pixel-accent-2)]"
+        : highlight ? "border-yellow-400"
+        : "border-gray-300 dark:border-gray-500"
+      } bg-white flex flex-col items-center justify-center relative shadow-md dark:shadow-black/30`}
+      style={fresh
+        ? { boxShadow: "0 0 10px rgba(167,139,250,0.35)" }
+        : highlight ? { zIndex: 2 } : undefined}
     >
       <span className={`absolute top-0.5 left-1 font-bold ${fs}`} style={{ color: c }}>{rankStr(card.rank)}</span>
       <span className={ss} style={{ color: c }}>{suitSymbol(card.suit)}</span>
@@ -684,6 +700,8 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   const showBestCards = isShowdown && !isFoldWin && view.result;
   const didWin = isShowdown && view.result?.iWon === true;
   const didLose = isShowdown && view.result?.iWon === false;
+  const isRareHand = isShowdown && view.result && !isFoldWin &&
+    ["Four of a Kind", "Straight Flush", "Royal Flush"].includes(view.result.winnerHand);
 
   // All-in flash
   const [allInFlash, setAllInFlash] = useState(false);
@@ -842,7 +860,17 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
                 return <CardView key={i} card={c} small highlight={hl} dimmed={dim} delay={i * 0.12} />;
               })
             ) : (
-              <><CardView faceDown small dimmed={isFoldWin && view.opponentFolded} /><CardView faceDown small dimmed={isFoldWin && view.opponentFolded} /></>
+              <>{[0, 1].map(i => (
+                <motion.div key={i}
+                  initial={false}
+                  animate={isFoldWin && view.opponentFolded
+                    ? { opacity: 0, y: -28, rotate: i === 0 ? -18 : -24 }
+                    : { opacity: 1, y: 0, rotate: 0 }}
+                  transition={{ duration: 0.4, delay: i * 0.06, ease: "easeIn" }}
+                >
+                  <CardView faceDown small />
+                </motion.div>
+              ))}</>
             )}
           </div>
           {view.opponentBet > 0 && (
@@ -871,16 +899,39 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-12"
              style={{ background: "linear-gradient(180deg, rgba(129,140,248,0.06), transparent)" }} />
         <PhaseFlash phase={view.phase} handNumber={view.handNumber} />
-        <div className="flex gap-2 min-h-[74px] items-center justify-center">
+        <div className="relative flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
             <span className="font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for community cards...</span>
           ) : (
             view.community.map((c, i) => {
               const hl = showBestCards && isInBestHand(c, winnerBest);
               const dim = showBestCards && !isInBestHand(c, winnerBest);
-              return <CardView key={i} card={c} highlight={hl} dimmed={dim} delay={i * 0.08} />;
+              const isFresh = (view.phase === "turn" && i === 3) || (view.phase === "river" && i === 4);
+              const isFlop = view.phase === "flop" && view.community.length === 3;
+              const dealDelay = isFlop ? i * 0.1 : (isFresh ? 0 : i * 0.08);
+              return <CardView key={i} card={c} highlight={hl} dimmed={dim} delay={dealDelay} fresh={isFresh} />;
             })
           )}
+          {/* River glow burst */}
+          <AnimatePresence>
+            {view.phase === "river" && view.community.length === 5 && (
+              <motion.div
+                key={`river-glow-${view.handNumber}`}
+                className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                <motion.div
+                  initial={{ width: 0, height: 0 }}
+                  animate={{ width: 140, height: 90 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  style={{ borderRadius: "50%", background: "radial-gradient(ellipse, rgba(167,139,250,0.25), transparent 70%)", filter: "blur(8px)" }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <PotDisplay pot={view.pot} myBet={view.myBet} opponentBet={view.opponentBet} myChips={view.myChips} opponentChips={view.opponentChips} />
         {myTurn && toCall > 0 && (
@@ -968,6 +1019,19 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             </motion.div>
           )}
 
+          {isRareHand && (
+            <motion.div
+              initial={{ opacity: 0, letterSpacing: "0em" }}
+              animate={{ opacity: 1, letterSpacing: "0.08em" }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="font-mono text-[10px] font-bold mt-2"
+              style={{ background: "linear-gradient(90deg, var(--pixel-warn), var(--pixel-accent-2), var(--pixel-warn))",
+                       WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+            >
+              {view.result!.winnerHand.toUpperCase()}
+            </motion.div>
+          )}
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1014,6 +1078,23 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           />
         )}
+        {/* All-in rings */}
+        <AnimatePresence>
+          {allInFlash && view.myAllIn && (
+            <>
+              {[0, 1].map(i => (
+                <motion.div key={`allin-ring-${i}`}
+                  className="pointer-events-none absolute inset-0 rounded-xl"
+                  style={{ border: "2px solid rgba(251,191,36,0.7)" }}
+                  initial={{ opacity: 1, scale: 0.5 }}
+                  animate={{ opacity: 0, scale: 1.18 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.7, delay: i * 0.15, ease: "easeOut" }}
+                />
+              ))}
+            </>
+          )}
+        </AnimatePresence>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={view.amDealer} />
