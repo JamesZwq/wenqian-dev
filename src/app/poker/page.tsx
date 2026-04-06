@@ -25,7 +25,7 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
     const from = prev.current;
     prev.current = value;
     const diff = value - from;
-    const dur = Math.min(Math.abs(diff) * 3, 600);
+    const dur = Math.min(Math.abs(diff) * 5, 900);
     if (dur < 30) { setDisplay(value); return; }
     const start = performance.now();
     let raf = 0;
@@ -482,10 +482,8 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     if (!showEquity) return;
     const dismiss = () => setShowEquity(false);
     window.addEventListener("pointerdown", dismiss, { capture: true, once: true });
-    window.addEventListener("pointermove", dismiss, { capture: true, once: true });
     return () => {
       window.removeEventListener("pointerdown", dismiss, { capture: true });
-      window.removeEventListener("pointermove", dismiss, { capture: true });
     };
   }, [showEquity]);
 
@@ -519,15 +517,15 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
        : view.result!.myBestCards) // tie: highlight both
     : [];
 
-  const lastActionLabel = useCallback(() => {
+  const lastActionLabel = (() => {
     if (!view.lastAction) return null;
-    const who = view.lastAction.isMe ? "You" : "Opponent";
+    const who = view.lastAction.isMe ? "You" : "Opp";
     const a = view.lastAction.action.toUpperCase();
     const amt = view.lastAction.action === "raise" ? ` to $${view.lastAction.amount}` :
                 view.lastAction.action === "call" ? ` $${view.lastAction.amount}` :
                 view.lastAction.action === "allin" ? " ALL IN" : "";
     return `${who}: ${a}${amt}`;
-  }, [view.lastAction]);
+  })();
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-3 relative">
@@ -638,7 +636,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
         {/* Last action */}
         {view.lastAction && (
-          <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{lastActionLabel()}</span>
+          <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{lastActionLabel}</span>
         )}
       </div>
 
