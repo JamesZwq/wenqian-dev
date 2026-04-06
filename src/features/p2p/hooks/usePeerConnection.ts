@@ -473,66 +473,97 @@ export function usePeerConnection<TData = unknown>(
         return true;
       }
 
-      // ── Room mode ──
+      // ── Room mode: guest-first, fallback to host ──
       const roomId = `${prefix}-${sanitized}`;
+      lastAttemptedPeerIdRef.current = sanitized;
       setState((prev) => ({ ...prev, phase: "connecting", roomCode: sanitized, error: null }));
 
-      // Tear down any existing peer
       teardown();
 
-      // Attempt 1: register as host with roomId
-      const hostPeer = new Peer(roomId, peerOpts(optionsRef.current.peerOptions));
-      let hostEstablished = false;
+      let switchedToHost = false;
 
-      hostPeer.on("open", () => {
-        // We are the host — mark as established so late errors don't destroy us
-        hostEstablished = true;
-        peerRef.current = hostPeer;
-        setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
-      });
+      // Helper: register as host (room doesn't exist yet)
+      const becomeHost = () => {
+        const hostPeer = new Peer(roomId, peerOpts(optionsRef.current.peerOptions));
+        let hostEstablished = false;
 
-      // Auto-reconnect host peer on signaling disconnect (only after established)
-      hostPeer.on("disconnected", () => {
-        if (!hostEstablished) return;
-        try { hostPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
-      });
+        hostPeer.on("open", () => {
+          hostEstablished = true;
+          peerRef.current = hostPeer;
+          setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
+        });
 
-      // Incoming connection handler for host
-      hostPeer.on("connection", (conn: DataConnection) => {
-        if (optionsRef.current.acceptIncomingConnections === false) { conn.close(); return; }
-        if (connectionRef.current?.open) { conn.close(); return; }
-        const expected = optionsRef.current.handshake;
-        if (expected) {
-          const meta = conn.metadata as Record<string, string> | undefined;
-          if (!meta || !Object.entries(expected).every(([k, v]) => meta[k] === v)) { conn.close(); return; }
-        }
-        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: conn.peer, error: null }));
-        attachConnection(conn, "incoming");
-      });
+        hostPeer.on("disconnected", () => {
+          if (!hostEstablished) return;
+          try { hostPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
+        });
 
-      hostPeer.on("error", (err) => {
-        const raw = err as { type?: string };
-        if (raw.type === "unavailable-id") {
-          // Room already exists → join as guest
+        hostPeer.on("connection", (conn: DataConnection) => {
+          if (optionsRef.current.acceptIncomingConnections === false) { conn.close(); return; }
+          if (connectionRef.current?.open) { conn.close(); return; }
+          const expected = optionsRef.current.handshake;
+          if (expected) {
+            const meta = conn.metadata as Record<string, string> | undefined;
+            if (!meta || !Object.entries(expected).every(([k, v]) => meta[k] === v)) { conn.close(); return; }
+          }
+          setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: conn.peer, error: null }));
+          attachConnection(conn, "incoming");
+        });
+
+        hostPeer.on("error", (err) => {
+          const raw = err as { type?: string };
+          if (raw.type === "unavailable-id") {
+            // Race condition: someone else became host first → retry as guest
+            try { hostPeer.destroy(); } catch {}
+            const retryPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
+            retryPeer.on("open", () => {
+              peerRef.current = retryPeer;
+              setState((prev) => ({ ...prev, roomCode: sanitized }));
+              connectToPeer(retryPeer, roomId);
+            });
+            retryPeer.on("error", (e) => emitError(normalizePeerError(e)));
+            retryPeer.on("disconnected", () => {
+              try { retryPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
+            });
+            return;
+          }
+          if (hostEstablished) return;
           try { hostPeer.destroy(); } catch {}
+          emitError(normalizePeerError(err));
+        });
+      };
 
-          const guestPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
-          guestPeer.on("open", () => {
-            peerRef.current = guestPeer;
-            setState((prev) => ({ ...prev, roomCode: sanitized }));
-            connectToPeer(guestPeer, roomId);
-          });
-          guestPeer.on("error", (e) => emitError(normalizePeerError(e)));
-          guestPeer.on("disconnected", () => {
-            try { guestPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
-          });
+      // Step 1: create peer with random ID, try to join room as guest
+      const guestPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
+
+      guestPeer.on("open", () => {
+        if (switchedToHost) return;
+        peerRef.current = guestPeer;
+        setState((prev) => ({ ...prev, roomCode: sanitized }));
+        connectToPeer(guestPeer, roomId);
+      });
+
+      guestPeer.on("error", (err) => {
+        if (switchedToHost) return;
+        const raw = err as { type?: string };
+        if (raw.type === "peer-unavailable") {
+          // Room doesn't exist → become host
+          switchedToHost = true;
+          clearConnectTimeout();
+          connectionCleanupRef.current?.();
+          connectionCleanupRef.current = null;
+          connectionRef.current = null;
+          try { guestPeer.destroy(); } catch {}
+          peerRef.current = null;
+          becomeHost();
           return;
         }
-        // Host already established — ignore transient peer-level errors
-        if (hostEstablished) return;
-        // Fatal error during setup
-        try { hostPeer.destroy(); } catch {}
         emitError(normalizePeerError(err));
+      });
+
+      guestPeer.on("disconnected", () => {
+        if (switchedToHost) return;
+        try { guestPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
       });
 
       return true;

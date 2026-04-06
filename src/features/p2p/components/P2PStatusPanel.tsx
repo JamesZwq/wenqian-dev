@@ -86,7 +86,9 @@ export function P2PStatusPanel({
   className = "",
 }: P2PStatusPanelProps) {
   const [now, setNow] = useState(Date.now);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 768
+  );
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
