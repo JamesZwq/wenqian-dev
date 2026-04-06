@@ -8,7 +8,6 @@ import { ScrollLagProvider } from "./components/ScrollLagContext";
 import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
 import PetBedToggle from "./components/PetBedToggle";
 import BgSpeedControl from "./components/BgSpeedControl";
-import ThemeToggle from "./components/ThemeToggle";
 import FpsCounter from "./components/FpsCounter";
 import FloatingNav from "./components/FloatingNav";
 import ShareButton from "./components/ShareButton";
@@ -78,7 +77,6 @@ export default function Home() {
             <CursorPet />
             <PetBedToggle />
             <BgSpeedControl />
-            <ThemeToggle />
             <FpsCounter />
             <FloatingNav />
             <div className="fixed top-[52px] right-4 z-[130]">

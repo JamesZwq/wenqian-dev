@@ -149,11 +149,51 @@ function resolveCircleCircle(a: Body, b: Body, restitution: number, mu: number) 
   b.vy += impTy * b.invM;
 }
 
+const CORNER_RADIUS = 28; // matches rounded-[1.75rem]
+
 function resolveWalls(b: Body, w: number, h: number, restitution: number, wallFriction: number) {
-  if (b.x - b.r < 0) { b.x = b.r; if (b.vx < 0) b.vx = -b.vx * restitution; b.vy *= 1 - wallFriction; }
-  if (b.x + b.r > w) { b.x = w - b.r; if (b.vx > 0) b.vx = -b.vx * restitution; b.vy *= 1 - wallFriction; }
-  if (b.y - b.r < 0) { b.y = b.r; if (b.vy < 0) b.vy = -b.vy * restitution; b.vx *= 1 - wallFriction; }
-  if (b.y + b.r > h) { b.y = h - b.r; if (b.vy > 0) b.vy = -b.vy * restitution; b.vx *= 1 - wallFriction; }
+  // Straight edges (only outside corner zones)
+  const cr = CORNER_RADIUS;
+  if (b.x - b.r < 0 && b.y >= cr && b.y <= h - cr) { b.x = b.r; if (b.vx < 0) b.vx = -b.vx * restitution; b.vy *= 1 - wallFriction; }
+  if (b.x + b.r > w && b.y >= cr && b.y <= h - cr) { b.x = w - b.r; if (b.vx > 0) b.vx = -b.vx * restitution; b.vy *= 1 - wallFriction; }
+  if (b.y - b.r < 0 && b.x >= cr && b.x <= w - cr) { b.y = b.r; if (b.vy < 0) b.vy = -b.vy * restitution; b.vx *= 1 - wallFriction; }
+  if (b.y + b.r > h && b.x >= cr && b.x <= w - cr) { b.y = h - b.r; if (b.vy > 0) b.vy = -b.vy * restitution; b.vx *= 1 - wallFriction; }
+
+  // Rounded corners: circle-vs-arc collision
+  const corners = [
+    { cx: cr, cy: cr },         // top-left
+    { cx: w - cr, cy: cr },     // top-right
+    { cx: cr, cy: h - cr },     // bottom-left
+    { cx: w - cr, cy: h - cr }, // bottom-right
+  ];
+  for (let i = 0; i < 4; i++) {
+    const { cx, cy } = corners[i];
+    // Only process if body is in the corner square region
+    if ((b.x < cr || b.x > w - cr) && (b.y < cr || b.y > h - cr)) {
+      const dx = b.x - cx;
+      const dy = b.y - cy;
+      // Only check the outer quadrant of this corner
+      const sx = cx < w * 0.5 ? -1 : 1; // sign: which side of center
+      const sy = cy < h * 0.5 ? -1 : 1;
+      if (dx * sx >= 0 && dy * sy >= 0) {
+        const dist = Math.hypot(dx, dy);
+        const pen = dist + b.r - cr;
+        if (pen > 0 && dist > 0.001) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          b.x = cx + nx * (cr - b.r);
+          b.y = cy + ny * (cr - b.r);
+          const vn = b.vx * nx + b.vy * ny;
+          if (vn > 0) { // moving outward
+            const tx = -ny, ty = nx;
+            const vt = b.vx * tx + b.vy * ty;
+            b.vx = -vn * restitution * nx + vt * (1 - wallFriction) * tx;
+            b.vy = -vn * restitution * ny + vt * (1 - wallFriction) * ty;
+          }
+        }
+      }
+    }
+  }
 }
 
 function stepWorld(world: World, dt: number) {

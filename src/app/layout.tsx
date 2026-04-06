@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "./components/ThemeProvider";
+import ThemeToggle from "./components/ThemeToggle";
 import ClientLayout from "./components/ClientLayout";
 import AnimatedFavicon from "./components/AnimatedFavicon";
 
@@ -111,6 +112,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AnimatedFavicon />
+          <ThemeToggle />
           <ClientLayout>{children}</ClientLayout>
         </ThemeProvider>
       </body>
