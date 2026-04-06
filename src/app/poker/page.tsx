@@ -716,6 +716,59 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     return `${who}: ${a}${amt}`;
   })();
 
+  // ── Action log accumulation ──
+  const [actionLog, setActionLog] = useState<LogEntry[]>([]);
+  const prevLastAction = useRef<typeof view.lastAction>(undefined);
+  const prevHandForLog = useRef(view.handNumber);
+
+  useEffect(() => {
+    if (view.handNumber !== prevHandForLog.current) {
+      prevHandForLog.current = view.handNumber;
+      setActionLog([]);
+      prevLastAction.current = undefined;
+      return;
+    }
+    if (
+      view.lastAction &&
+      (prevLastAction.current === undefined ||
+        view.lastAction.action !== prevLastAction.current.action ||
+        view.lastAction.amount !== prevLastAction.current.amount ||
+        view.lastAction.isMe !== prevLastAction.current.isMe)
+    ) {
+      prevLastAction.current = view.lastAction;
+      setActionLog(prev => [...prev, {
+        who: view.lastAction!.isMe ? "YOU" : "OPP",
+        action: view.lastAction!.action,
+        amount: view.lastAction!.amount,
+        phase: view.phase,
+      }]);
+    }
+  }, [view.lastAction, view.handNumber, view.phase]);
+
+  // ── Equity computation (always-on) ──
+  const [equityPct, setEquityPct] = useState<number | null>(null);
+  const eqKey = useRef("");
+
+  useEffect(() => {
+    if (view.myCards.length < 2 || view.phase === "showdown" || view.phase === "waiting") {
+      setEquityPct(null);
+      return;
+    }
+    const key = view.myCards.map(c => `${c.rank}${c.suit}`).join(",") + "|" + view.community.map(c => `${c.rank}${c.suit}`).join(",");
+    if (eqKey.current === key) return;
+    eqKey.current = key;
+    const raf = requestAnimationFrame(() => {
+      const r = calcEquity(view.myCards, view.community);
+      setEquityPct(Math.round(r.winPct));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [view.phase, view.myCards, view.community]);
+
+  const myTurn = view.isMyTurn && !isShowdown;
+  const toCall = view.lastAction && !view.lastAction.isMe && (view.lastAction.action === "raise" || view.lastAction.action === "call" || view.lastAction.action === "allin")
+    ? view.lastAction.amount - view.myBet
+    : view.opponentBet - view.myBet;
+
   return (
     <div className="w-full max-w-md mx-auto flex flex-col gap-3 relative">
       {/* Equity overlay */}
@@ -727,7 +780,6 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
 
       {/* Confetti on win */}
       <Confetti active={didWin} />
-
 
       {/* All-in flash overlay */}
       <AnimatePresence>
@@ -743,13 +795,16 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         )}
       </AnimatePresence>
 
-      {/* Header info */}
+      {/* Header meta bar */}
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] text-[var(--pixel-muted)]">
           Hand #{view.handNumber} &middot; Blinds {sb}/{sb * 2}
         </span>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{phaseName}</span>
+          <span className="font-mono text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md"
+                style={{ color: "var(--pixel-accent)", background: "rgba(129,140,248,0.1)", border: "1px solid rgba(129,140,248,0.2)" }}>
+            {phaseName}
+          </span>
           {canShowEquity && (
             <button
               onMouseDown={() => setShowEquity(true)}
@@ -766,8 +821,9 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
       </div>
 
-      {/* Opponent area */}
-      <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md p-3">
+      {/* Opponent panel */}
+      <div className="rounded-xl backdrop-blur-md p-3"
+           style={{ background: D.oppBg, border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={!view.amDealer} />
@@ -790,7 +846,10 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             )}
           </div>
           {view.opponentBet > 0 && (
-            <span className="ml-auto font-mono text-xs text-[var(--pixel-accent-2)]">Bet: ${view.opponentBet}</span>
+            <span className="ml-auto font-mono text-[10px] font-bold px-2 py-0.5 rounded-md"
+                  style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+              ${view.opponentBet}
+            </span>
           )}
         </div>
         {isShowdown && view.result && !view.opponentFolded && (
@@ -805,8 +864,12 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         )}
       </div>
 
-      {/* Community cards + pot */}
-      <div className="relative rounded-xl border border-[var(--pixel-border)] bg-gradient-to-b from-emerald-900/20 to-emerald-950/20 dark:from-emerald-900/40 dark:to-emerald-950/40 backdrop-blur-md p-4 flex flex-col items-center gap-3">
+      {/* Table center */}
+      <div className="relative rounded-xl backdrop-blur-md p-4 flex flex-col items-center gap-3 overflow-hidden"
+           style={{ background: D.tableBg, border: "1px solid " + D.tableBorder }}>
+        {/* Top glow */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-12"
+             style={{ background: "linear-gradient(180deg, rgba(129,140,248,0.06), transparent)" }} />
         <PhaseFlash phase={view.phase} handNumber={view.handNumber} />
         <div className="flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
@@ -819,17 +882,14 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             })
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-[var(--pixel-muted)]">POT</span>
-          <AnimatedNumber value={potTotal} className="font-mono text-lg font-bold text-yellow-500 dark:text-yellow-300" />
-        </div>
-        {/* Last action */}
-        {view.lastAction && (
-          <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{lastActionLabel}</span>
+        <PotDisplay pot={view.pot} myBet={view.myBet} opponentBet={view.opponentBet} myChips={view.myChips} opponentChips={view.opponentChips} />
+        {myTurn && toCall > 0 && (
+          <PotOdds toCall={toCall} total={potTotal} equityPct={equityPct} />
         )}
+        <ActionLog entries={actionLog} isMyTurn={myTurn} />
       </div>
 
-      {/* Showdown result */}
+      {/* Showdown result banner */}
       {isShowdown && view.result && (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.92 }}
@@ -839,13 +899,19 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           transition={didLose
             ? { opacity: { type: "spring", stiffness: 300, damping: 24 }, y: { type: "spring", stiffness: 300, damping: 24 }, scale: { type: "spring", stiffness: 300, damping: 24 }, x: { duration: 0.5, delay: 0.2 } }
             : { type: "spring", stiffness: 300, damping: 24 }}
-          className={`rounded-xl border p-4 text-center overflow-hidden relative backdrop-blur-md ${
-            view.result.iWon === true
-              ? "border-green-500/60 bg-green-500/10 dark:bg-green-500/15"
+          className="rounded-xl p-4 text-center overflow-hidden relative backdrop-blur-md"
+          style={{
+            border: view.result.iWon === true
+              ? "1px solid rgba(34,197,94,0.5)"
               : view.result.iWon === false
-                ? "border-red-500/60 bg-red-500/10 dark:bg-red-500/15"
-                : "border-yellow-500/60 bg-yellow-500/10 dark:bg-yellow-500/15"
-          }`}
+                ? "1px solid rgba(239,68,68,0.5)"
+                : "1px solid rgba(234,179,8,0.5)",
+            background: view.result.iWon === true
+              ? "rgba(34,197,94,0.08)"
+              : view.result.iWon === false
+                ? "rgba(239,68,68,0.08)"
+                : "rgba(234,179,8,0.08)",
+          }}
         >
           {/* Shimmer overlay for winner */}
           {view.result.iWon === true && (
@@ -932,12 +998,32 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </motion.div>
       )}
 
-      {/* My area */}
-      <div className="rounded-xl border border-[var(--pixel-accent)]/40 dark:border-[var(--pixel-accent)]/50 bg-[var(--pixel-card-bg)] backdrop-blur-md p-3">
+      {/* My panel */}
+      <div className="rounded-xl backdrop-blur-md p-3 relative overflow-hidden"
+           style={{
+             background: D.panelBg,
+             border: "1px solid " + (myTurn ? D.myTurnBorder : D.panelBorder),
+             boxShadow: myTurn ? D.myTurnGlow : undefined,
+           }}>
+        {/* Pulse bar when it's my turn */}
+        {myTurn && (
+          <motion.div
+            className="absolute inset-x-0 top-0 h-[2px]"
+            style={{ background: "linear-gradient(90deg, transparent, #818cf8, transparent)" }}
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={view.amDealer} />
             <span className="font-sans font-semibold text-xs text-[var(--pixel-accent)]">YOU</span>
+            {myTurn && (
+              <span className="font-mono text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded-md"
+                    style={{ color: "#818cf8", background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.25)" }}>
+                YOUR TURN
+              </span>
+            )}
             {view.myFolded && <span className="font-mono text-[9px] text-red-400">FOLDED</span>}
             {view.myAllIn && <span className="font-mono text-[9px] text-yellow-400">ALL IN</span>}
           </div>
@@ -951,10 +1037,15 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
               return <CardView key={i} card={c} small highlight={hl} dimmed={dim} delay={i * 0.12} />;
             })}
           </div>
+          <HandStrengthBadge myCards={view.myCards} community={view.community} />
           {view.myBet > 0 && (
-            <span className="ml-auto font-mono text-xs text-[var(--pixel-accent-2)]">Bet: ${view.myBet}</span>
+            <span className="ml-auto font-mono text-[10px] font-bold px-2 py-0.5 rounded-md"
+                  style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+              ${view.myBet}
+            </span>
           )}
         </div>
+        <WinRateBar equityPct={equityPct} />
         {isShowdown && view.result && !view.myFolded && (
           <motion.div
             initial={{ opacity: 0, x: -8 }}
@@ -968,7 +1059,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       </div>
 
       {/* Action buttons */}
-      {view.isMyTurn && !isShowdown && (
+      {myTurn && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <ActionBar view={view} onAction={onAction} />
         </motion.div>
@@ -983,7 +1074,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
       )}
 
-      {/* Help hint */}
+      {/* Equity hint */}
       {canShowEquity && !isShowdown && (
         <div className="text-center">
           <span className="font-mono text-[8px] text-[var(--pixel-muted)] opacity-60">
@@ -1093,6 +1184,10 @@ export default function PokerPage() {
 
             {gameMode === "p2p" && isConnected && displayView && (
               <motion.div key="game" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }}>
+                <div className="w-full max-w-md mx-auto flex flex-col gap-2 mb-2 px-1">
+                  <ChipBar myChips={displayView.myChips} opponentChips={displayView.opponentChips} />
+                  <BlindProgress handNumber={displayView.handNumber} smallBlind={displayView.smallBlind} />
+                </div>
                 <PokerTable
                   view={displayView}
                   isGameOver={isGameOver}
