@@ -60,11 +60,18 @@ export function usePokerGame() {
     syncToGuest(ns);
   }, [syncToGuest]);
 
+  const initialSyncDone = useRef(false);
+
   const handleIncomingData = useCallback((payload: PokerPacket) => {
     if (!payload?.type) return;
     setLastRemoteMessageAt(Date.now());
     if (payload.type === "ping") {
       sendRef.current({ type: "pong", sentAt: payload.sentAt });
+      // Safety: if host receives a ping but hasn't confirmed initial sync, resend state
+      if (myIndexRef.current === 0 && fullStateRef.current && !initialSyncDone.current) {
+        initialSyncDone.current = true;
+        sendRef.current({ type: "sync", view: createPlayerView(fullStateRef.current, 1), timestamp: Date.now() });
+      }
       return;
     }
     if (payload.type === "pong") {
@@ -107,17 +114,29 @@ export function usePokerGame() {
       if (reconnected) {
         // On reconnection, host resends current game state — no role reset
         if (myIndexRef.current === 0 && fullStateRef.current) {
-          setTimeout(() => syncToGuest(fullStateRef.current!), 200);
+          const retrySyncReconnect = (attempt: number) => {
+            if (attempt > 5 || !fullStateRef.current) return;
+            const ok = sendRef.current({ type: "sync", view: createPlayerView(fullStateRef.current, 1), timestamp: Date.now() });
+            if (!ok) setTimeout(() => retrySyncReconnect(attempt + 1), 300 * attempt);
+          };
+          setTimeout(() => retrySyncReconnect(1), 200);
         }
         return;
       }
       if (direction === "outgoing") {
         setMyIndex(0); myIndexRef.current = 0;
-        setTimeout(() => {
-          const ns = createNewHand(1, 0, [500, 500]);
-          setFullState(ns); fullStateRef.current = ns;
-          syncToGuest(ns);
-        }, 200);
+        // Retry sync until it succeeds — data channel may not be ready immediately
+        const retrySync = (attempt: number) => {
+          if (attempt > 8) return;
+          const ns = fullStateRef.current ?? createNewHand(1, 0, [500, 500]);
+          if (!fullStateRef.current) {
+            setFullState(ns); fullStateRef.current = ns;
+          }
+          const ok = sendRef.current({ type: "sync", view: createPlayerView(ns, 1), timestamp: Date.now() });
+          if (ok) { initialSyncDone.current = true; }
+          else setTimeout(() => retrySync(attempt + 1), 200 * attempt);
+        };
+        setTimeout(() => retrySync(1), 300);
       } else {
         setMyIndex(1); myIndexRef.current = 1;
       }
@@ -125,6 +144,7 @@ export function usePokerGame() {
     onDisconnected: () => {
       setMyIndex(null); myIndexRef.current = null;
       setLatencyMs(null); setLastRemoteMessageAt(null);
+      initialSyncDone.current = false;
     },
   });
 
