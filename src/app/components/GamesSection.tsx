@@ -47,11 +47,14 @@ function GomokuIcon() {
   );
 }
 
-// ── Card component (no animation yet) ─────────────────────
+// ── Card component ─────────────────────────────────────────
 function GameCard({ game }: { game: Game }) {
   return (
     <Link href={game.href} className="block" style={{ width: 152, flexShrink: 0 }}>
-      <div
+      <motion.div
+        whileHover={{ y: -9, borderColor: "rgba(255,255,255,0.22)" }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 320, damping: 24 }}
         style={{
           width: 152,
           height: 241,
@@ -63,8 +66,21 @@ function GameCard({ game }: { game: Game }) {
           background: "rgba(255,255,255,0.05)",
           backdropFilter: "blur(24px) saturate(160%)",
           WebkitBackdropFilter: "blur(24px) saturate(160%)",
+          boxShadow: "none",
+          position: "relative",
         }}
       >
+        {/* shimmer top line */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0, left: "12%", right: "12%",
+            height: 1,
+            background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
+            zIndex: 2,
+          }}
+        />
+
         {/* icon zone */}
         <div
           style={{
@@ -76,7 +92,6 @@ function GameCard({ game }: { game: Game }) {
             overflow: "hidden",
           }}
         >
-          {/* glow orb */}
           <div
             style={{
               position: "absolute",
@@ -88,8 +103,9 @@ function GameCard({ game }: { game: Game }) {
               pointerEvents: "none",
             }}
           />
-          {/* icon box */}
-          <div
+          <motion.div
+            whileHover={{ scale: 1.12, rotate: -5 }}
+            transition={{ type: "spring", stiffness: 320, damping: 20 }}
             style={{
               width: 62, height: 62,
               borderRadius: 16,
@@ -114,7 +130,7 @@ function GameCard({ game }: { game: Game }) {
             ) : (
               <GomokuIcon />
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* info zone */}
@@ -152,9 +168,16 @@ function GameCard({ game }: { game: Game }) {
             >
               {game.badge}
             </span>
+            <motion.span
+              initial={{ opacity: 0, x: -4 }}
+              whileHover={{ opacity: 1, x: 0 }}
+              style={{ fontSize: 12, color: game.accent, fontFamily: "monospace" }}
+            >
+              →
+            </motion.span>
           </div>
         </div>
-      </div>
+      </motion.div>
     </Link>
   );
 }
