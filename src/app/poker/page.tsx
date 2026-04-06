@@ -14,6 +14,18 @@ import type { Card, PlayerView } from "./types";
 import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, getNextBlindLevel } from "./utils";
 import { calcEquity, type EquityResult } from "./equity";
 
+// ── Design tokens (Version D) ──
+
+const D = {
+  panelBg:     "rgba(8,6,20,0.85)",
+  panelBorder: "rgba(139,92,246,0.22)",
+  oppBg:       "rgba(6,4,16,0.8)",
+  tableBg:     "rgba(4,3,12,0.9)",
+  tableBorder: "rgba(129,140,248,0.2)",
+  myTurnBorder:"rgba(129,140,248,0.6)",
+  myTurnGlow:  "0 0 0 1px rgba(129,140,248,0.12), 0 0 22px rgba(129,140,248,0.1)",
+} as const;
+
 // ── Animated counter ──
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
@@ -831,7 +843,7 @@ export default function PokerPage() {
   }, [doAction]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden" style={{ background: "rgba(4,3,12,0.97)" }}>
       <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="fixed left-4 top-4 z-50 md:left-6 md:top-6">
         <Link href="/" className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs">
           &larr; BACK
@@ -844,7 +856,10 @@ export default function PokerPage() {
 
       <div className="relative z-10 container mx-auto px-3 md:px-4 py-4 md:py-8 min-h-screen flex flex-col items-center justify-center">
         <motion.div initial={{ opacity: 0, y: -24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-4 text-center md:mb-6">
-          <h1 className="mb-2 font-sans font-semibold text-2xl tracking-tight text-[var(--pixel-accent)] md:text-5xl">
+          <h1
+            className="mb-2 font-sans font-bold text-2xl tracking-tight md:text-5xl"
+            style={{ background: "linear-gradient(135deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+          >
             TEXAS HOLD&apos;EM
           </h1>
           <p className="font-mono text-xs text-[var(--pixel-muted)] md:text-sm">
