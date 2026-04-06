@@ -54,6 +54,10 @@ export function useSudokuGame() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  const [mistakes, setMistakes] = useState(0);
+  const [failureReason, setFailureReason] = useState<"mistakes" | "revealed" | null>(null);
+  const mistakesRef = useRef(0);
+
   const [bestTimes, setBestTimes] = useState<Record<Difficulty, number | null>>({
     easy: null, medium: null, hard: null,
   });
@@ -70,6 +74,7 @@ export function useSudokuGame() {
   const startTimeRef = useRef<number | null>(null);
   const solutionRef = useRef<number[][]>([]);
   const lockedRef = useRef<boolean[][]>([]);
+  const boardRef = useRef<number[][]>([]);
   const statusRef = useRef<GameStatus>("idle");
   const selectedCellRef = useRef<CellPos | null>(null);
   const sendRef = useRef<((packet: SudokuPacket) => boolean) | null>(null);
@@ -80,8 +85,10 @@ export function useSudokuGame() {
   useEffect(() => { startTimeRef.current = startTime; }, [startTime]);
   useEffect(() => { solutionRef.current = solution; }, [solution]);
   useEffect(() => { lockedRef.current = locked; }, [locked]);
+  useEffect(() => { boardRef.current = board; }, [board]);
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { selectedCellRef.current = selectedCell; }, [selectedCell]);
+  useEffect(() => { mistakesRef.current = mistakes; }, [mistakes]);
 
   const joinPeerId = useJoinParam();
   useEffect(() => { if (joinPeerId) setGameMode("p2p"); }, [joinPeerId]);
@@ -109,9 +116,10 @@ export function useSudokuGame() {
 
   const initGame = useCallback((puzz: number[][], sol: number[][], diff: Difficulty) => {
     const lk = puzz.map(row => row.map(cell => cell !== 0));
+    const newBoard = puzz.map(row => [...row]);
     setPuzzle(puzz);
     setSolution(sol);
-    setBoard(puzz.map(row => [...row]));
+    setBoard(newBoard);
     setLocked(lk);
     setSelectedCell(null);
     setStatus("playing");
@@ -123,12 +131,16 @@ export function useSudokuGame() {
     setOpponentComplete(false);
     setOpponentTime(null);
     setIsNewBest(false);
+    setMistakes(0);
+    setFailureReason(null);
     // Update refs immediately so callbacks can use fresh values
     solutionRef.current = sol;
     lockedRef.current = lk;
+    boardRef.current = newBoard;
     statusRef.current = "playing";
     startTimeRef.current = now;
     difficultyRef.current = diff;
+    mistakesRef.current = 0;
   }, []);
 
   const handleIncomingData = useCallback((packet: SudokuPacket) => {
@@ -189,14 +201,31 @@ export function useSudokuGame() {
     if (statusRef.current !== "playing") return;
     if (lockedRef.current[row]?.[col]) return;
 
+    const sol = solutionRef.current;
+    const currentVal = boardRef.current[row]?.[col] ?? 0;
+
+    // Count mistake if entering a wrong non-zero value different from what's already there
+    let gameFailed = false;
+    if (value !== 0 && sol.length > 0 && value !== sol[row]?.[col] && value !== currentVal) {
+      const newMistakes = mistakesRef.current + 1;
+      setMistakes(newMistakes);
+      mistakesRef.current = newMistakes;
+      if (newMistakes >= 3) {
+        gameFailed = true;
+        setStatus("failed");
+        statusRef.current = "failed";
+        setFailureReason("mistakes");
+        if (timerRef.current) clearInterval(timerRef.current);
+      }
+    }
+
     setBoard(prev => {
       const newBoard = prev.map(r => [...r]);
       newBoard[row][col] = value;
+      boardRef.current = newBoard;
 
-      const sol = solutionRef.current;
-
-      // Send progress to opponent (P2P only)
-      if (gameModeRef.current !== "solo" && sol.length > 0) {
+      // Send progress to opponent (P2P only, skip if just failed)
+      if (!gameFailed && gameModeRef.current !== "solo" && sol.length > 0) {
         let correct = 0;
         for (let rr = 0; rr < 9; rr++)
           for (let cc = 0; cc < 9; cc++)
@@ -204,8 +233,8 @@ export function useSudokuGame() {
         sendRef.current?.({ type: "progress", correct, timestamp: Date.now() });
       }
 
-      // Check completion
-      if (sol.length > 0) {
+      // Check completion (skip if game just failed)
+      if (!gameFailed && sol.length > 0) {
         let complete = true;
         outer: for (let rr = 0; rr < 9; rr++) {
           for (let cc = 0; cc < 9; cc++) {
@@ -265,6 +294,17 @@ export function useSudokuGame() {
     }
   }, [initGame]);
 
+  const revealSolution = useCallback(() => {
+    if (statusRef.current !== "playing") return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const sol = solutionRef.current;
+    setBoard(sol.map(row => [...row]));
+    boardRef.current = sol.map(row => [...row]);
+    setStatus("failed");
+    statusRef.current = "failed";
+    setFailureReason("revealed");
+  }, []);
+
   const exitToMenu = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     setGameMode("menu");
@@ -279,6 +319,10 @@ export function useSudokuGame() {
     setElapsedTime(0);
     setMyIndex(null);
     myIndexRef.current = null;
+    setMistakes(0);
+    mistakesRef.current = 0;
+    setFailureReason(null);
+    boardRef.current = [];
   }, []);
 
   // Keyboard handler (uses refs to avoid stale closures)
@@ -354,6 +398,7 @@ export function useSudokuGame() {
     myIndex,
     puzzle, solution, board, locked, conflicts, selectedCell,
     status, elapsedTime, bestTimes, isNewBest,
+    mistakes, failureReason,
     // Multiplayer
     opponentCorrect, opponentComplete, opponentTime,
     // Derived
@@ -364,6 +409,6 @@ export function useSudokuGame() {
     // Chat
     chatMessages, addMyMessage,
     // Handlers
-    handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu,
+    handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu, revealSolution,
   };
 }

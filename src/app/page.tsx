@@ -38,7 +38,7 @@ function HeroSection() {
       <div className="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-30 flex flex-col sm:flex-row flex-wrap justify-center gap-2.5 w-[90vw] sm:w-auto max-w-sm sm:max-w-none px-2">
         <a
           href="#publications"
-          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent)]/40 bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] hover:shadow-lg hover:shadow-[var(--pixel-glow)] transition-all touch-manipulation"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent)]/40 bg-[color-mix(in_oklab,var(--pixel-accent)_10%,transparent)] text-[var(--pixel-accent)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] hover:shadow-lg hover:shadow-[var(--pixel-glow)] transition-[background-color,box-shadow] duration-200 touch-manipulation"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Publications
@@ -47,7 +47,7 @@ function HeroSection() {
           href="/cv.pdf"
           target="_blank"
           rel="noopener noreferrer"
-          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] hover:shadow-lg hover:shadow-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-all touch-manipulation"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] hover:shadow-lg hover:shadow-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-[background-color,box-shadow] duration-200 touch-manipulation"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download CV

@@ -140,7 +140,7 @@ export default function MazePage() {
         <motion.div
           initial={{ opacity: 0, y: -24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="mb-5 text-center md:mb-8"
         >
           <h1 className="mb-2 font-sans font-semibold text-xl tracking-tight text-[var(--pixel-accent)] md:mb-3 md:text-5xl">
@@ -155,32 +155,33 @@ export default function MazePage() {
           {mode === "menu" && (
             <motion.div
               key="menu"
-              initial={{ opacity: 0, scale: 0.92 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+              transition={{ type: "spring", stiffness: 380, damping: 26 }}
               className="flex max-w-[760px] flex-col items-center gap-4"
             >
               <button
                 onClick={startSingleGame}
-                className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 SINGLE PLAYER
               </button>
               <button
                 onClick={startAiGame}
-                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 VS AI
               </button>
               <button
                 onClick={startLocalGame}
-                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-warn)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 LOCAL VS
               </button>
               <button
                 onClick={() => setMode("remote")}
-                className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
               >
                 REMOTE P2P
               </button>
@@ -191,9 +192,10 @@ export default function MazePage() {
           {mode === "remote" && !isConnected && (
             <motion.div
               key="remote-setup"
-              initial={{ opacity: 0, scale: 0.92 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+              transition={{ type: "spring", stiffness: 380, damping: 26 }}
               className="w-full max-w-[760px] px-2 md:px-0"
             >
               <P2PConnectionPanel
@@ -226,9 +228,10 @@ export default function MazePage() {
             displayMaze && (
               <motion.div
                 key="game"
-                initial={{ opacity: 0, scale: 0.94 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
+                exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 className="flex flex-col items-center gap-4"
               >
                 <div className="flex w-full max-w-[900px] flex-wrap items-center justify-center gap-2 md:gap-4">

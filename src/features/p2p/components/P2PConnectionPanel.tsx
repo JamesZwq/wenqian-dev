@@ -102,9 +102,9 @@ export default function P2PConnectionPanel({
   return (
     <div className="flex w-full items-center justify-center px-2 md:min-h-[60vh] md:px-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 24 }}
+        initial={{ opacity: 0, scale: 0.97, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
+        transition={{ type: "spring", stiffness: 340, damping: 26 }}
         className="w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-xl"
       >
         <div className="flex items-center justify-between gap-3 rounded-t-2xl border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 md:px-5">
@@ -132,10 +132,10 @@ export default function P2PConnectionPanel({
               {isWaitingForOpponent ? (
                 <motion.div
                   key="waiting"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}
+                  transition={{ type: "spring", stiffness: 380, damping: 26 }}
                   className="space-y-4"
                 >
                   {/* Room info card */}
@@ -215,10 +215,10 @@ export default function P2PConnectionPanel({
               ) : (
                 <motion.div
                   key="input"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}
+                  transition={{ type: "spring", stiffness: 380, damping: 26 }}
                   className="space-y-4"
                 >
                   {/* Room code input */}

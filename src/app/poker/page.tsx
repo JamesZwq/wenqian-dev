@@ -248,7 +248,7 @@ function EquityOverlay({ result, loading }: { result: EquityResult | null; loadi
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(h.pct, 100)}%` }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      transition={{ type: "spring", stiffness: 260, damping: 20 }}
                       className="h-full rounded-full bg-[var(--pixel-accent)]"
                       style={{ opacity: h.pct > 0 ? 1 : 0.2 }}
                     />
@@ -665,7 +665,7 @@ export default function PokerPage() {
         <div className="w-full max-w-6xl">
           <AnimatePresence mode="wait">
             {gameMode === "menu" && (
-              <motion.div key="menu" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} className="mx-auto flex max-w-md flex-col items-center gap-4">
+              <motion.div key="menu" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }} className="mx-auto flex max-w-md flex-col items-center gap-4">
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5 text-center">
                   <h3 className="mb-3 font-sans font-semibold text-xs text-[var(--pixel-accent)]">GAME RULES</h3>
                   <div className="space-y-1 font-mono text-[11px] text-[var(--pixel-muted)] text-left">
@@ -678,7 +678,7 @@ export default function PokerPage() {
                 </div>
                 <button
                   onClick={() => setGameMode("p2p")}
-                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   PLAY P2P
                 </button>
@@ -686,7 +686,7 @@ export default function PokerPage() {
             )}
 
             {gameMode === "p2p" && !isConnected && (
-              <motion.div key="p2p" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}>
+              <motion.div key="p2p" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }}>
                 <P2PConnectionPanel
                   localPeerId={localPeerId}
                   phase={phase}
@@ -710,7 +710,7 @@ export default function PokerPage() {
             )}
 
             {gameMode === "p2p" && isConnected && displayView && (
-              <motion.div key="game" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}>
+              <motion.div key="game" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }}>
                 <PokerTable
                   view={displayView}
                   isGameOver={isGameOver}

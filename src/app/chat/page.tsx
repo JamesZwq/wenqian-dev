@@ -54,7 +54,7 @@ export default function ChatPage() {
         <motion.div
           initial={{ opacity: 0, y: -24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="mb-5 text-center md:mb-8"
         >
           <h1 className="mb-3 font-sans font-semibold text-2xl tracking-tight text-[var(--pixel-accent)] md:text-5xl">
@@ -84,8 +84,9 @@ export default function ChatPage() {
 
           {isConnected && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 20 }}
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 26 }}
               className="overflow-hidden rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)]"
             >
               {/* Header */}

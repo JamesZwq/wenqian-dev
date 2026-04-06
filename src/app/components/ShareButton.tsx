@@ -229,8 +229,8 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
             ref={popoverRef}
             initial={{ opacity: 0, scale: 0.92, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -8 }}
-            transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+            exit={{ opacity: 0, scale: 0.92, y: -8, transition: { duration: 0.12 } }}
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
             className="absolute right-0 top-full z-[200] mt-2 w-72 origin-top-right rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] backdrop-blur-xl overflow-hidden"
           >
             {/* Header */}
@@ -276,7 +276,7 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
                   key={p.id}
                   type="button"
                   onClick={() => handlePlatformClick(p.getUrl)}
-                  className="group flex flex-col items-center gap-1.5 rounded-xl p-2.5 transition-all hover:scale-[1.07] active:scale-95"
+                  className="group flex flex-col items-center gap-1.5 rounded-xl p-2.5 transition-transform duration-150 hover:scale-[1.07] active:scale-95"
                   style={{
                     background: `var(--platform-bg-${p.id}, ${p.lightBg})`,
                   }}

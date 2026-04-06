@@ -43,12 +43,13 @@ export default function SudokuPage() {
     myIndex,
     board, locked, conflicts, solution, selectedCell,
     status, elapsedTime, bestTimes, isNewBest,
+    mistakes, failureReason,
     opponentCorrect, opponentComplete, opponentTime,
     correctCount, totalToFill,
     phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId,
     chatMessages, addMyMessage,
-    handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu,
+    handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu, revealSolution,
   } = useSudokuGame();
 
   const isGameActive = gameMode === "solo" || (gameMode === "p2p" && isConnected);
@@ -118,7 +119,7 @@ export default function SudokuPage() {
         <motion.div
           initial={{ opacity: 0, y: -24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="mb-4 text-center md:mb-6"
         >
           <h1 className="mb-1 font-sans font-semibold text-2xl tracking-tight text-[var(--pixel-accent)] md:text-5xl">
@@ -137,9 +138,10 @@ export default function SudokuPage() {
             {gameMode === "menu" && (
               <motion.div
                 key="menu"
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
                 {/* Solo */}
@@ -151,7 +153,7 @@ export default function SudokuPage() {
                       <button
                         key={diff}
                         onClick={() => startSolo(diff)}
-                        className="group flex items-center justify-between w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                        className="group flex items-center justify-between w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                       >
                         <span>{DIFFICULTY_LABELS[diff]}</span>
                         <span className="font-mono text-[10px] text-[var(--pixel-muted)] group-hover:text-[var(--pixel-accent)]">
@@ -171,7 +173,7 @@ export default function SudokuPage() {
                       <button
                         key={diff}
                         onClick={() => setDifficulty(diff)}
-                        className={`flex-1 rounded-xl border px-2 py-2 font-sans font-semibold text-[10px] transition-all hover:scale-[1.02] ${
+                        className={`flex-1 rounded-xl border px-2 py-2 font-sans font-semibold text-[10px] transition-[transform,background-color] duration-150 hover:scale-[1.02] ${
                           difficulty === diff
                             ? "border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_15%,transparent)] text-[var(--pixel-accent-2)]"
                             : "border-[var(--pixel-border)] bg-transparent text-[var(--pixel-muted)] hover:border-[var(--pixel-accent-2)] hover:text-[var(--pixel-accent-2)]"
@@ -183,7 +185,7 @@ export default function SudokuPage() {
                   </div>
                   <button
                     onClick={() => setGameMode("p2p")}
-                    className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                    className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                   >
                     P2P ONLINE
                   </button>
@@ -195,9 +197,10 @@ export default function SudokuPage() {
             {gameMode === "p2p" && !isConnected && (
               <motion.div
                 key="p2p-connect"
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
               >
                 <P2PConnectionPanel
                   localPeerId={localPeerId}
@@ -228,9 +231,10 @@ export default function SudokuPage() {
             {isGameActive && board.length > 0 && (
               <motion.div
                 key="game"
-                initial={{ opacity: 0, scale: 0.94 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
+                exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 className="flex flex-col items-center gap-3 md:gap-4"
               >
                 {/* Mobile compact status */}
@@ -238,12 +242,17 @@ export default function SudokuPage() {
                   <div className={`rounded-lg border px-3 py-1.5 font-mono text-[10px] ${
                     status === "complete"
                       ? "border-[var(--pixel-accent)] text-[var(--pixel-accent)]"
-                      : "border-[var(--pixel-border)] text-[var(--pixel-muted)]"
+                      : status === "failed"
+                        ? "border-[var(--pixel-warn)] text-[var(--pixel-warn)]"
+                        : "border-[var(--pixel-border)] text-[var(--pixel-muted)]"
                   }`}>
-                    {status === "complete" ? (isNewBest && gameMode === "solo" ? "NEW BEST!" : "DONE!") : formatTime(elapsedTime)}
+                    {status === "complete" ? (isNewBest && gameMode === "solo" ? "NEW BEST!" : "DONE!") : status === "failed" ? "GAME OVER" : formatTime(elapsedTime)}
                   </div>
                   <div className="rounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-1.5 font-mono text-[10px] text-[var(--pixel-accent)]">
                     {correctCount}/{totalToFill}
+                  </div>
+                  <div className="rounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-1.5 font-mono text-[10px] text-[var(--pixel-warn)]">
+                    {[0, 1, 2].map(i => i < mistakes ? "●" : "○").join("")}
                   </div>
                   {gameMode === "p2p" && (
                     <div className="rounded-lg border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-1.5 font-mono text-[10px] text-[var(--pixel-accent-2)]">
@@ -259,8 +268,8 @@ export default function SudokuPage() {
                     {/* Timer */}
                     <div className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-4">
                       <h3 className="mb-2 font-sans font-semibold text-[10px] text-[var(--pixel-accent)]">TIMER</h3>
-                      <div className={`font-mono text-2xl font-bold ${status === "complete" ? "text-[var(--pixel-accent)]" : "text-[var(--pixel-text)]"}`}>
-                        {formatTime(status === "complete" ? elapsedTime : elapsedTime)}
+                      <div className={`font-mono text-2xl font-bold ${status === "complete" ? "text-[var(--pixel-accent)]" : status === "failed" ? "text-[var(--pixel-warn)]" : "text-[var(--pixel-text)]"}`}>
+                        {formatTime(elapsedTime)}
                       </div>
                       {gameMode === "solo" && bestTimes[difficulty] !== null && (
                         <div className="mt-1 font-mono text-[10px] text-[var(--pixel-muted)]">
@@ -272,6 +281,12 @@ export default function SudokuPage() {
                           NEW BEST!
                         </div>
                       )}
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-[var(--pixel-muted)]">ERR</span>
+                        <span className="font-mono text-sm tracking-widest text-[var(--pixel-warn)]">
+                          {[0, 1, 2].map(i => i < mistakes ? "●" : "○").join("")}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Progress */}
@@ -327,6 +342,17 @@ export default function SudokuPage() {
                             )}
                           </>
                         )}
+                        {status === "failed" && (
+                          <>
+                            <p className="font-bold text-[var(--pixel-warn)]">&gt; GAME OVER</p>
+                            {failureReason === "mistakes" && (
+                              <p className="text-[var(--pixel-muted)]">&gt; Too many mistakes</p>
+                            )}
+                            {failureReason === "revealed" && (
+                              <p className="text-[var(--pixel-muted)]">&gt; Solution revealed</p>
+                            )}
+                          </>
+                        )}
                         {status === "playing" && gameMode === "p2p" && opponentComplete && (
                           <p className="text-[var(--pixel-warn)]">&gt; Opponent finished! Finish up!</p>
                         )}
@@ -335,7 +361,7 @@ export default function SudokuPage() {
 
                     {/* Controls */}
                     <div className="space-y-2">
-                      {status === "complete" && (isHost || gameMode === "solo") && (
+                      {(status === "complete" || status === "failed") && (isHost || gameMode === "solo") && (
                         <button
                           onClick={requestNewGame}
                           className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-3 font-sans font-semibold text-[10px] text-[var(--pixel-bg)] transition-transform hover:scale-[1.02]"
@@ -343,8 +369,16 @@ export default function SudokuPage() {
                           NEW GAME
                         </button>
                       )}
-                      {status === "complete" && isGuest && gameMode === "p2p" && (
+                      {(status === "complete" || status === "failed") && isGuest && gameMode === "p2p" && (
                         <p className="text-center font-mono text-[10px] text-[var(--pixel-muted)]">Waiting for host to start new game...</p>
+                      )}
+                      {status === "playing" && (
+                        <button
+                          onClick={revealSolution}
+                          className="w-full rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-warn)] transition-colors hover:bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)]"
+                        >
+                          REVEAL
+                        </button>
                       )}
                       <button
                         onClick={exitToMenu}
@@ -400,18 +434,31 @@ export default function SudokuPage() {
                       {gameMode === "p2p" && !opponentComplete && "You finished! Waiting for opponent..."}
                     </div>
                   )}
+                  {status === "failed" && (
+                    <div className="w-full rounded-xl border border-[var(--pixel-warn)] p-3 text-center font-mono text-xs text-[var(--pixel-warn)]">
+                      GAME OVER — {failureReason === "mistakes" ? "Too many mistakes!" : "Solution revealed"}
+                    </div>
+                  )}
                   {status === "playing" && gameMode === "p2p" && opponentComplete && (
                     <div className="w-full rounded-xl border border-[var(--pixel-warn)] p-2 text-center font-mono text-[10px] text-[var(--pixel-warn)]">
                       Opponent finished — keep going!
                     </div>
                   )}
                   <div className="flex gap-2 w-full">
-                    {status === "complete" && (isHost || gameMode === "solo") && (
+                    {(status === "complete" || status === "failed") && (isHost || gameMode === "solo") && (
                       <button
                         onClick={requestNewGame}
                         className="flex-1 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-accent)] px-4 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-bg)]"
                       >
                         NEW GAME
+                      </button>
+                    )}
+                    {status === "playing" && (
+                      <button
+                        onClick={revealSolution}
+                        className="flex-1 rounded-xl border border-[var(--pixel-warn)] bg-[var(--pixel-card-bg)] px-4 py-2.5 font-sans font-semibold text-[10px] text-[var(--pixel-warn)]"
+                      >
+                        REVEAL
                       </button>
                     )}
                     <button

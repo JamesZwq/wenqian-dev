@@ -59,7 +59,7 @@ export default function GomokuPage() {
         <motion.div
           initial={{ opacity: 0, y: -24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="mb-4 text-center md:mb-8"
         >
           <h1 className="mb-2 font-sans font-semibold text-2xl tracking-tight text-[var(--pixel-accent)] md:text-5xl">
@@ -77,9 +77,10 @@ export default function GomokuPage() {
             {gameMode === "menu" && (
               <motion.div
                 key="menu"
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 className="mx-auto flex max-w-md flex-col items-center gap-4"
               >
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
@@ -89,7 +90,7 @@ export default function GomokuPage() {
                       <button
                         key={diff}
                         onClick={() => startAIGame(diff)}
-                        className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                        className="w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                       >
                         {diff.toUpperCase()}
                       </button>
@@ -99,7 +100,7 @@ export default function GomokuPage() {
 
                 <button
                   onClick={() => setGameMode("p2p")}
-                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-all hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
                   P2P ONLINE
                 </button>
@@ -110,9 +111,10 @@ export default function GomokuPage() {
             {gameMode === "p2p" && !isConnected && (
               <motion.div
                 key="p2p-connect"
-                initial={{ opacity: 0, scale: 0.92 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
               >
                 <P2PConnectionPanel
                   localPeerId={localPeerId}
@@ -143,9 +145,10 @@ export default function GomokuPage() {
             {((gameMode === "ai") || (gameMode === "p2p" && isConnected)) && (
               <motion.div
                 key="game"
-                initial={{ opacity: 0, scale: 0.94 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
+                exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 className="flex flex-col items-center gap-3 md:gap-4"
               >
                 {/* Mobile compact status bar */}

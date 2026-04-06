@@ -87,8 +87,8 @@ export function P2PChat({ messages, onSend, isConnected }: P2PChatProps) {
           <motion.div
             initial={{ opacity: 0, y: -32 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -32 }}
-            transition={{ duration: 0.25 }}
+            exit={{ opacity: 0, y: -32, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
             className="fixed top-16 left-1/2 z-[200] -translate-x-1/2 rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-2 font-mono text-sm text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm"
           >
             🔔 Opponent connected!
@@ -102,10 +102,10 @@ export function P2PChat({ messages, onSend, isConnected }: P2PChatProps) {
           {isOpen ? (
             <motion.div
               key="panel"
-              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.96 }}
-              transition={{ duration: 0.18 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96, transition: { duration: 0.12 } }}
+              transition={{ type: "spring", stiffness: 400, damping: 26 }}
               className="flex w-[300px] flex-col overflow-hidden rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm"
             >
               {/* Header */}

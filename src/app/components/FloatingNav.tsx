@@ -1,147 +1,127 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
+const menuItems = [
+  { href: "/chat", label: "P2P Chat", icon: "💬", color: "var(--pixel-warn)", description: "Encrypted peer-to-peer messaging" },
+  { href: "/gomoku", label: "Gomoku", icon: "⚫", color: "var(--pixel-accent)", description: "Five in a Row multiplayer game" },
+  { href: "/maze", label: "Maze Runner", icon: "🏃", color: "var(--pixel-accent-2)", description: "P2P maze race with items & power-ups" },
+  { href: "/math", label: "Math Sprint", icon: "🧮", color: "var(--pixel-accent)", description: "Speed arithmetic challenge" },
+  { href: "/flash-count", label: "Flash Count", icon: "🧊", color: "var(--pixel-accent-2)", description: "Count 3D blocks before they vanish" },
+  { href: "/poker", label: "Texas Hold'em", icon: "♠️", color: "var(--pixel-warn)", description: "Heads-up P2P poker, blinds escalate" },
+  { href: "/sudoku", label: "Sudoku", icon: "🔢", color: "var(--pixel-accent)", description: "Solo or P2P race — same puzzle, fastest wins" },
+  { href: "/halli-galli", label: "Halli Galli", icon: "🔔", color: "var(--pixel-warn)", description: "Ring the bell when any fruit totals exactly 5!" },
+];
+
+/* -- Framer Motion variants for staggered children -- */
+const dropdownVariants = {
+  hidden: { opacity: 0, scale: 0.92, y: -8 },
+  visible: {
+    opacity: 1, scale: 1, y: 0,
+    transition: { type: "spring" as const, stiffness: 400, damping: 28, staggerChildren: 0.04, delayChildren: 0.06 },
+  },
+  exit: {
+    opacity: 0, scale: 0.92, y: -8,
+    transition: { duration: 0.18, ease: "easeIn" as const },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -12, filter: "blur(4px)" },
+  visible: { opacity: 1, x: 0, filter: "blur(0px)", transition: { type: "spring" as const, stiffness: 380, damping: 24 } },
+  exit: { opacity: 0, x: -8, transition: { duration: 0.12 } },
+};
+
 export default function FloatingNav() {
   const [isOpen, setIsOpen] = useState(false);
-
-  const menuItems = [
-    {
-      href: "/chat",
-      label: "P2P Chat",
-      icon: "💬",
-      color: "var(--pixel-warn)",
-      description: "Encrypted peer-to-peer messaging"
-    },
-    {
-      href: "/gomoku",
-      label: "Gomoku",
-      icon: "⚫",
-      color: "var(--pixel-accent)",
-      description: "Five in a Row multiplayer game"
-    },
-    {
-      href: "/maze",
-      label: "Maze Runner",
-      icon: "🏃",
-      color: "var(--pixel-accent-2)",
-      description: "P2P maze race with items & power-ups"
-    },
-    {
-      href: "/math",
-      label: "Math Sprint",
-      icon: "🧮",
-      color: "var(--pixel-accent)",
-      description: "Speed arithmetic challenge"
-    },
-    {
-      href: "/flash-count",
-      label: "Flash Count",
-      icon: "🧊",
-      color: "var(--pixel-accent-2)",
-      description: "Count 3D blocks before they vanish"
-    },
-    {
-      href: "/poker",
-      label: "Texas Hold'em",
-      icon: "♠️",
-      color: "var(--pixel-warn)",
-      description: "Heads-up P2P poker, blinds escalate"
-    },
-    {
-      href: "/sudoku",
-      label: "Sudoku",
-      icon: "🔢",
-      color: "var(--pixel-accent)",
-      description: "Solo or P2P race — same puzzle, fastest wins"
-    },
-    {
-      href: "/halli-galli",
-      label: "Halli Galli",
-      icon: "🔔",
-      color: "var(--pixel-warn)",
-      description: "Ring the bell when any fruit totals exactly 5!"
-    },
-  ];
+  const close = useCallback(() => setIsOpen(false), []);
 
   return (
     <div className="fixed top-6 left-6 z-50">
-      {/* 主按钮 */}
+      {/* Main button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center gap-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-all hover:shadow-2xl"
+        className="relative flex items-center gap-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-shadow hover:shadow-2xl"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 500, damping: 25 }}
       >
-        <span className="text-base">{isOpen ? "✕" : "☰"}</span>
+        <motion.span
+          className="text-base inline-block"
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          {isOpen ? "✕" : "☰"}
+        </motion.span>
         <span className="hidden sm:inline">MENU</span>
       </motion.button>
 
-      {/* 下拉菜单 */}
+      {/* Backdrop overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute left-0 top-full mt-3 w-80 rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm overflow-hidden"
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 -z-10 bg-black/20 backdrop-blur-[2px]"
+            onClick={close}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Dropdown menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            variants={dropdownVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute left-0 top-full mt-3 w-80 max-h-[calc(100dvh-100px)] flex flex-col rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] backdrop-blur-md will-change-transform"
           >
-            {/* 标题 */}
-            <div className="border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 rounded-t-2xl">
+            {/* Header */}
+            <div className="shrink-0 border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 rounded-t-2xl">
               <h3 className="font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)]">
                 P2P Applications
               </h3>
             </div>
 
-            {/* 菜单项 */}
-            <div className="p-2">
-              {menuItems.map((item, index) => (
-                <motion.div
-                  key={item.href}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
+            {/* Scrollable items */}
+            <div className="overflow-y-auto overscroll-contain p-2 [scrollbar-width:thin] [scrollbar-color:var(--pixel-accent)_transparent]">
+              {menuItems.map((item) => (
+                <motion.div key={item.href} variants={itemVariants}>
                   <Link
                     href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className="group relative block rounded-xl border border-transparent p-4 transition-all hover:border-[var(--pixel-border)] hover:bg-[var(--pixel-bg-alt)]"
+                    onClick={close}
+                    className="group relative block rounded-xl border border-transparent p-3.5 transition-colors duration-150 hover:border-[var(--pixel-border)] hover:bg-[var(--pixel-bg-alt)]"
                   >
                     <div className="flex items-start gap-3">
-                      {/* 图标 */}
-                      <span className="text-2xl transition-transform group-hover:scale-110">
+                      <span className="text-2xl transition-transform duration-200 group-hover:scale-110">
                         {item.icon}
                       </span>
-
-                      {/* 内容 */}
-                      <div className="flex-1">
-                        <div className="mb-1 font-sans text-sm font-semibold tracking-tight" style={{ color: item.color }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="mb-0.5 font-sans text-sm font-semibold tracking-tight" style={{ color: item.color }}>
                           {item.label}
                         </div>
                         <div className="font-mono text-xs text-[var(--pixel-muted)]">
                           {item.description}
                         </div>
                       </div>
-
-                      {/* 箭头 */}
-                      <motion.span
-                        className="text-[var(--pixel-accent)] opacity-0 transition-opacity group-hover:opacity-100"
-                        animate={{ x: [0, 4, 0] }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
+                      <span className="text-[var(--pixel-accent)] opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-1">
                         →
-                      </motion.span>
+                      </span>
                     </div>
                   </Link>
                 </motion.div>
               ))}
             </div>
 
-            {/* 底部提示 */}
-            <div className="border-t border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-2 rounded-b-2xl">
+            {/* Footer */}
+            <div className="shrink-0 border-t border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-2 rounded-b-2xl">
               <p className="font-mono text-[10px] text-[var(--pixel-muted)]">
                 &gt; Browser-to-browser, no server required
               </p>
@@ -149,14 +129,6 @@ export default function FloatingNav() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* 点击外部关闭 */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 -z-10"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
     </div>
   );
 }

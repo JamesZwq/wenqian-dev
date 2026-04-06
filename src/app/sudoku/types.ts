@@ -1,6 +1,6 @@
 export type Difficulty = "easy" | "medium" | "hard";
 export type GameMode = "menu" | "solo" | "p2p";
-export type GameStatus = "idle" | "playing" | "complete";
+export type GameStatus = "idle" | "playing" | "complete" | "failed";
 
 export type SudokuPacket =
   | { type: "puzzle_sync"; puzzle: number[][]; solution: number[][]; difficulty: Difficulty; timestamp: number }
