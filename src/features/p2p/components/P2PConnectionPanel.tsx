@@ -55,18 +55,23 @@ export default function P2PConnectionPanel({
 }: P2PConnectionPanelProps) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
-  const [autoConnectDone, setAutoConnectDone] = useState(false);
+  const [autoConnectRetries, setAutoConnectRetries] = useState(0);
+  const MAX_AUTO_RETRIES = 3;
 
   const effectiveTimeoutMs = connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
   const progressDurationSec = Math.max(0.1, effectiveTimeoutMs / 1000);
 
   // Auto-connect when autoConnectPeerId is provided and phase is ready
   useEffect(() => {
-    if (autoConnectPeerId && phase === "ready" && !autoConnectDone) {
-      setAutoConnectDone(true);
-      onConnect(autoConnectPeerId);
+    if (autoConnectPeerId && phase === "ready" && autoConnectRetries < MAX_AUTO_RETRIES) {
+      const delay = autoConnectRetries === 0 ? 0 : 1000 * autoConnectRetries;
+      const timer = setTimeout(() => {
+        setAutoConnectRetries(prev => prev + 1);
+        onConnect(autoConnectPeerId);
+      }, delay);
+      return () => clearTimeout(timer);
     }
-  }, [autoConnectPeerId, phase, autoConnectDone, onConnect]);
+  }, [autoConnectPeerId, phase, autoConnectRetries, onConnect]);
 
   useEffect(() => {
     if (!error) return;
