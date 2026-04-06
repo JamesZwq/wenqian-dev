@@ -1168,6 +1168,92 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   );
 }
 
+// ── Connection celebration ──
+
+function ConnectCelebration() {
+  return (
+    <motion.div
+      key="celebration"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.3 } }}
+      className="mx-auto flex max-w-md flex-col items-center justify-center py-16"
+    >
+      {/* Expanding rings */}
+      <div className="relative flex items-center justify-center mb-8">
+        {[0, 0.3, 0.6].map((delay, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full border-2 border-[var(--pixel-accent)]"
+            initial={{ width: 20, height: 20, opacity: 0.8 }}
+            animate={{ width: 120, height: 120, opacity: 0 }}
+            transition={{ duration: 1.5, delay, repeat: Infinity, ease: "easeOut" }}
+          />
+        ))}
+        {/* Center checkmark / connected icon */}
+        <motion.div
+          className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full"
+          style={{ background: "rgba(129,140,248,0.15)", border: "2px solid var(--pixel-accent)" }}
+          initial={{ scale: 0 }}
+          animate={{ scale: [0, 1.2, 1] }}
+          transition={{ duration: 0.5, delay: 0.1, times: [0, 0.6, 1] }}
+        >
+          <motion.svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
+            className="h-8 w-8 text-[var(--pixel-accent)]"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <motion.path d="M5 12l5 5L19 7" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, delay: 0.5 }} />
+          </motion.svg>
+        </motion.div>
+      </div>
+
+      {/* Text */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 24 }}
+        className="text-center space-y-2"
+      >
+        <div className="font-sans font-bold text-xl"
+             style={{ background: "linear-gradient(135deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          CONNECTED
+        </div>
+        <motion.div
+          className="font-mono text-xs text-[var(--pixel-muted)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          Preparing the table...
+        </motion.div>
+      </motion.div>
+
+      {/* Subtle card icons floating up */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {["♠", "♥", "♦", "♣"].map((suit, i) => (
+          <motion.span
+            key={suit}
+            className="absolute text-2xl"
+            style={{
+              left: `${20 + i * 20}%`,
+              bottom: "10%",
+              color: suit === "♥" || suit === "♦" ? "rgba(239,68,68,0.3)" : "rgba(129,140,248,0.3)"
+            }}
+            initial={{ y: 0, opacity: 0 }}
+            animate={{ y: -200, opacity: [0, 0.6, 0] }}
+            transition={{ duration: 2, delay: 0.3 + i * 0.2, ease: "easeOut" }}
+          >
+            {suit}
+          </motion.span>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Page ──
 
 const CONNECTION_DESC = [
@@ -1186,6 +1272,18 @@ export default function PokerPage() {
     chatMessages, addMyMessage,
     doAction, requestNextHand, requestRematch, exitToMenu,
   } = usePokerGame();
+
+  const [showConnectCelebration, setShowConnectCelebration] = useState(false);
+  const prevConnected = useRef(false);
+
+  useEffect(() => {
+    if (isConnected && !prevConnected.current) {
+      setShowConnectCelebration(true);
+      const t = setTimeout(() => setShowConnectCelebration(false), 2200);
+      return () => clearTimeout(t);
+    }
+    prevConnected.current = isConnected;
+  }, [isConnected]);
 
   const handleAction = useCallback((action: string, amount?: number) => {
     doAction(action as "fold" | "check" | "call" | "raise" | "allin", amount ?? 0);
@@ -1239,7 +1337,7 @@ export default function PokerPage() {
               </motion.div>
             )}
 
-            {gameMode === "p2p" && !isConnected && (
+            {gameMode === "p2p" && !isConnected && !showConnectCelebration && (
               <motion.div key="p2p" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }}>
                 <P2PConnectionPanel
                   localPeerId={localPeerId}
@@ -1263,7 +1361,11 @@ export default function PokerPage() {
               </motion.div>
             )}
 
-            {gameMode === "p2p" && isConnected && displayView && (
+            {showConnectCelebration && (
+              <ConnectCelebration />
+            )}
+
+            {gameMode === "p2p" && isConnected && displayView && !showConnectCelebration && (
               <motion.div key="game" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }} transition={{ type: "spring", stiffness: 380, damping: 26 }}>
                 <div className="w-full max-w-md mx-auto flex flex-col gap-2 mb-2 px-1">
                   <ChipBar myChips={displayView.myChips} opponentChips={displayView.opponentChips} />
@@ -1284,7 +1386,7 @@ export default function PokerPage() {
               </motion.div>
             )}
 
-            {gameMode === "p2p" && isConnected && !displayView && (
+            {gameMode === "p2p" && isConnected && !displayView && !showConnectCelebration && (
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
                 <span className="font-mono text-sm text-[var(--pixel-muted)] animate-pulse">Dealing cards...</span>
               </motion.div>

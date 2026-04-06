@@ -200,42 +200,46 @@ export default function P2PConnectionPanel({
                     </button>
                   </div>
 
-                  {/* Waiting animation — host ready, scanning for opponent */}
-                  <div className="flex items-center justify-center gap-3 py-3">
-                    {/* Host — solid, glowing */}
+                  {/* Waiting animation — clean breathing dots */}
+                  <div className="flex items-center justify-center gap-4 py-4">
+                    {/* Host — solid circle */}
                     <motion.div
-                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)] shadow-[0_0_12px_var(--pixel-glow)]"
-                      animate={{ boxShadow: ["0 0 8px var(--pixel-glow)", "0 0 20px var(--pixel-glow)", "0 0 8px var(--pixel-glow)"] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full"
+                      style={{ background: "rgba(129,140,248,0.12)", border: "2px solid var(--pixel-accent)" }}
+                      animate={{ boxShadow: ["0 0 0px rgba(129,140,248,0)", "0 0 20px rgba(129,140,248,0.3)", "0 0 0px rgba(129,140,248,0)"] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                     >
-                      <span className="text-base">👤</span>
+                      <span className="text-lg">👤</span>
                     </motion.div>
 
-                    {/* Signal pulses traveling right */}
-                    <div className="relative h-[2px] w-24">
-                      <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
-                      {[0, 0.5, 1.0].map((delay, i) => (
-                        <motion.div
-                          key={i}
-                          className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)]"
-                          animate={{ left: ["-4px", "calc(100% + 4px)"], opacity: [0, 1, 1, 0] }}
-                          transition={{ duration: 1.5, repeat: Infinity, delay, ease: "easeInOut" }}
-                        />
-                      ))}
+                    {/* Connection line with traveling dot */}
+                    <div className="relative h-[2px] w-20 rounded-full" style={{ background: "rgba(129,140,248,0.15)" }}>
+                      <motion.div
+                        className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)]"
+                        style={{ boxShadow: "0 0 8px var(--pixel-accent)" }}
+                        animate={{ left: ["-4px", "calc(100% + 4px)"], opacity: [0, 1, 1, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      />
                     </div>
 
-                    {/* Opponent slot — radar scan */}
-                    <div className="relative flex h-11 w-11 items-center justify-center">
-                      {[0, 0.7, 1.4].map((delay, i) => (
-                        <motion.div
-                          key={i}
-                          className="pointer-events-none absolute inset-0 rounded-full border border-[var(--pixel-accent)]"
-                          animate={{ scale: [0.5, 1.4], opacity: [0.6, 0] }}
-                          transition={{ duration: 2.1, repeat: Infinity, delay, ease: "easeOut" }}
-                        />
-                      ))}
-                      <span className="relative font-mono text-sm font-bold text-[var(--pixel-muted)]">?</span>
-                    </div>
+                    {/* Opponent — breathing empty circle */}
+                    <motion.div
+                      className="flex h-12 w-12 items-center justify-center rounded-full"
+                      style={{ border: "2px dashed var(--pixel-muted)" }}
+                      animate={{
+                        borderColor: ["rgba(139,92,246,0.2)", "rgba(139,92,246,0.5)", "rgba(139,92,246,0.2)"],
+                        scale: [1, 1.05, 1],
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <motion.span
+                        className="font-mono text-sm font-bold text-[var(--pixel-muted)]"
+                        animate={{ opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                      >
+                        ?
+                      </motion.span>
+                    </motion.div>
                   </div>
 
                   {/* Hint */}
@@ -279,29 +283,25 @@ export default function P2PConnectionPanel({
                     >
                       <div className="flex items-center justify-center gap-3 py-3">
                         <motion.div
-                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--pixel-accent)]"
-                          animate={{ scale: [1, 1.08, 1] }}
+                          className="flex h-10 w-10 items-center justify-center rounded-full"
+                          style={{ background: "rgba(129,140,248,0.1)", border: "2px solid var(--pixel-accent)" }}
+                          animate={{ scale: [1, 1.06, 1] }}
                           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                         >
                           <span className="text-base">👤</span>
                         </motion.div>
 
-                        <div className="relative h-[2px] w-20">
-                          <div className="absolute inset-0 rounded-full bg-[var(--pixel-border)]" />
+                        <div className="relative h-[2px] w-20 rounded-full" style={{ background: "rgba(129,140,248,0.12)" }}>
                           <motion.div
                             className="absolute inset-y-0 left-0 rounded-full bg-[var(--pixel-accent)]"
                             animate={{ width: ["0%", "100%"] }}
-                            transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-                          />
-                          <motion.div
-                            className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[var(--pixel-accent)] shadow-[0_0_6px_var(--pixel-accent)]"
-                            animate={{ left: ["0%", "100%"] }}
-                            transition={{ duration: 1.6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+                            transition={{ duration: 1.8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
                           />
                         </div>
 
                         <motion.div
-                          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-[var(--pixel-muted)]"
+                          className="flex h-10 w-10 items-center justify-center rounded-full"
+                          style={{ border: "2px dashed var(--pixel-muted)" }}
                           animate={{ borderColor: ["var(--pixel-muted)", "var(--pixel-accent)", "var(--pixel-muted)"] }}
                           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                         >
@@ -348,31 +348,44 @@ export default function P2PConnectionPanel({
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] p-4"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] p-4"
                 >
-                  <div className="mb-3 flex items-center gap-3">
+                  {/* Pulsing connecting indicator */}
+                  <div className="relative flex h-6 w-6 items-center justify-center flex-shrink-0">
                     <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-[var(--pixel-accent-2)] border-t-transparent"
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="h-4 w-4 rounded-full border-2 border-[var(--pixel-accent-2)] border-t-transparent"
                     />
-                    <div>
-                      <p className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent-2)] md:text-xs">
-                        JOINING ROOM
-                      </p>
-                      <p className="mt-1 font-mono text-xs text-[var(--pixel-text)]">
-                        Creating or joining the room...
-                      </p>
+                    <motion.div
+                      className="h-2 w-2 rounded-full bg-[var(--pixel-accent-2)]"
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <span className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent-2)]">
+                      CONNECTING...
+                    </span>
+                    {/* Shimmer progress bar */}
+                    <div className="relative h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(167,139,250,0.15)" }}>
+                      <motion.div
+                        key={`connect-progress-${resetSignal}-${effectiveTimeoutMs}`}
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{ background: "linear-gradient(90deg, var(--pixel-accent-2), var(--pixel-accent))" }}
+                        initial={{ scaleX: 0, transformOrigin: "left" }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ duration: progressDurationSec, ease: "linear" }}
+                      />
+                      {/* Shimmer overlay */}
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }}
+                        animate={{ x: ["-100%", "200%"] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                      />
                     </div>
                   </div>
-
-                  <motion.div
-                    key={`connect-progress-${resetSignal}-${effectiveTimeoutMs}`}
-                    initial={{ scaleX: 0, opacity: 0.6 }}
-                    animate={{ scaleX: 1, opacity: 1 }}
-                    transition={{ duration: progressDurationSec, ease: "linear" }}
-                    className="h-1 origin-left bg-[var(--pixel-accent-2)]"
-                  />
                 </motion.div>
               )}
 
