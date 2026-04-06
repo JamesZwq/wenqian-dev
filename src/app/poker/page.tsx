@@ -1192,7 +1192,7 @@ export default function PokerPage() {
   }, [doAction]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden" style={{ background: "rgba(4,3,12,0.97)" }}>
+    <div className="relative min-h-screen overflow-hidden">
       <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="fixed left-4 top-4 z-50 md:left-6 md:top-6">
         <Link href="/" className="inline-flex rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs">
           &larr; BACK
