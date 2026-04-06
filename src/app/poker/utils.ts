@@ -98,6 +98,14 @@ export function getBlindLevel(handNumber: number): number {
   return Math.pow(2, level);
 }
 
+/** Returns the next SB amount and how many hands until it kicks in. */
+export function getNextBlindLevel(handNumber: number): { nextSb: number; handsAway: number } {
+  const currentLevel = Math.floor(Math.log2((handNumber + 4) / 5));
+  const nextSb = Math.pow(2, currentLevel + 1);
+  const nextHandNumber = Math.round(5 * Math.pow(2, currentLevel + 1) - 4);
+  return { nextSb, handsAway: Math.max(0, nextHandNumber - handNumber) };
+}
+
 // ── Display helpers ──
 
 export function rankStr(r: Rank): string {

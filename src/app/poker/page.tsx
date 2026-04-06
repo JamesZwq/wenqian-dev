@@ -11,7 +11,7 @@ import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
-import { rankStr, suitSymbol, suitColor, getActions, isInBestHand } from "./utils";
+import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, getNextBlindLevel } from "./utils";
 import { calcEquity, type EquityResult } from "./equity";
 
 // ── Animated counter ──
