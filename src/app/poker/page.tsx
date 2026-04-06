@@ -14,6 +14,150 @@ import type { Card, PlayerView } from "./types";
 import { rankStr, suitSymbol, suitColor, getActions, isInBestHand } from "./utils";
 import { calcEquity, type EquityResult } from "./equity";
 
+// ── Animated counter ──
+
+function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+  const [display, setDisplay] = useState(value);
+  const prev = useRef(value);
+
+  useEffect(() => {
+    if (prev.current === value) return;
+    const from = prev.current;
+    prev.current = value;
+    const diff = value - from;
+    const dur = Math.min(Math.abs(diff) * 3, 600);
+    if (dur < 30) { setDisplay(value); return; }
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + diff * ease));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
+  return <span className={className}>${display}</span>;
+}
+
+// ── Phase announcement ──
+
+function PhaseAnnounce({ phase, handNumber }: { phase: string; handNumber: number }) {
+  const [show, setShow] = useState<string | null>(null);
+  const prevPhase = useRef(phase);
+  const prevHand = useRef(handNumber);
+
+  useEffect(() => {
+    if (phase === prevPhase.current && handNumber === prevHand.current) return;
+    prevPhase.current = phase;
+    prevHand.current = handNumber;
+    const labels: Record<string, string> = { flop: "FLOP", turn: "TURN", river: "RIVER", showdown: "SHOWDOWN" };
+    const label = labels[phase];
+    if (!label) return;
+    setShow(label);
+    const t = setTimeout(() => setShow(null), 1200);
+    return () => clearTimeout(t);
+  }, [phase, handNumber]);
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          key={show}
+          className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.span
+            initial={{ scale: 2.5, opacity: 0, filter: "blur(12px)" }}
+            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+            exit={{ scale: 0.7, opacity: 0, filter: "blur(8px)" }}
+            transition={{ type: "spring" as const, stiffness: 300, damping: 22 }}
+            className="font-sans font-black text-5xl md:text-7xl tracking-tight text-[var(--pixel-accent)] drop-shadow-[0_0_32px_var(--pixel-glow)]"
+          >
+            {show}
+          </motion.span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ── Confetti ──
+
+function Confetti({ active }: { active: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const activeRef = useRef(false);
+
+  useEffect(() => {
+    if (!active || activeRef.current) return;
+    activeRef.current = true;
+    const cvs = canvasRef.current;
+    if (!cvs) return;
+    const ctx = cvs.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    cvs.width = window.innerWidth * dpr;
+    cvs.height = window.innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+    cvs.style.width = `${window.innerWidth}px`;
+    cvs.style.height = `${window.innerHeight}px`;
+
+    const colors = ["#22c55e", "#facc15", "#818cf8", "#f472b6", "#38bdf8", "#a78bfa", "#fb923c"];
+    const particles: { x: number; y: number; vx: number; vy: number; r: number; c: string; rot: number; rv: number; life: number }[] = [];
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: W * 0.5 + (Math.random() - 0.5) * W * 0.3,
+        y: H * 0.45,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 18 - 4,
+        r: Math.random() * 5 + 3,
+        c: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        rv: (Math.random() - 0.5) * 0.3,
+        life: 1,
+      });
+    }
+
+    let raf = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H);
+      let alive = false;
+      for (const p of particles) {
+        p.vy += 0.35;
+        p.vx *= 0.99;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.rv;
+        p.life -= 0.008;
+        if (p.life <= 0) continue;
+        alive = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.min(p.life, 1);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.r, -p.r * 0.4, p.r * 2, p.r * 0.8);
+        ctx.restore();
+      }
+      if (alive) raf = requestAnimationFrame(draw);
+      else { ctx.clearRect(0, 0, W, H); activeRef.current = false; }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(raf); activeRef.current = false; };
+  }, [active]);
+
+  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[100]" />;
+}
+
 // ── Card component ──
 
 function CardView({ card, faceDown, small, highlight, dimmed, delay }: {
@@ -336,12 +480,39 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, [canShowEquity]);
 
+  // Safety: dismiss equity overlay on any touch/pointer activity outside the ? button
+  useEffect(() => {
+    if (!showEquity) return;
+    const dismiss = () => setShowEquity(false);
+    window.addEventListener("pointerdown", dismiss, { capture: true, once: true });
+    window.addEventListener("pointermove", dismiss, { capture: true, once: true });
+    return () => {
+      window.removeEventListener("pointerdown", dismiss, { capture: true });
+      window.removeEventListener("pointermove", dismiss, { capture: true });
+    };
+  }, [showEquity]);
+
   const potTotal = view.pot + view.myBet + view.opponentBet;
   const phaseName = view.phase === "preflop" ? "PRE-FLOP" : view.phase.toUpperCase();
   const sb = view.smallBlind;
   const isShowdown = view.phase === "showdown";
   const isFoldWin = isShowdown && view.result?.winnerHand === "Fold";
   const showBestCards = isShowdown && !isFoldWin && view.result;
+  const didWin = isShowdown && view.result?.iWon === true;
+  const didLose = isShowdown && view.result?.iWon === false;
+
+  // All-in flash
+  const [allInFlash, setAllInFlash] = useState(false);
+  const prevAllIn = useRef(false);
+  useEffect(() => {
+    const isAllIn = view.myAllIn || view.opponentAllIn;
+    if (isAllIn && !prevAllIn.current) {
+      setAllInFlash(true);
+      const t = setTimeout(() => setAllInFlash(false), 800);
+      return () => clearTimeout(t);
+    }
+    prevAllIn.current = !!isAllIn;
+  }, [view.myAllIn, view.opponentAllIn]);
 
   // Determine which cards to highlight at showdown
   // Winner's best 5 cards glow; loser's non-best cards are dimmed
@@ -367,6 +538,26 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       <AnimatePresence>
         {showEquity && canShowEquity && (
           <EquityOverlay result={equityResult} loading={equityLoading} />
+        )}
+      </AnimatePresence>
+
+      {/* Confetti on win */}
+      <Confetti active={didWin} />
+
+      {/* Phase announcement */}
+      <PhaseAnnounce phase={view.phase} handNumber={view.handNumber} />
+
+      {/* All-in flash overlay */}
+      <AnimatePresence>
+        {allInFlash && (
+          <motion.div
+            className="pointer-events-none fixed inset-0 z-[60]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.4, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, times: [0, 0.15, 1] }}
+            style={{ background: "radial-gradient(circle, rgba(250,204,21,0.4), transparent 70%)" }}
+          />
         )}
       </AnimatePresence>
 
@@ -402,7 +593,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             {view.opponentFolded && <span className="font-mono text-[9px] text-red-400">FOLDED</span>}
             {view.opponentAllIn && <span className="font-mono text-[9px] text-yellow-400">ALL IN</span>}
           </div>
-          <span className="font-mono text-sm font-bold text-[var(--pixel-accent)]">${view.opponentChips}</span>
+          <AnimatedNumber value={view.opponentChips} className="font-mono text-sm font-bold text-[var(--pixel-accent)]" />
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
@@ -447,7 +638,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-[var(--pixel-muted)]">POT</span>
-          <span className="font-mono text-lg font-bold text-yellow-500 dark:text-yellow-300">${potTotal}</span>
+          <AnimatedNumber value={potTotal} className="font-mono text-lg font-bold text-yellow-500 dark:text-yellow-300" />
         </div>
         {/* Last action */}
         {view.lastAction && (
@@ -459,8 +650,12 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
       {isShowdown && view.result && (
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.92 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          animate={didLose
+            ? { opacity: 1, y: 0, scale: 1, x: [0, -6, 6, -4, 4, -2, 2, 0] }
+            : { opacity: 1, y: 0, scale: 1 }}
+          transition={didLose
+            ? { opacity: { type: "spring", stiffness: 300, damping: 24 }, y: { type: "spring", stiffness: 300, damping: 24 }, scale: { type: "spring", stiffness: 300, damping: 24 }, x: { duration: 0.5, delay: 0.2 } }
+            : { type: "spring", stiffness: 300, damping: 24 }}
           className={`rounded-xl border p-4 text-center overflow-hidden relative backdrop-blur-md ${
             view.result.iWon === true
               ? "border-green-500/60 bg-green-500/10 dark:bg-green-500/15"
@@ -563,7 +758,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             {view.myFolded && <span className="font-mono text-[9px] text-red-400">FOLDED</span>}
             {view.myAllIn && <span className="font-mono text-[9px] text-yellow-400">ALL IN</span>}
           </div>
-          <span className="font-mono text-sm font-bold text-[var(--pixel-accent)]">${view.myChips}</span>
+          <AnimatedNumber value={view.myChips} className="font-mono text-sm font-bold text-[var(--pixel-accent)]" />
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
