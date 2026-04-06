@@ -83,13 +83,43 @@ export default function P2PConnectionPanel({
   const handleShareLink = async () => {
     const code = roomCode;
     if (!code) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("join", code);
+    const shareUrl = url.toString();
+
+    // Derive friendly game name from pathname: /poker → Poker, /halli-galli → Halli Galli
+    const gameName = url.pathname
+      .replace(/^\//, "")
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ") || "Game";
+
+    const GAME_DESC: Record<string, string> = {
+      poker: "Texas Hold'em Poker — P2P, no server, just us",
+      gomoku: "Gomoku (Five in a Row) — classic board game",
+      chat: "Private P2P Chat — end-to-end, no server",
+      sudoku: "Sudoku Race — solve the same puzzle, see who's faster",
+      math: "Math Sprint — race to solve mental math",
+      maze: "Maze Race — navigate the maze before your opponent",
+      "halli-galli": "Halli Galli — spot 5 matching fruits and ring the bell",
+      "flash-count": "Flash Count — count the blocks before time runs out",
+    };
+    const slug = url.pathname.replace(/^\//, "");
+    const gameDesc = GAME_DESC[slug] || gameName;
+
+    const shareText = `Come play ${gameName} with me!\n${gameDesc}\n\nRoom code: ${code}\n${shareUrl}`;
+
     try {
-      const url = new URL(window.location.href);
-      url.searchParams.set("join", code);
-      await navigator.clipboard.writeText(url.toString());
+      if (navigator.share) {
+        await navigator.share({ title: `Join ${gameName}`, text: `${gameDesc}\nRoom code: ${code}`, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareText);
+      }
       setCopySuccess(true);
       window.setTimeout(() => setCopySuccess(false), 1500);
-    } catch {
+    } catch (e) {
+      // User cancelled share dialog — not an error
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setCopySuccess(false);
     }
   };
