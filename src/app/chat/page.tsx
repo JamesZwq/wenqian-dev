@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { formatClockTime } from "../../features/p2p/lib/p2p";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useChat } from "./hooks/useChat";
 import ShareButton from "../components/ShareButton";
 
@@ -21,7 +22,7 @@ export default function ChatPage() {
     handleSendMessage,
     phase, localPeerId, remotePeerId, error, isConnected, roomCode,
     connect, disconnect, clearError, retryLastConnection, reinitialize,
-    joinPeerId,
+    joinPeerId, isReconnecting, reconnectDeadline,
   } = useChat();
 
   return (
@@ -198,6 +199,10 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import { IsometricBlocks } from "./components/IsometricBlocks";
 import { RevealBlocks } from "./components/RevealBlocks";
 import { AnswerBox } from "./components/AnswerBox";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useFlashGame } from "./hooks/useFlashGame";
 import { DIFFICULTIES, QUESTION_COUNTS, TILE_W, TILE_H, formatTime } from "./types";
 import ShareButton from "../components/ShareButton";
@@ -81,7 +82,7 @@ export default function FlashCountPage() {
     direction, waitingForConfig, hostPreview,
     myP2pAnswer, opponentSubmitted, questionResult, myScore, opponentScore, p2pGameResult,
     phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
-    joinPeerId, inputRef,
+    joinPeerId, inputRef, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch,
     handleSoloInputChange, handleP2pInputChange, onRevealComplete,
@@ -631,6 +632,10 @@ export default function FlashCountPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

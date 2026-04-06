@@ -7,6 +7,7 @@ import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection
 import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { DEFAULT_SETTINGS, type GameSettings } from "../SettingsPanel";
 import {
   spawnItem, nextSpawnDelay, bfsShortestPath, ITEM_META, MAX_INVENTORY,
@@ -826,6 +827,8 @@ export function useMazeGame() {
     localPeerId,
     error,
     isConnected,
+    isReconnecting,
+    reconnectDeadline,
     connect,
     send,
     sendChat,
@@ -839,7 +842,20 @@ export function useMazeGame() {
     onData: handleRemotePacket,
     onChat,
     acceptIncomingConnections: true,
-    onConnected: ({ direction }) => {
+    onConnected: ({ direction, reconnected }) => {
+      if (reconnected) {
+        // Host resends current maze state on reconnection
+        if (myRemotePlayerIdRef.current === 1 && mazeRef.current) {
+          send({
+            type: "maze_sync",
+            maze: mazeRef.current,
+            settings: settingsRef.current,
+            goalPos: goalPosRef.current,
+            timestamp: Date.now(),
+          });
+        }
+        return;
+      }
       const assignedPlayerId = direction === "outgoing" ? 1 : 2;
       setMyRemotePlayerId(assignedPlayerId);
       setMode("remote");
@@ -1711,6 +1727,8 @@ export function useMazeGame() {
     }
   }, [runBuildAnimation]);
 
+  useRoomUrl(roomCode, phase);
+
   return {
     // Settings
     settings, setSettings, settingsOpen, setSettingsOpen, handleSettingsClose,
@@ -1741,7 +1759,7 @@ export function useMazeGame() {
     dpadVisible, setDpadVisible,
 
     // P2P connection
-    phase, localPeerId, error, isConnected, connect, sendChat,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, sendChat,
     clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId,
     // Chat

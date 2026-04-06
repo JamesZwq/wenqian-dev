@@ -8,6 +8,7 @@ import { P2PStatusPanel } from "@/features/p2p/components/P2PStatusPanel";
 import { P2PChat } from "@/features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useHalliGalliGame } from "./hooks/useHalliGalliGame";
 import { FRUIT_EMOJI, FRUIT_COLOR, type HalliCard } from "./types";
 
@@ -133,7 +134,7 @@ export default function HalliGalliPage() {
   const {
     gameMode, setGameMode, myIndex, myView,
     phase, localPeerId, error, isConnected, roomCode,
-    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
+    connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, isReconnecting, reconnectDeadline,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
     doFlip, doBell, doRematch, exitToMenu,
@@ -422,6 +423,10 @@ export default function HalliGalliPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

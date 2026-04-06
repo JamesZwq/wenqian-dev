@@ -6,6 +6,7 @@ import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel
 import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
 import ShareButton from "../components/ShareButton";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useSudokuGame, formatTime } from "./hooks/useSudokuGame";
 import { SudokuBoard } from "./components/SudokuBoard";
 import type { Difficulty } from "./types";
@@ -47,7 +48,7 @@ export default function SudokuPage() {
     opponentCorrect, opponentComplete, opponentTime,
     correctCount, totalToFill,
     phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
-    joinPeerId,
+    joinPeerId, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu, revealSolution,
   } = useSudokuGame();
@@ -480,6 +481,10 @@ export default function SudokuPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

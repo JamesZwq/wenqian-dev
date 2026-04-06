@@ -5,6 +5,7 @@ import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection
 import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { getAIMove } from "../gomokuAI";
 import {
   BOARD_SIZE, BOARD_PADDING, createEmptyBoard,
@@ -155,14 +156,15 @@ export function useGomokuGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<GamePacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "gomoku" },
       onData: handleIncomingData,
       onChat,
       acceptIncomingConnections: true,
-      onConnected: ({ direction }) => {
+      onConnected: ({ direction, reconnected }) => {
+        if (reconnected) return;
         setMyColor(direction === "outgoing" ? "black" : "white");
         setGameState(prev => ({ ...prev, status: "playing" }));
       },
@@ -273,6 +275,8 @@ export function useGomokuGame() {
     setMyColor(null); setLastMove(null); setPreviewPos(null);
   }, []);
 
+  useRoomUrl(roomCode, phase);
+
   // ── Derived ──
   const myPlayerId = myColor === "black" ? "P1" : myColor === "white" ? "P2" : null;
   const isMyTurn = gameMode === "ai" ? gameState.currentPlayer === "black" : gameState.currentPlayer === myColor;
@@ -286,7 +290,7 @@ export function useGomokuGame() {
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
     // Connection
-    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId, latencyMs, lastRemoteMessageAt,
     // Chat
     chatMessages, addMyMessage,

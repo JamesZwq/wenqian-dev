@@ -5,6 +5,7 @@ import { usePeerConnection } from "@/features/p2p/hooks/usePeerConnection";
 import { useP2PChat } from "@/features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "@/features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import type { FullHalliState, GameMode, HalliPacket, HalliView } from "../types";
 import { applyBell, applyFlip, createInitialState, createView } from "../gameLogic";
 
@@ -90,14 +91,21 @@ export function useHalliGalliGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<HalliPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "halli-galli" },
       onData: handleIncomingData,
       onChat,
       acceptIncomingConnections: true,
-      onConnected: ({ direction }) => {
+      onConnected: ({ direction, reconnected }) => {
+        if (reconnected) {
+          // Host resends current game state on reconnection
+          if (myIndexRef.current === 0 && fullStateRef.current) {
+            setTimeout(() => syncToGuest(fullStateRef.current!), 200);
+          }
+          return;
+        }
         if (direction === "outgoing") {
           setMyIndex(0); myIndexRef.current = 0;
           setTimeout(() => {
@@ -171,6 +179,8 @@ export function useHalliGalliGame() {
     }
   }, [myIndex, syncToGuest]);
 
+  useRoomUrl(roomCode, phase);
+
   const exitToMenu = useCallback(() => {
     setGameMode("menu");
     setFullState(null); setGuestView(null);
@@ -179,7 +189,7 @@ export function useHalliGalliGame() {
 
   return {
     gameMode, setGameMode, myIndex, myView,
-    phase, localPeerId, error, isConnected, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, roomCode,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,

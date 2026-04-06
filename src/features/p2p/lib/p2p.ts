@@ -5,6 +5,7 @@ export type P2PPhase =
   | "ready"
   | "connecting"
   | "connected"
+  | "reconnecting"
   | "disconnected"
   | "error";
 
@@ -34,6 +35,8 @@ export interface P2PState {
   error: P2PErrorState | null;
   lastConnectedPeerId: string | null;
   roomCode: string | null;
+  /** Epoch ms when reconnection window expires (0 = not reconnecting) */
+  reconnectDeadline: number;
 }
 
 export interface UsePeerConnectionOptions<TData = unknown> {
@@ -48,6 +51,7 @@ export interface UsePeerConnectionOptions<TData = unknown> {
   onConnected?: (meta: {
     peerId: string;
     direction: "incoming" | "outgoing";
+    reconnected: boolean;
   }) => void;
   onDisconnected?: (meta: {
     peerId: string | null;
@@ -57,6 +61,7 @@ export interface UsePeerConnectionOptions<TData = unknown> {
 }
 
 export const DEFAULT_CONNECT_TIMEOUT_MS = 8_000;
+export const RECONNECT_WINDOW_MS = 3 * 60 * 1000; // 3 minutes
 
 const SHORT_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -177,6 +182,8 @@ export function getPhaseLabel(phase: P2PPhase): string {
       return "CONNECTING";
     case "connected":
       return "CONNECTED";
+    case "reconnecting":
+      return "RECONNECTING";
     case "disconnected":
       return "DISCONNECTED";
     case "error":

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel";
 import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useMathGame } from "./hooks/useMathGame";
 import { ALL_OPS, QUESTION_COUNTS, formatTime, opsLabel } from "./types";
 import ShareButton from "../components/ShareButton";
@@ -22,7 +23,7 @@ export default function MathSprintPage() {
     flashColor, shaking, elapsed, result, isNewRecord, resultOps, resultCount,
     direction, opponentProgress, opponentFinished,
     phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
-    joinPeerId, inputRef,
+    joinPeerId, inputRef, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch, handleInputChange,
     speed, isPlaying, showP2pSettings, showP2pWaiting, showGame,
@@ -508,6 +509,10 @@ export default function MathSprintPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

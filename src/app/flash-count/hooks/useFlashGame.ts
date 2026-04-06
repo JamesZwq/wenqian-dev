@@ -6,6 +6,7 @@ import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection
 import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { getBestSpeed, saveBestSpeed } from "../bestSpeed";
 import type { FlashPacket, GameMode, GamePhase, GameResult, QuestionResult, SoloResult } from "../types";
 
@@ -229,14 +230,15 @@ export function useFlashGame() {
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
   // ── P2P connection ──
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<FlashPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "flash-count" },
       onData: handleIncomingData,
       onChat,
       acceptIncomingConnections: true,
-      onConnected: ({ direction: dir }) => {
+      onConnected: ({ direction: dir, reconnected }) => {
+        if (reconnected) return;
         setDirection(dir);
         if (dir === "outgoing") { setP2pSettingsReady(false); setWaitingForConfig(false); }
         else { setWaitingForConfig(true); setP2pSettingsReady(false); }
@@ -360,6 +362,8 @@ export function useFlashGame() {
     else setWaitingForConfig(true);
   }, [send, direction, resetP2pQuestion]);
 
+  useRoomUrl(roomCode, phase);
+
   // ── Derived values ──
   const speed = useMemo(() => {
     if (currentIndex === 0 || elapsed === 0) return 0;
@@ -396,7 +400,7 @@ export function useFlashGame() {
     myP2pAnswer, opponentSubmitted, questionResult,
     myScore, opponentScore, p2pGameResult,
     // P2P connection
-    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId,
     // Chat
     chatMessages, addMyMessage,

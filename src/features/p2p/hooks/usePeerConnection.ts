@@ -8,6 +8,7 @@ import {
   createSendFailedError,
   createTimeoutError,
   DEFAULT_CONNECT_TIMEOUT_MS,
+  RECONNECT_WINDOW_MS,
   generateShortPeerId,
   normalizePeerError,
   sanitizePeerId,
@@ -28,6 +29,7 @@ const INITIAL_STATE: P2PState = {
   error: null,
   lastConnectedPeerId: null,
   roomCode: null,
+  reconnectDeadline: 0,
 };
 
 export function usePeerConnection<TData = unknown>(
@@ -44,6 +46,12 @@ export function usePeerConnection<TData = unknown>(
   const latestRemotePeerIdRef = useRef<string | null>(null);
   const optionsRef = useRef(options);
 
+  // Reconnection state
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRoleRef = useRef<"host" | "guest" | null>(null);
+  const wasConnectedRef = useRef(false);
+
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
@@ -57,6 +65,12 @@ export function usePeerConnection<TData = unknown>(
       clearTimeout(connectTimeoutRef.current);
       connectTimeoutRef.current = null;
     }
+  }, []);
+
+  const clearReconnectTimers = useCallback(() => {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    if (reconnectRetryRef.current) { clearTimeout(reconnectRetryRef.current); reconnectRetryRef.current = null; }
+    reconnectRoleRef.current = null;
   }, []);
 
   const emitError = useCallback((error: P2PErrorState) => {
@@ -130,6 +144,11 @@ export function usePeerConnection<TData = unknown>(
           clearTimeout(connectTimeoutRef.current);
           connectTimeoutRef.current = null;
         }
+
+        const isReconnection = wasConnectedRef.current && reconnectRoleRef.current !== null;
+        clearReconnectTimers();
+        wasConnectedRef.current = true;
+
         latestRemotePeerIdRef.current = connection.peer;
         setState((prev) => ({
           ...prev,
@@ -137,10 +156,12 @@ export function usePeerConnection<TData = unknown>(
           remotePeerId: connection.peer,
           lastConnectedPeerId: connection.peer,
           error: null,
+          reconnectDeadline: 0,
         }));
         optionsRef.current.onConnected?.({
           peerId: connection.peer,
           direction,
+          reconnected: isReconnection,
         });
       };
 
@@ -206,7 +227,6 @@ export function usePeerConnection<TData = unknown>(
           connection.peer ||
           latestRemotePeerIdRef.current ||
           lastAttemptedPeerIdRef.current;
-        const normalized = createConnectionClosedError();
 
         if (connectTimeoutRef.current) {
           clearTimeout(connectTimeoutRef.current);
@@ -215,8 +235,70 @@ export function usePeerConnection<TData = unknown>(
         connectionCleanupRef.current?.();
         connectionCleanupRef.current = null;
         connectionRef.current = null;
-        latestRemotePeerIdRef.current = null;
 
+        // ── Attempt reconnection if we were in a room-mode game ──
+        const peer = peerRef.current;
+        const canReconnect = wasConnectedRef.current && peer && !peer.destroyed;
+
+        if (canReconnect) {
+          // Determine role: if our peer ID is the room ID → host, else guest
+          const handshake = optionsRef.current.handshake;
+          const prefix = handshake ? `wq-${handshake.game}` : null;
+          const isHost = prefix ? peer.id.startsWith(prefix) : false;
+          reconnectRoleRef.current = isHost ? "host" : "guest";
+
+          const deadline = Date.now() + RECONNECT_WINDOW_MS;
+          setState((prev) => ({
+            ...prev,
+            phase: "reconnecting",
+            remotePeerId: null,
+            error: null,
+            reconnectDeadline: deadline,
+          }));
+
+          // Deadline timer — give up after 3 minutes
+          reconnectTimerRef.current = setTimeout(() => {
+            clearReconnectTimers();
+            latestRemotePeerIdRef.current = null;
+            const normalized = createConnectionClosedError();
+            setState((prev) => ({
+              ...prev,
+              phase: "disconnected",
+              reconnectDeadline: 0,
+              error: normalized,
+            }));
+            optionsRef.current.onError?.(normalized);
+            optionsRef.current.onDisconnected?.({ peerId: peerId ?? null, reason: "closed" });
+          }, RECONNECT_WINDOW_MS);
+
+          // Guest: actively retry connecting to the host's room ID
+          if (!isHost && prefix) {
+            const roomCode = sanitizePeerId(peer.id.replace(`${prefix}-`, "")) ||
+              lastAttemptedPeerIdRef.current || "";
+            const roomId = `${prefix}-${roomCode}`;
+
+            let delay = 1000;
+            const tryReconnect = () => {
+              if (!peerRef.current || peerRef.current.destroyed || reconnectRoleRef.current !== "guest") return;
+              try {
+                const conn = peerRef.current.connect(roomId, {
+                  reliable: true,
+                  metadata: optionsRef.current.handshake,
+                });
+                attachConnection(conn, "outgoing");
+              } catch { /* will retry */ }
+              delay = Math.min(delay * 1.5, 8000);
+              reconnectRetryRef.current = setTimeout(tryReconnect, delay);
+            };
+            reconnectRetryRef.current = setTimeout(tryReconnect, delay);
+          }
+          // Host: just keep the peer alive; guest will reconnect to us
+          return;
+        }
+
+        // No reconnection possible — normal disconnect
+        latestRemotePeerIdRef.current = null;
+        const normalized = createConnectionClosedError();
         setState((prev) => ({
           ...prev,
           phase: "disconnected",
@@ -259,7 +341,8 @@ export function usePeerConnection<TData = unknown>(
     (peer: Peer) => {
       const handleIncoming = (connection: DataConnection) => {
         if (optionsRef.current.acceptIncomingConnections === false) { connection.close(); return; }
-        if (connectionRef.current?.open) { connection.close(); return; }
+        // Allow incoming during reconnection (don't reject if we have a stale connectionRef)
+        if (connectionRef.current?.open && reconnectRoleRef.current === null) { connection.close(); return; }
         const expected = optionsRef.current.handshake;
         if (expected) {
           const meta = connection.metadata as Record<string, string> | undefined;
@@ -286,6 +369,8 @@ export function usePeerConnection<TData = unknown>(
 
   // Helper: full teardown of a peer + connection
   const teardown = useCallback(() => {
+    clearReconnectTimers();
+    wasConnectedRef.current = false;
     if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
     connectionCleanupRef.current?.();
     connectionCleanupRef.current = null;
@@ -294,7 +379,7 @@ export function usePeerConnection<TData = unknown>(
     try { peerRef.current?.destroy(); } catch {}
     peerRef.current = null;
     latestRemotePeerIdRef.current = null;
-  }, []);
+  }, [clearReconnectTimers]);
 
   useEffect(() => {
     setState(INITIAL_STATE);
@@ -461,6 +546,8 @@ export function usePeerConnection<TData = unknown>(
   }, [connect]);
 
   const disconnect = useCallback(() => {
+    clearReconnectTimers();
+    wasConnectedRef.current = false;
     const peerId = connectionRef.current?.peer ?? latestRemotePeerIdRef.current ?? null;
     latestRemotePeerIdRef.current = null;
     
@@ -563,6 +650,7 @@ export function usePeerConnection<TData = unknown>(
       isReady: state.phase === "ready",
       isConnecting: state.phase === "connecting",
       isConnected: state.phase === "connected",
+      isReconnecting: state.phase === "reconnecting",
       hasError: Boolean(state.error),
     }),
     [state.error, state.phase],

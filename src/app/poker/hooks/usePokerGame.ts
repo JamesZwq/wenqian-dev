@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePeerConnection } from "@/features/p2p/hooks/usePeerConnection";
 import { useP2PChat } from "@/features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "@/features/p2p/hooks/useJoinParam";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import type { ActionType, FullGameState, GameMode, PlayerView, PokerPacket } from "../types";
 import { createNewHand, processAction, createPlayerView } from "../utils";
@@ -94,7 +95,7 @@ export function usePokerGame() {
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
   const {
-    phase, localPeerId, error, isConnected,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline,
     connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
   } = usePeerConnection<PokerPacket>({
     connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
@@ -102,7 +103,14 @@ export function usePokerGame() {
     onData: handleIncomingData,
     onChat,
     acceptIncomingConnections: true,
-    onConnected: ({ direction }) => {
+    onConnected: ({ direction, reconnected }) => {
+      if (reconnected) {
+        // On reconnection, host resends current game state — no role reset
+        if (myIndexRef.current === 0 && fullStateRef.current) {
+          setTimeout(() => syncToGuest(fullStateRef.current!), 200);
+        }
+        return;
+      }
       if (direction === "outgoing") {
         setMyIndex(0); myIndexRef.current = 0;
         setTimeout(() => {
@@ -166,9 +174,11 @@ export function usePokerGame() {
   const isGameOver = !!(displayView && displayView.phase === "showdown" &&
     (displayView.myChips <= 0 || displayView.opponentChips <= 0));
 
+  useRoomUrl(roomCode, phase);
+
   return {
     gameMode, setGameMode, displayView, myIndex, isGameOver,
-    phase, localPeerId, error, isConnected, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, roomCode,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,

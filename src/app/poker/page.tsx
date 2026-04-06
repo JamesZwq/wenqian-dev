@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import P2PConnectionPanel from "@/features/p2p/components/P2PConnectionPanel";
 import { P2PStatusPanel } from "@/features/p2p/components/P2PStatusPanel";
 import { P2PChat } from "@/features/p2p/components/P2PChat";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
@@ -629,7 +630,7 @@ const CONNECTION_DESC = [
 export default function PokerPage() {
   const {
     gameMode, setGameMode, displayView, isGameOver,
-    phase, localPeerId, error, isConnected,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, roomCode,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
@@ -751,6 +752,10 @@ export default function PokerPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

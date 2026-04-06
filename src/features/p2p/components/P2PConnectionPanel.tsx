@@ -30,6 +30,7 @@ const PHASE_BADGE_CLASS: Record<P2PPhase, string> = {
   ready: "border-[var(--pixel-accent)] text-[var(--pixel-accent)]",
   connecting: "border-[var(--pixel-accent-2)] text-[var(--pixel-accent-2)]",
   connected: "border-[var(--pixel-accent)] text-[var(--pixel-accent)]",
+  reconnecting: "border-[var(--pixel-warn)] text-[var(--pixel-warn)]",
   disconnected: "border-[var(--pixel-warn)] text-[var(--pixel-warn)]",
   error: "border-[var(--pixel-warn)] text-[var(--pixel-warn)]",
 };

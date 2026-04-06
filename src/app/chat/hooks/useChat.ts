@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import {
   decryptWithPrivateKey,
   encryptWithPublicKey,
@@ -72,12 +73,15 @@ export function useChat() {
     }
   }, [appendMessage, localKeyPair?.privateKey]);
 
-  const { phase, localPeerId, remotePeerId, error, isConnected, connect, disconnect, send, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, remotePeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, disconnect, send, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<ChatPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "chat" },
       onData: handleIncomingData,
       acceptIncomingConnections: true,
+      onConnected: ({ reconnected }) => {
+        if (reconnected) return;
+      },
     });
 
   // Reset handshake + remote key on disconnect
@@ -123,13 +127,15 @@ export function useChat() {
 
   const encryptionReady = isConnected && Boolean(remotePublicKey && localKeyPair?.privateKey);
 
+  useRoomUrl(roomCode, phase);
+
   return {
     messages, inputText, setInputText,
     encryptionReady,
     messagesEndRef,
     handleSendMessage,
     // Connection
-    phase, localPeerId, remotePeerId, error, isConnected, roomCode,
+    phase, localPeerId, remotePeerId, error, isConnected, isReconnecting, reconnectDeadline, roomCode,
     connect, disconnect, clearError, retryLastConnection, reinitialize,
     joinPeerId,
   };

@@ -6,6 +6,7 @@ import P2PConnectionPanel from "../../features/p2p/components/P2PConnectionPanel
 import { P2PStatusPanel } from "../../features/p2p/components/P2PStatusPanel";
 import { P2PChat } from "../../features/p2p/components/P2PChat";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useGomokuGame } from "./hooks/useGomokuGame";
 import { GomokuBoard } from "./components/GomokuBoard";
 import ShareButton from "../components/ShareButton";
@@ -23,7 +24,7 @@ export default function GomokuPage() {
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
     phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
-    joinPeerId, latencyMs, lastRemoteMessageAt,
+    joinPeerId, latencyMs, lastRemoteMessageAt, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startAIGame, exitToMenu, handleBoardClick, makeMove, resetGame,
     myPlayerId, isMyTurn, opponentLabel, boardPixels, stoneRadius,
@@ -359,6 +360,10 @@ export default function GomokuPage() {
         onSend={(text) => { if (sendChat(text)) addMyMessage(text); }}
         isConnected={gameMode === "p2p" && isConnected}
       />
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }

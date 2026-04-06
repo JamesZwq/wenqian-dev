@@ -5,6 +5,7 @@ import { usePeerConnection } from "../../../features/p2p/hooks/usePeerConnection
 import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
+import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { generatePuzzle } from "../sudokuGenerator";
 import type { CellPos, Difficulty, GameMode, GameStatus, SudokuPacket } from "../types";
 
@@ -168,14 +169,15 @@ export function useSudokuGame() {
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
     usePeerConnection<SudokuPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "sudoku" },
       acceptIncomingConnections: true,
       onData: handleIncomingData,
       onChat,
-      onConnected: ({ direction }) => {
+      onConnected: ({ direction, reconnected }) => {
+        if (reconnected) return;
         const idx = direction === "outgoing" ? 0 : 1;
         setMyIndex(idx);
         myIndexRef.current = idx;
@@ -391,6 +393,8 @@ export function useSudokuGame() {
     ? locked.reduce((acc, row) => acc + row.filter(v => !v).length, 0)
     : 0;
 
+  useRoomUrl(roomCode, phase);
+
   return {
     // State
     gameMode, setGameMode,
@@ -404,7 +408,7 @@ export function useSudokuGame() {
     // Derived
     correctCount, totalToFill,
     // P2P
-    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
     joinPeerId,
     // Chat
     chatMessages, addMyMessage,

@@ -10,6 +10,7 @@ import { P2PChat } from "../../features/p2p/components/P2PChat";
 import SettingsPanel from "./SettingsPanel";
 import { ITEM_META, type InventorySlot } from "./items";
 import { formatTime } from "./types";
+import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useMazeGame } from "./hooks/useMazeGame";
 import { AnimatedCircle } from "./components/AnimatedCircle";
 import ShareButton from "../components/ShareButton";
@@ -47,7 +48,7 @@ export default function MazePage() {
     // P2P connection
     phase, localPeerId, error, isConnected, connect, sendChat,
     clearError, retryLastConnection, reinitialize, roomCode,
-    joinPeerId,
+    joinPeerId, isReconnecting, reconnectDeadline,
     // Chat
     chatMessages, addMyMessage,
 
@@ -951,6 +952,10 @@ export default function MazePage() {
             )}
           </AnimatePresence>
       )}
+
+      <AnimatePresence>
+        {isReconnecting && <ReconnectingOverlay deadline={reconnectDeadline} />}
+      </AnimatePresence>
     </div>
   );
 }
