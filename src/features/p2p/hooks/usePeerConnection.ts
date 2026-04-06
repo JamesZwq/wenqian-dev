@@ -482,17 +482,18 @@ export function usePeerConnection<TData = unknown>(
 
       // Attempt 1: register as host with roomId
       const hostPeer = new Peer(roomId, peerOpts(optionsRef.current.peerOptions));
-      let hostHandled = false;
+      let hostEstablished = false;
 
       hostPeer.on("open", () => {
-        // We are the host — wait for opponent
+        // We are the host — mark as established so late errors don't destroy us
+        hostEstablished = true;
         peerRef.current = hostPeer;
         setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
       });
 
-      // Auto-reconnect host peer on signaling disconnect
+      // Auto-reconnect host peer on signaling disconnect (only after established)
       hostPeer.on("disconnected", () => {
-        if (hostHandled) return;
+        if (!hostEstablished) return;
         try { hostPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
       });
 
@@ -513,7 +514,6 @@ export function usePeerConnection<TData = unknown>(
         const raw = err as { type?: string };
         if (raw.type === "unavailable-id") {
           // Room already exists → join as guest
-          hostHandled = true;
           try { hostPeer.destroy(); } catch {}
 
           const guestPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
@@ -528,8 +528,9 @@ export function usePeerConnection<TData = unknown>(
           });
           return;
         }
-        // Other error
-        hostHandled = true;
+        // Host already established — ignore transient peer-level errors
+        if (hostEstablished) return;
+        // Fatal error during setup
         try { hostPeer.destroy(); } catch {}
         emitError(normalizePeerError(err));
       });
