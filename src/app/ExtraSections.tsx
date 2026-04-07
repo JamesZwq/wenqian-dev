@@ -18,7 +18,7 @@ import BackToTop from "./components/BackToTop";
 import ResearchDetailModal from "./components/ResearchDetailModal";
 import DraggableFloat from "./components/DraggableFloat";
 import { useScrollLag } from "./components/ScrollLagContext";
-import GamesSection from "./components/GamesSection";
+
 
 function AnimatedCounter({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -398,8 +398,6 @@ export default function ExtraSections() {
           </div>
         </motion.section>
 
-        {/* Games */}
-        <GamesSection />
       </div>
     </>
   );

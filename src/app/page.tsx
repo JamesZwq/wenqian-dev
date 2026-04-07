@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import ResumeSections from "./ResumeSections";
 import ExtraSections from "./ExtraSections";
+import GamesSection from "./components/GamesSection";
 import MouseProvider from "./components/MouseProvider";
 import { ScrollLagProvider } from "./components/ScrollLagContext";
 import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
@@ -90,6 +91,9 @@ export default function Home() {
               <HeroSection />
               <ExtraSections />
               <ResumeSections />
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
+                <GamesSection />
+              </div>
             </div>
           </main>
         </ScrollLagProvider>

@@ -213,7 +213,7 @@ export default function GamesSection() {
             ? "relative mx-auto flex justify-center items-end"
             : "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center"
         }
-        style={inFan ? { height: 280 } : undefined}
+        style={inFan ? { height: 300 } : undefined}
       >
         {GAMES.map((game, i) => (
           <motion.div
@@ -245,7 +245,9 @@ export default function GamesSection() {
             }}
             style={{
               position: inFan ? "absolute" : "relative",
+              left: inFan ? "50%" : undefined,
               bottom: inFan ? 0 : undefined,
+              marginLeft: inFan ? -76 : undefined,
               transformOrigin: "center bottom",
               zIndex: inFan ? i : undefined,
             }}
