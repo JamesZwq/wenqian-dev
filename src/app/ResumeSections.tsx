@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Database, Cpu, Terminal, Check, Copy } from "lucide-react";
 import unswLogo from "../Images/image.png";
+import GamesSection from "./components/GamesSection";
 import {
   IconGraduation,
   IconBook,
@@ -544,6 +545,9 @@ export default function ResumeSections() {
 
       {/* Setup Command */}
       <SetupCommandBlock />
+
+      {/* Games */}
+      <GamesSection />
 
       {/* Footer */}
       <footer className="text-center py-8 sm:py-12 border-t border-[color-mix(in_oklab,var(--pixel-border)_20%,transparent)]">
