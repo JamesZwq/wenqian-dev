@@ -52,6 +52,7 @@ export function createInitialState(targetScore = 50): FullHalliState {
     score1: 0,
     targetScore,
     nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
+    nextFlipper: 0,
     phase: "playing",
     winner: null,
     lastBell: null,
@@ -96,27 +97,28 @@ function recycleDeck(deck: HalliCard[], discard: HalliCard[]): { deck: HalliCard
 export function applyAutoFlip(state: FullHalliState): FullHalliState {
   if (state.phase !== "playing") return state;
 
-  let { deck0, discard0, deck1, discard1 } = state;
+  const who = state.nextFlipper;
+  const deckKey = who === 0 ? "deck0" : "deck1";
+  const discardKey = who === 0 ? "discard0" : "discard1";
+
+  let deck = [...state[deckKey]];
+  let discard = [...state[discardKey]];
 
   // Recycle if needed
-  const r0 = recycleDeck([...deck0], [...discard0]);
-  deck0 = r0.deck; discard0 = r0.discard;
-  const r1 = recycleDeck([...deck1], [...discard1]);
-  deck1 = r1.deck; discard1 = r1.discard;
+  const r = recycleDeck(deck, discard);
+  deck = r.deck; discard = r.discard;
 
-  // Flip one card each (if available)
-  if (deck0.length > 0) {
-    const card = deck0.shift()!;
-    discard0 = [...discard0, card];
-  }
-  if (deck1.length > 0) {
-    const card = deck1.shift()!;
-    discard1 = [...discard1, card];
+  // Flip one card
+  if (deck.length > 0) {
+    const card = deck.shift()!;
+    discard = [...discard, card];
   }
 
   return {
     ...state,
-    deck0, discard0, deck1, discard1,
+    [deckKey]: deck,
+    [discardKey]: discard,
+    nextFlipper: (1 - who) as 0 | 1,
     nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
     lastBell: null,
   };

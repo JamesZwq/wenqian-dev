@@ -94,26 +94,16 @@ function PlayerArea({
       </div>
 
       <div className="flex items-center justify-center gap-3">
-        {/* Pos 1 (older) */}
+        {/* Pos 1 (older) — stable key so card flips in place */}
         <div className="flex flex-col items-center gap-1">
           <span className="font-mono text-[9px] uppercase tracking-wide text-[var(--pixel-muted)]">Pos 1</span>
-          <AnimatePresence mode="wait">
-            {slot1
-              ? <CardFace key={slot1.fruits.map(f => f.fruit + f.count).join("-")} card={slot1} />
-              : <EmptyCard key="e1" />
-            }
-          </AnimatePresence>
+          {slot1 ? <CardFace card={slot1} keyId={`${label}-s1-${slot1.fruits.map(f => f.fruit + f.count).join("")}`} /> : <EmptyCard />}
         </div>
 
-        {/* Pos 2 (newer) */}
+        {/* Pos 2 (newer) — stable key so card flips in place */}
         <div className="flex flex-col items-center gap-1">
           <span className="font-mono text-[9px] uppercase tracking-wide text-[var(--pixel-muted)]">Pos 2</span>
-          <AnimatePresence mode="wait">
-            {slot2
-              ? <CardFace key={slot2.fruits.map(f => f.fruit + f.count).join("-")} card={slot2} />
-              : <EmptyCard key="e2" />
-            }
-          </AnimatePresence>
+          {slot2 ? <CardFace card={slot2} keyId={`${label}-s2-${slot2.fruits.map(f => f.fruit + f.count).join("")}`} /> : <EmptyCard />}
         </div>
 
         {/* Face-down deck */}

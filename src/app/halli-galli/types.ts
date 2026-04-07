@@ -38,6 +38,7 @@ export interface FullHalliState {
   score1: number;
   targetScore: number;
   nextFlipAt: number; // host clock timestamp for next auto-flip
+  nextFlipper: 0 | 1; // whose card gets flipped next
   phase: GamePhase;
   winner: 0 | 1 | null;
   lastBell: { valid: boolean; ringer: 0 | 1 } | null;
