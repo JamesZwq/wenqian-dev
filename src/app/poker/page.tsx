@@ -40,13 +40,12 @@ function AnimatedNumber({ value, className, prefix = "$" }: { value: number; cla
     const from = prev.current;
     prev.current = value;
     const diff = value - from;
-    const dur = Math.min(Math.abs(diff) * 4, 600);
-    if (dur < 30) { setDisplay(value); return; }
+    const dur = Math.max(200, Math.min(Math.abs(diff) * 4, 600));
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min((now - start) / dur, 1);
-      const ease = t;
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       setDisplay(Math.round(from + diff * ease));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
