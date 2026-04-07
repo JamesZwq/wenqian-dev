@@ -20,6 +20,41 @@ const CONNECTION_DESCRIPTION = [
 
 // ── Card components ──────────────────────────────────────────���───
 
+function FruitGrid({ emoji, count }: { emoji: string; count: number }) {
+  if (count === 1) return <span className="text-2xl leading-none">{emoji}</span>;
+  if (count === 2) return (
+    <div className="flex gap-1 justify-center">
+      <span className="text-xl leading-none">{emoji}</span>
+      <span className="text-xl leading-none">{emoji}</span>
+    </div>
+  );
+  if (count === 3) return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-lg leading-none">{emoji}</span>
+      <div className="flex gap-1">
+        <span className="text-lg leading-none">{emoji}</span>
+        <span className="text-lg leading-none">{emoji}</span>
+      </div>
+    </div>
+  );
+  if (count === 4) return (
+    <div className="grid grid-cols-2 gap-0.5 justify-items-center">
+      {Array.from({ length: 4 }, (_, i) => <span key={i} className="text-base leading-none">{emoji}</span>)}
+    </div>
+  );
+  // 5
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex gap-0.5">
+        {Array.from({ length: 3 }, (_, i) => <span key={i} className="text-sm leading-none">{emoji}</span>)}
+      </div>
+      <div className="flex gap-0.5">
+        {Array.from({ length: 2 }, (_, i) => <span key={i} className="text-sm leading-none">{emoji}</span>)}
+      </div>
+    </div>
+  );
+}
+
 function CardFace({ card, keyId }: { card: HalliCard; keyId?: string }) {
   return (
     <motion.div
@@ -27,14 +62,10 @@ function CardFace({ card, keyId }: { card: HalliCard; keyId?: string }) {
       initial={{ rotateY: 90, opacity: 0 }}
       animate={{ rotateY: 0, opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="w-[72px] h-24 md:w-20 md:h-28 rounded-xl border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] flex flex-col items-center justify-center gap-1.5 shadow-md p-1.5 flex-shrink-0"
+      className="w-24 h-32 md:w-28 md:h-36 rounded-xl border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] flex flex-col items-center justify-center gap-2 shadow-md p-2 flex-shrink-0"
     >
       {card.fruits.map(({ fruit, count }) => (
-        <div key={fruit} className="flex items-center justify-center gap-0.5 flex-wrap">
-          {Array.from({ length: count }, (_, i) => (
-            <span key={i} className="text-base leading-none">{FRUIT_EMOJI[fruit]}</span>
-          ))}
-        </div>
+        <FruitGrid key={fruit} emoji={FRUIT_EMOJI[fruit]} count={count} />
       ))}
     </motion.div>
   );
@@ -55,7 +86,7 @@ function CardBack({ count }: { count: number }) {
 
 function EmptyCard() {
   return (
-    <div className="w-[72px] h-24 md:w-20 md:h-28 rounded-xl border-2 border-dashed border-[var(--pixel-border)] opacity-20 flex-shrink-0" />
+    <div className="w-24 h-32 md:w-28 md:h-36 rounded-xl border-2 border-dashed border-[var(--pixel-border)] opacity-20 flex-shrink-0" />
   );
 }
 
@@ -66,7 +97,6 @@ function PlayerArea({
   role,
   slot1,
   slot2,
-  deckCount,
   score,
   targetScore,
 }: {
@@ -74,7 +104,6 @@ function PlayerArea({
   role: string;
   slot1: HalliCard | null;
   slot2: HalliCard | null;
-  deckCount: number;
   score: number;
   targetScore: number;
 }) {
@@ -104,9 +133,6 @@ function PlayerArea({
           <span className="font-mono text-[9px] uppercase tracking-wide text-[var(--pixel-muted)]">Pos 2</span>
           {slot2 ? <CardFace card={slot2} keyId={`${label}-s2-${slot2.fruits.map(f => f.fruit + f.count).join("")}`} /> : <EmptyCard />}
         </div>
-
-        {/* Face-down deck */}
-        {deckCount > 0 ? <CardBack count={deckCount} /> : <EmptyCard />}
       </div>
     </div>
   );
@@ -353,7 +379,7 @@ export default function HalliGalliPage() {
                       role={myIndex === 0 ? "guest" : "host"}
                       slot1={myView.oppSlot1}
                       slot2={myView.oppSlot2}
-                      deckCount={myView.oppDeckCount}
+
                       score={myView.oppScore}
                       targetScore={myView.targetScore}
                     />
@@ -441,7 +467,7 @@ export default function HalliGalliPage() {
                       role={myIndex === 0 ? "host" : "guest"}
                       slot1={myView.mySlot1}
                       slot2={myView.mySlot2}
-                      deckCount={myView.myDeckCount}
+
                       score={myView.myScore}
                       targetScore={myView.targetScore}
                     />
