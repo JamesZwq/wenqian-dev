@@ -131,7 +131,7 @@ export function useHalliGalliGame() {
         setFullState(null); setGuestView(null);
         setLatencyMs(null); setLastRemoteMessageAt(null);
         bellLockRef.current = false;
-        if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+        if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
         autoFlipRef.current = undefined;
       },
     });
@@ -154,30 +154,30 @@ export function useHalliGalliGame() {
     };
   }, [isConnected]);
 
-  // Auto-flip timer (host only)
+  // Auto-flip timer (host only) — single setTimeout, not polling interval
   useEffect(() => {
     if (myIndex !== 0 || !fullState || fullState.phase !== "playing" || !isConnected) {
-      if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+      if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
       autoFlipRef.current = undefined;
       return;
     }
 
-    autoFlipRef.current = setInterval(() => {
+    const delay = Math.max(0, fullState.nextFlipAt - Date.now());
+    autoFlipRef.current = setTimeout(() => {
       const s = fullStateRef.current;
       if (!s || s.phase !== "playing") return;
-      if (Date.now() < s.nextFlipAt) return;
 
       const ns = applyAutoFlip(s);
       setFullState(ns);
       fullStateRef.current = ns;
       syncToGuest(ns);
-    }, 200); // Check every 200ms for precision
+    }, delay);
 
     return () => {
-      if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+      if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
       autoFlipRef.current = undefined;
     };
-  }, [myIndex, fullState?.phase, isConnected, syncToGuest]);
+  }, [myIndex, fullState?.phase, fullState?.nextFlipAt, isConnected, syncToGuest]);
 
   const myView = useMemo<HalliView | null>(() => {
     if (myIndex === 0 && fullState) return createView(fullState, 0);
