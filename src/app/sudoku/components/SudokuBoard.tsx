@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import type { CellPos } from "../types";
 
 interface SudokuBoardProps {
@@ -24,6 +24,38 @@ export function SudokuBoard({
   onNumberInput,
   showNumberPad = true,
 }: SudokuBoardProps) {
+  const [candidateMode, setCandidateMode] = useState(false);
+  const [candidates, setCandidates] = useState<Set<number>[][]>(
+    () => Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>()))
+  );
+
+  // Auto-clear candidates when the board changes (a number is placed)
+  useEffect(() => {
+    setCandidates(prev => {
+      const next = prev.map(row => row.map(s => new Set(s)));
+      let changed = false;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const val = board[r][c];
+          if (val === 0) continue;
+          // Clear this cell's candidates
+          if (next[r][c].size > 0) { next[r][c].clear(); changed = true; }
+          // Remove val from same row, col, box
+          for (let i = 0; i < 9; i++) {
+            if (next[r][i].delete(val)) changed = true;
+            if (next[i][c].delete(val)) changed = true;
+          }
+          const br = Math.floor(r / 3) * 3;
+          const bc = Math.floor(c / 3) * 3;
+          for (let dr = 0; dr < 3; dr++)
+            for (let dc = 0; dc < 3; dc++)
+              if (next[br + dr][bc + dc].delete(val)) changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [board]);
+
   if (board.length === 0) return null;
 
   const selRow = selectedCell?.row ?? -1;
@@ -31,6 +63,14 @@ export function SudokuBoard({
   const selVal = selectedCell ? board[selRow]?.[selCol] : 0;
   const selBoxRow = selectedCell ? Math.floor(selRow / 3) : -1;
   const selBoxCol = selectedCell ? Math.floor(selCol / 3) : -1;
+
+  // Count how many times each digit appears — disable completed digits on keypad
+  const digitCounts = new Map<number, number>();
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      const v = board[r][c];
+      if (v !== 0) digitCounts.set(v, (digitCounts.get(v) ?? 0) + 1);
+    }
 
   return (
     <div className="flex flex-col items-center gap-3 md:gap-4">
@@ -90,7 +130,17 @@ export function SudokuBoard({
                           bgClass, textClass, borderRight, borderBottom,
                         ].join(" ")}
                       >
-                        {val !== 0 ? val : ""}
+                        {val !== 0 ? val : candidates[r]?.[c]?.size > 0 ? (
+                          <div className="grid grid-cols-3 w-full h-full text-[7px] md:text-[8px] lg:text-[9px]" style={{ lineHeight: 1 }}>
+                            {[1,2,3,4,5,6,7,8,9].map(n => (
+                              <span key={n} className={`flex items-center justify-center ${
+                                candidates[r][c].has(n) ? "text-[var(--pixel-muted)]" : "text-transparent"
+                              }`} style={{ fontSize: "inherit" }}>
+                                {n}
+                              </span>
+                            ))}
+                          </div>
+                        ) : ""}
                       </div>
                     );
                   })
@@ -105,22 +155,69 @@ export function SudokuBoard({
       {showNumberPad && (
         <div className="flex flex-col gap-1.5 w-full max-w-[216px]">
           <div className="grid grid-cols-3 gap-1.5">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-              <button
-                key={n}
-                onClick={() => onNumberInput(n)}
-                className="h-11 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-mono text-base font-semibold text-[var(--pixel-accent)] transition-all hover:bg-[var(--pixel-bg-alt)] hover:scale-105 active:scale-95"
-              >
-                {n}
-              </button>
-            ))}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+              const isComplete = (digitCounts.get(n) ?? 0) >= 9;
+              return (
+                <button
+                  key={n}
+                  onClick={() => {
+                    if (candidateMode && selectedCell) {
+                      const r = selectedCell.row;
+                      const c = selectedCell.col;
+                      if (locked[r]?.[c] || board[r][c] !== 0) return;
+                      setCandidates(prev => {
+                        const next = prev.map(row => row.map(s => new Set(s)));
+                        const s = next[r][c];
+                        if (s.has(n)) s.delete(n); else s.add(n);
+                        return next;
+                      });
+                    } else {
+                      onNumberInput(n);
+                    }
+                  }}
+                  disabled={isComplete}
+                  className={`h-11 rounded-xl border font-mono text-base font-semibold transition-all ${
+                    isComplete
+                      ? "border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-muted)] opacity-30 cursor-not-allowed"
+                      : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-accent)] hover:bg-[var(--pixel-bg-alt)] hover:scale-105 active:scale-95"
+                  }`}
+                >
+                  {n}
+                </button>
+              );
+            })}
           </div>
-          <button
-            onClick={() => onNumberInput(0)}
-            className="h-9 w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-mono text-xs font-semibold text-[var(--pixel-muted)] transition-all hover:bg-[var(--pixel-bg-alt)] hover:border-[var(--pixel-warn)] hover:text-[var(--pixel-warn)] active:scale-95"
-          >
-            ERASE
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => {
+                if (candidateMode && selectedCell) {
+                  const r = selectedCell.row;
+                  const c = selectedCell.col;
+                  if (locked[r]?.[c] || board[r][c] !== 0) return;
+                  setCandidates(prev => {
+                    const next = prev.map(row => row.map(s => new Set(s)));
+                    next[r][c].clear();
+                    return next;
+                  });
+                } else {
+                  onNumberInput(0);
+                }
+              }}
+              className="h-9 w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] font-mono text-xs font-semibold text-[var(--pixel-muted)] transition-all hover:bg-[var(--pixel-bg-alt)] hover:border-[var(--pixel-warn)] hover:text-[var(--pixel-warn)] active:scale-95"
+            >
+              ERASE
+            </button>
+            <button
+              onClick={() => setCandidateMode(m => !m)}
+              className={`h-9 w-full rounded-xl border font-mono text-xs font-semibold transition-all active:scale-95 ${
+                candidateMode
+                  ? "border-[var(--pixel-accent)] bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)] text-[var(--pixel-accent)]"
+                  : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)] hover:bg-[var(--pixel-bg-alt)]"
+              }`}
+            >
+              {candidateMode ? "✏️ NOTES ON" : "NOTES"}
+            </button>
+          </div>
         </div>
       )}
     </div>
