@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { Gamepad2 } from "lucide-react";
@@ -28,7 +28,7 @@ const GAMES: Game[] = [
 ];
 
 const TOTAL = GAMES.length;
-const FAN_SPREAD = 56; // total degrees
+const FAN_SPREAD = 56;
 
 function getFanAngle(index: number) {
   return -FAN_SPREAD / 2 + index * (FAN_SPREAD / (TOTAL - 1));
@@ -182,16 +182,40 @@ function CardVisual({ game }: { game: Game }) {
 
 // ── Section ────────────────────────────────────────────────
 export default function GamesSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, amount: 0.15 });
+  const gridRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(gridRef, { once: true, amount: 0.1 });
+  const [offsets, setOffsets] = useState<{ x: number; y: number }[] | null>(null);
   const [inFan, setInFan] = useState(true);
 
+  // Measure grid cell positions → compute offsets to bring every card's
+  // bottom-center to the grid's horizontal center / bottom edge.
+  // useLayoutEffect fires before paint, so cards appear in fan on first frame.
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const rect = grid.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cards = Array.from(grid.children) as HTMLElement[];
+    setOffsets(
+      cards.map((card) => {
+        const cr = card.getBoundingClientRect();
+        const cardCx = cr.left - rect.left + cr.width / 2;
+        const cardBottom = cr.top - rect.top + cr.height;
+        return {
+          x: cx - cardCx,
+          y: rect.height - cardBottom,
+        };
+      }),
+    );
+  }, []);
+
+  // After scroll into view, wait 0.5s then scatter to grid
   useEffect(() => {
-    if (isInView && inFan) {
-      const timer = setTimeout(() => setInFan(false), 1500);
+    if (isInView && inFan && offsets) {
+      const timer = setTimeout(() => setInFan(false), 500);
       return () => clearTimeout(timer);
     }
-  }, [isInView, inFan]);
+  }, [isInView, inFan, offsets]);
 
   return (
     <section className="mt-16 sm:mt-24">
@@ -205,51 +229,30 @@ export default function GamesSection() {
         </h2>
       </div>
 
-      {/* Card area */}
+      {/* Grid is ALWAYS a grid — fan is achieved purely via transforms */}
       <div
-        ref={sectionRef}
-        className={
-          inFan
-            ? "relative mx-auto flex justify-center items-end"
-            : "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center"
-        }
-        style={inFan ? { height: 300 } : undefined}
+        ref={gridRef}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center"
       >
         {GAMES.map((game, i) => (
           <motion.div
             key={game.href}
-            layout
             animate={{
+              x: inFan && offsets ? offsets[i].x : 0,
+              y: inFan && offsets ? offsets[i].y : 0,
               rotate: inFan ? getFanAngle(i) : 0,
               scale: inFan ? 0.82 : 1,
             }}
             transition={{
-              layout: {
-                type: "spring",
-                stiffness: 160,
-                damping: 22,
-                delay: inFan ? 0 : i * 0.06 + 0.08,
-              },
-              rotate: {
-                type: "spring",
-                stiffness: 160,
-                damping: 22,
-                delay: inFan ? 0 : i * 0.06 + 0.08,
-              },
-              scale: {
-                type: "spring",
-                stiffness: 160,
-                damping: 22,
-                delay: inFan ? 0 : i * 0.06 + 0.08,
-              },
+              type: "spring",
+              stiffness: 160,
+              damping: 22,
+              delay: inFan ? 0 : i * 0.06 + 0.08,
             }}
             style={{
-              position: inFan ? "absolute" : "relative",
-              left: inFan ? "50%" : undefined,
-              bottom: inFan ? 0 : undefined,
-              marginLeft: inFan ? -76 : undefined,
               transformOrigin: "center bottom",
               zIndex: inFan ? i : undefined,
+              visibility: offsets ? "visible" : "hidden",
             }}
           >
             <Link href={game.href} className="block">
