@@ -133,7 +133,7 @@ export default function HalliGalliPage() {
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, isReconnecting, reconnectDeadline,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
-    doBell, doRematch, exitToMenu,
+    doBell, doRematch, exitToMenu, countdownEnd,
   } = useHalliGalliGame();
 
   const hasCards = myView && (myView.mySlot1 || myView.mySlot2 || myView.oppSlot1 || myView.oppSlot2);
@@ -152,6 +152,33 @@ export default function HalliGalliPage() {
     return () => clearInterval(id);
   }, [myView?.nextFlipAt, myView?.phase]);
 
+  // 3-2-1-GO countdown
+  const [countdownNum, setCountdownNum] = useState<string | null>(null);
+  useEffect(() => {
+    if (!countdownEnd || !isConnected) { setCountdownNum(null); return; }
+    const steps = [
+      { label: "3", at: countdownEnd - 3800 },
+      { label: "2", at: countdownEnd - 2800 },
+      { label: "1", at: countdownEnd - 1800 },
+      { label: "GO!", at: countdownEnd - 800 },
+      { label: null, at: countdownEnd },
+    ];
+    const timers: NodeJS.Timeout[] = [];
+    const now = Date.now();
+    for (const step of steps) {
+      const delay = step.at - now;
+      if (delay <= 0) continue;
+      timers.push(setTimeout(() => setCountdownNum(step.label), delay));
+    }
+    // If we're already past countdown, don't show
+    if (now >= countdownEnd) { setCountdownNum(null); }
+    else if (now >= steps[3].at) { setCountdownNum("GO!"); }
+    else if (now >= steps[2].at) { setCountdownNum("1"); }
+    else if (now >= steps[1].at) { setCountdownNum("2"); }
+    else { setCountdownNum("3"); }
+    return () => timers.forEach(clearTimeout);
+  }, [countdownEnd, isConnected]);
+
   // Spacebar → ring bell
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -166,6 +193,41 @@ export default function HalliGalliPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {/* 3-2-1-GO Countdown Overlay */}
+      <AnimatePresence>
+        {countdownNum && (
+          <motion.div
+            key="countdown-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-[color-mix(in_oklab,var(--pixel-bg)_85%,transparent)] backdrop-blur-sm"
+          >
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={countdownNum}
+                initial={{ scale: 0.3, opacity: 0, filter: "blur(8px)" }}
+                animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                exit={{ scale: 2.5, opacity: 0, filter: "blur(4px)" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className={`font-sans font-black tracking-tighter ${
+                  countdownNum === "GO!"
+                    ? "text-7xl md:text-9xl text-[var(--pixel-warn)]"
+                    : "text-8xl md:text-[10rem] text-[var(--pixel-accent)]"
+                }`}
+                style={{
+                  textShadow: countdownNum === "GO!"
+                    ? "0 0 60px var(--pixel-warn), 0 0 120px var(--pixel-warn)"
+                    : "0 0 40px var(--pixel-glow)",
+                }}
+              >
+                {countdownNum}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Back button */}
       <motion.div
         initial={{ opacity: 0, x: -16 }}

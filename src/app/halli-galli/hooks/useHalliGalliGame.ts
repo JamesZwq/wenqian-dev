@@ -17,6 +17,7 @@ export function useHalliGalliGame() {
   const [myIndex, setMyIndex] = useState<0 | 1 | null>(null);
   const [fullState, setFullState] = useState<FullHalliState | null>(null);
   const [guestView, setGuestView] = useState<HalliView | null>(null);
+  const [countdownEnd, setCountdownEnd] = useState<number | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [lastRemoteMessageAt, setLastRemoteMessageAt] = useState<number | null>(null);
 
@@ -110,10 +111,14 @@ export function useHalliGalliGame() {
           }
           return;
         }
+        const cdEnd = Date.now() + 3800; // 3-2-1-GO countdown
+        setCountdownEnd(cdEnd);
         if (direction === "outgoing") {
           setMyIndex(0); myIndexRef.current = 0;
           setTimeout(() => {
             const ns = createInitialState(50);
+            // First flip happens after countdown + random 3-5s
+            ns.nextFlipAt = cdEnd + 3000 + Math.floor(Math.random() * 2001);
             setFullState(ns); fullStateRef.current = ns;
             syncToGuest(ns);
           }, 200);
@@ -214,6 +219,6 @@ export function useHalliGalliGame() {
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
-    doBell, doRematch, exitToMenu,
+    doBell, doRematch, exitToMenu, countdownEnd,
   };
 }
