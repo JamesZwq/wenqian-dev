@@ -386,7 +386,7 @@ export function useSudokuGame() {
     : [];
 
   const correctCount = board.length > 0 && solution.length > 0
-    ? board.reduce((acc, row, r) => acc + row.filter((v, c) => v !== 0 && v === solution[r][c]).length, 0)
+    ? board.reduce((acc, row, r) => acc + row.filter((v, c) => v !== 0 && !locked[r]?.[c] && v === solution[r][c]).length, 0)
     : 0;
 
   const totalToFill = locked.length > 0
