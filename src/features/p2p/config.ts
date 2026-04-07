@@ -3,24 +3,31 @@ const FALLBACK_TIMEOUT_MS = 5_000;
 
 export const P2P_CONNECT_TIMEOUT_MS = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : FALLBACK_TIMEOUT_MS;
 
-// ICE servers for WebRTC — STUN for discovery, TURN for NAT traversal fallback
-export const ICE_SERVERS: RTCIceServer[] = [
+const METERED_API_URL =
+  "https://wenqian_dev.metered.live/api/v1/turn/credentials?apiKey=af07ddedc0afea4aa7a78d0e3753c46b81dd";
+
+// Fallback ICE servers in case the Metered API is unreachable
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.relay.metered.ca:80" },
   { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  // Free open TURN relay (metered.ca open relay project)
-  {
-    urls: "turn:openrelay.metered.ca:80",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
 ];
+
+/**
+ * Fetch fresh TURN credentials from Metered.ca.
+ * Returns fallback STUN-only servers if the fetch fails.
+ */
+export async function fetchIceServers(): Promise<RTCIceServer[]> {
+  try {
+    const res = await fetch(METERED_API_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Metered API ${res.status}`);
+    const servers: RTCIceServer[] = await res.json();
+    return servers;
+  } catch {
+    console.warn("[P2P] Failed to fetch TURN credentials, using STUN-only fallback");
+    return FALLBACK_ICE_SERVERS;
+  }
+}
+
+// Keep the old static export for backward compatibility during transition.
+// New code should call fetchIceServers() instead.
+export const ICE_SERVERS: RTCIceServer[] = FALLBACK_ICE_SERVERS;

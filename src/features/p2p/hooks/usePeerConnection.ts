@@ -16,10 +16,19 @@ import {
   type P2PState,
   type UsePeerConnectionOptions,
 } from "../lib/p2p";
-import { ICE_SERVERS } from "../config";
+import { fetchIceServers } from "../config";
 
-function peerOpts(custom?: import("peerjs").PeerJSOption) {
-  return { ...custom, config: { ...custom?.config, iceServers: ICE_SERVERS } };
+// Cached ICE servers — fetched once, reused for all connections in this session
+let cachedIceServers: RTCIceServer[] | null = null;
+
+async function getIceServers(): Promise<RTCIceServer[]> {
+  if (cachedIceServers) return cachedIceServers;
+  cachedIceServers = await fetchIceServers();
+  return cachedIceServers;
+}
+
+function peerOpts(iceServers: RTCIceServer[], custom?: import("peerjs").PeerJSOption) {
+  return { ...custom, config: { ...custom?.config, iceServers } };
 }
 
 const INITIAL_STATE: P2PState = {
@@ -400,25 +409,24 @@ export function usePeerConnection<TData = unknown>(
       return () => teardown();
     }
 
-    // Classic mode: create peer on mount
+    // Classic mode: create peer on mount (async — fetch TURN credentials first)
     const localPeerId = options.peerId ?? generateShortPeerId();
-    const peer = new Peer(localPeerId, peerOpts(options.peerOptions));
-    peerRef.current = peer;
+    let cancelled = false;
+    getIceServers().then((iceServers) => {
+      if (cancelled) return;
+      const peer = new Peer(localPeerId, peerOpts(iceServers, options.peerOptions));
+      peerRef.current = peer;
 
-    const handleOpen = (openedPeerId: string) => {
-      setState((prev) => ({ ...prev, phase: "ready", localPeerId: openedPeerId, error: null }));
-    };
-    peer.on("open", handleOpen);
-    const listeners = setupPeerListeners(peer);
+      const handleOpen = (openedPeerId: string) => {
+        setState((prev) => ({ ...prev, phase: "ready", localPeerId: openedPeerId, error: null }));
+      };
+      peer.on("open", handleOpen);
+      setupPeerListeners(peer);
+    });
 
     return () => {
+      cancelled = true;
       teardown();
-      try {
-        peer.off?.("open", handleOpen);
-        peer.off?.("connection", listeners.handleIncoming);
-        peer.off?.("error", listeners.handleErr);
-        peer.off?.("disconnected", listeners.handleDisc);
-      } catch {}
     };
   }, [
     attachConnection,
@@ -465,6 +473,10 @@ export function usePeerConnection<TData = unknown>(
       }
       if (state.phase === "connecting") return false;
 
+      // Kick off async TURN fetch + connect flow
+      (async () => {
+        const iceServers = await getIceServers();
+
       const handshake = optionsRef.current.handshake;
       const prefix = handshake ? `wq-${handshake.game}` : null;
 
@@ -493,7 +505,7 @@ export function usePeerConnection<TData = unknown>(
 
       // Helper: register as host (room doesn't exist yet)
       const becomeHost = () => {
-        const hostPeer = new Peer(roomId, peerOpts(optionsRef.current.peerOptions));
+        const hostPeer = new Peer(roomId, peerOpts(iceServers, optionsRef.current.peerOptions));
         let hostEstablished = false;
 
         hostPeer.on("open", () => {
@@ -524,7 +536,7 @@ export function usePeerConnection<TData = unknown>(
           if (raw.type === "unavailable-id") {
             // Race condition: someone else became host first → retry as guest
             try { hostPeer.destroy(); } catch {}
-            const retryPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
+            const retryPeer = new Peer(generateShortPeerId(), peerOpts(iceServers, optionsRef.current.peerOptions));
             retryPeer.on("open", () => {
               peerRef.current = retryPeer;
               setState((prev) => ({ ...prev, roomCode: sanitized }));
@@ -543,7 +555,7 @@ export function usePeerConnection<TData = unknown>(
       };
 
       // Step 1: create peer with random ID, try to join room as guest
-      const guestPeer = new Peer(generateShortPeerId(), peerOpts(optionsRef.current.peerOptions));
+      const guestPeer = new Peer(generateShortPeerId(), peerOpts(iceServers, optionsRef.current.peerOptions));
 
       guestPeer.on("open", () => {
         if (switchedToHost) return;
@@ -576,6 +588,8 @@ export function usePeerConnection<TData = unknown>(
         if (switchedToHost) return;
         try { guestPeer.reconnect(); } catch { emitError(createPeerServerDisconnectedError()); }
       });
+
+      })(); // end async IIFE
 
       return true;
     },
