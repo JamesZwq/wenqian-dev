@@ -59,7 +59,7 @@ function GomokuIcon() {
 function CardVisual({ game }: { game: Game }) {
   return (
     <motion.div
-      whileHover={{ y: -9, borderColor: "rgba(255,255,255,0.22)" }}
+      whileHover={{ y: -9, borderColor: "color-mix(in oklab, var(--pixel-border) 200%, transparent)" }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       style={{
@@ -69,8 +69,8 @@ function CardVisual({ game }: { game: Game }) {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.05)",
+        border: "1px solid var(--pixel-border)",
+        background: "var(--pixel-card-bg)",
         backdropFilter: "blur(24px) saturate(160%)",
         WebkitBackdropFilter: "blur(24px) saturate(160%)",
         position: "relative",
@@ -82,7 +82,7 @@ function CardVisual({ game }: { game: Game }) {
           position: "absolute",
           top: 0, left: "12%", right: "12%",
           height: 1,
-          background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
+          background: "linear-gradient(90deg,transparent,color-mix(in oklab, var(--pixel-accent) 40%, transparent),transparent)",
           zIndex: 2,
         }}
       />
@@ -143,19 +143,19 @@ function CardVisual({ game }: { game: Game }) {
       <div
         style={{
           padding: "12px 14px 13px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(0,0,0,0.20)",
+          borderTop: "1px solid var(--pixel-border)",
+          background: "color-mix(in oklab, var(--pixel-bg) 20%, transparent)",
         }}
       >
         <p
           className="font-sans font-bold"
-          style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", marginBottom: 4, lineHeight: 1.2 }}
+          style={{ fontSize: 12, color: "var(--pixel-text)", marginBottom: 4, lineHeight: 1.2 }}
         >
           {game.name}
         </p>
         <p
           className="font-mono"
-          style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.3, marginBottom: 8 }}
+          style={{ fontSize: 10, color: "var(--pixel-muted)", lineHeight: 1.3, marginBottom: 8 }}
         >
           {game.desc}
         </p>
@@ -165,8 +165,8 @@ function CardVisual({ game }: { game: Game }) {
             style={{
               fontSize: 9,
               color: game.accent,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
+              border: "1px solid var(--pixel-border)",
+              background: "color-mix(in oklab, var(--pixel-accent) 10%, transparent)",
               padding: "1px 6px",
               borderRadius: 4,
               letterSpacing: "0.04em",
