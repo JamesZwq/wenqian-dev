@@ -51,7 +51,7 @@ export function createInitialState(targetScore = 50): FullHalliState {
     score0: 0,
     score1: 0,
     targetScore,
-    nextFlipAt: Date.now() + 5000,
+    nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
     phase: "playing",
     winner: null,
     lastBell: null,
@@ -117,7 +117,7 @@ export function applyAutoFlip(state: FullHalliState): FullHalliState {
   return {
     ...state,
     deck0, discard0, deck1, discard1,
-    nextFlipAt: Date.now() + 5000,
+    nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
     lastBell: null,
   };
 }
