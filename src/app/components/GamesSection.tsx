@@ -218,7 +218,7 @@ export default function GamesSection() {
   }, [isInView, inFan, offsets]);
 
   return (
-    <section className="mt-16 sm:mt-24">
+    <section id="games" className="mt-16 sm:mt-24 scroll-mt-8">
       {/* Section header */}
       <div className="flex items-center gap-4 mb-10">
         <div className="p-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">

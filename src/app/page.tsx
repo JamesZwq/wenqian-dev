@@ -51,6 +51,13 @@ function HeroSection() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download CV
         </a>
+        <a
+          href="#games"
+          className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] text-[var(--pixel-warn)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-warn)_20%,transparent)] hover:shadow-lg hover:shadow-[color-mix(in_oklab,var(--pixel-warn)_20%,transparent)] transition-[background-color,box-shadow] duration-200 touch-manipulation"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="17" cy="10" r="1"/><circle cx="15" cy="13" r="1"/></svg>
+          Games
+        </a>
       </div>
 
       {/* Scroll 提示 - 手机端不显示 */}
@@ -79,7 +86,7 @@ export default function Home() {
             <BgSpeedControl />
             <FpsCounter />
             <FloatingNav />
-            <div className="fixed top-[52px] right-4 z-[130]">
+            <div className="fixed top-[96px] right-4 z-[130]">
               <ShareButton
                 title="Wenqian Zhang | Ph.D. @ UNSW"
                 text="Check out Wenqian Zhang's portfolio — UNSW CS Ph.D., SIGMOD 2025, interactive P2P web apps and research."
