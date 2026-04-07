@@ -41,14 +41,17 @@ export function createDeck(): HalliCard[] {
   return shuffle(cards);
 }
 
-export function createInitialState(): FullHalliState {
+export function createInitialState(targetScore = 50): FullHalliState {
   const deck = createDeck();
   return {
     deck0: deck.slice(0, 28),
     deck1: deck.slice(28),
     discard0: [],
     discard1: [],
-    activePlayer: 0,
+    score0: 0,
+    score1: 0,
+    targetScore,
+    nextFlipAt: Date.now() + 5000,
     phase: "playing",
     winner: null,
     lastBell: null,
@@ -81,73 +84,74 @@ export function isBellValid(state: FullHalliState): boolean {
   return Object.values(totals).some(v => v === 5);
 }
 
-function autoSkip(state: FullHalliState): FullHalliState {
-  const active = state.activePlayer;
-  const activeDeck = active === 0 ? state.deck0 : state.deck1;
-  if (activeDeck.length > 0) return state;
-  const otherDeck = active === 0 ? state.deck1 : state.deck0;
-  if (otherDeck.length > 0) return { ...state, activePlayer: (1 - active) as 0 | 1 };
-  return state;
+function recycleDeck(deck: HalliCard[], discard: HalliCard[]): { deck: HalliCard[]; discard: HalliCard[] } {
+  if (deck.length > 0) return { deck, discard };
+  // Reshuffle all discard except the last 2 visible cards back into deck
+  if (discard.length <= 2) return { deck, discard };
+  const keep = discard.slice(-2);
+  const recycled = shuffle(discard.slice(0, -2));
+  return { deck: recycled, discard: keep };
 }
 
-export function applyFlip(state: FullHalliState, player: 0 | 1): FullHalliState {
-  if (state.phase !== "playing" || state.activePlayer !== player) return state;
-  const deckKey = player === 0 ? "deck0" : "deck1";
-  const discardKey = player === 0 ? "discard0" : "discard1";
-  const deck = [...state[deckKey]];
-  if (deck.length === 0) return state;
+export function applyAutoFlip(state: FullHalliState): FullHalliState {
+  if (state.phase !== "playing") return state;
 
-  const card = deck.shift()!;
-  return autoSkip({
+  let { deck0, discard0, deck1, discard1 } = state;
+
+  // Recycle if needed
+  const r0 = recycleDeck([...deck0], [...discard0]);
+  deck0 = r0.deck; discard0 = r0.discard;
+  const r1 = recycleDeck([...deck1], [...discard1]);
+  deck1 = r1.deck; discard1 = r1.discard;
+
+  // Flip one card each (if available)
+  if (deck0.length > 0) {
+    const card = deck0.shift()!;
+    discard0 = [...discard0, card];
+  }
+  if (deck1.length > 0) {
+    const card = deck1.shift()!;
+    discard1 = [...discard1, card];
+  }
+
+  return {
     ...state,
-    [deckKey]: deck,
-    [discardKey]: [...state[discardKey], card],
-    activePlayer: (1 - player) as 0 | 1,
+    deck0, discard0, deck1, discard1,
+    nextFlipAt: Date.now() + 5000,
     lastBell: null,
-  });
+  };
 }
 
 export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState {
   if (state.phase !== "playing") return state;
   const valid = isBellValid(state);
+  const cards = visibleCards(state);
+  const points = cards.length;
+
+  let { score0, score1 } = state;
 
   if (valid) {
-    const won = shuffle([...state.discard0, ...state.discard1]);
-    const newDeck0 = ringer === 0 ? [...state.deck0, ...won] : [...state.deck0];
-    const newDeck1 = ringer === 1 ? [...state.deck1, ...won] : [...state.deck1];
-    const loserEmpty = ringer === 0 ? newDeck1.length === 0 : newDeck0.length === 0;
-
-    return autoSkip({
-      ...state,
-      deck0: newDeck0,
-      deck1: newDeck1,
-      discard0: [],
-      discard1: [],
-      activePlayer: ringer,
-      phase: loserEmpty ? "game_over" : "playing",
-      winner: loserEmpty ? ringer : null,
-      lastBell: { valid: true, ringer },
-    });
+    // Correct bell: ringer scores
+    if (ringer === 0) score0 += points; else score1 += points;
   } else {
-    // Wrong bell: opponent wins all discard pile cards (same reward as correct bell)
+    // Invalid bell: OPPONENT scores (penalty to ringer)
     const opp = (1 - ringer) as 0 | 1;
-    const won = shuffle([...state.discard0, ...state.discard1]);
-    const newDeck0 = opp === 0 ? [...state.deck0, ...won] : [...state.deck0];
-    const newDeck1 = opp === 1 ? [...state.deck1, ...won] : [...state.deck1];
-    const ringerEmpty = ringer === 0 ? newDeck0.length === 0 : newDeck1.length === 0;
-
-    return autoSkip({
-      ...state,
-      deck0: newDeck0,
-      deck1: newDeck1,
-      discard0: [],
-      discard1: [],
-      activePlayer: opp,
-      phase: ringerEmpty ? "game_over" : "playing",
-      winner: ringerEmpty ? opp : null,
-      lastBell: { valid: false, ringer },
-    });
+    if (opp === 0) score0 += points; else score1 += points;
   }
+
+  // Clear discards after bell
+  const isOver = score0 >= state.targetScore || score1 >= state.targetScore;
+  const winner = isOver ? (score0 >= state.targetScore ? 0 : 1) : null;
+
+  return {
+    ...state,
+    score0, score1,
+    discard0: [],
+    discard1: [],
+    phase: isOver ? "game_over" : "playing",
+    winner,
+    lastBell: { valid, ringer },
+  };
 }
 
 export function createView(state: FullHalliState, playerIndex: 0 | 1): HalliView {
@@ -162,7 +166,10 @@ export function createView(state: FullHalliState, playerIndex: 0 | 1): HalliView
     oppSlot1: opp1,
     oppSlot2: opp2,
     oppDeckCount: iAm0 ? state.deck1.length : state.deck0.length,
-    isMyTurn: state.activePlayer === playerIndex,
+    myScore: iAm0 ? state.score0 : state.score1,
+    oppScore: iAm0 ? state.score1 : state.score0,
+    targetScore: state.targetScore,
+    nextFlipAt: state.nextFlipAt,
     phase: state.phase,
     iWon: state.winner === null ? null : state.winner === playerIndex,
     lastBell: state.lastBell === null ? null : {

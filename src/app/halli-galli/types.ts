@@ -34,7 +34,10 @@ export interface FullHalliState {
   // Full flip history; last 2 from each are visible (slot1=older, slot2=newer)
   discard0: HalliCard[];
   discard1: HalliCard[];
-  activePlayer: 0 | 1;
+  score0: number;
+  score1: number;
+  targetScore: number;
+  nextFlipAt: number; // host clock timestamp for next auto-flip
   phase: GamePhase;
   winner: 0 | 1 | null;
   lastBell: { valid: boolean; ringer: 0 | 1 } | null;
@@ -48,7 +51,10 @@ export interface HalliView {
   oppSlot1: HalliCard | null;
   oppSlot2: HalliCard | null;
   oppDeckCount: number;
-  isMyTurn: boolean;
+  myScore: number;
+  oppScore: number;
+  targetScore: number;
+  nextFlipAt: number;
   phase: GamePhase;
   iWon: boolean | null;
   lastBell: { valid: boolean; iWon: boolean } | null;
@@ -56,8 +62,8 @@ export interface HalliView {
 
 export type HalliPacket =
   | { type: "sync"; view: HalliView; timestamp: number }
-  | { type: "flip"; sentAt: number }
   | { type: "bell"; sentAt: number }
   | { type: "rematch"; sentAt: number }
+  | { type: "settings"; targetScore: number; sentAt: number }
   | { type: "ping"; sentAt: number }
   | { type: "pong"; sentAt: number };

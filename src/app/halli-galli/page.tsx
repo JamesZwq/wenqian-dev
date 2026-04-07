@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "@/features/p2p/components/P2PConnectionPanel";
@@ -68,14 +68,16 @@ function PlayerArea({
   slot1,
   slot2,
   deckCount,
-  isActive,
+  score,
+  targetScore,
 }: {
   label: string;
   role: string;
   slot1: HalliCard | null;
   slot2: HalliCard | null;
   deckCount: number;
-  isActive: boolean;
+  score: number;
+  targetScore: number;
 }) {
   return (
     <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3 md:p-4">
@@ -86,15 +88,9 @@ function PlayerArea({
           </span>
           <span className="font-mono text-[10px] text-[var(--pixel-muted)]">{role}</span>
         </div>
-        {isActive && (
-          <motion.span
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ duration: 1.1, repeat: Infinity }}
-            className="font-mono text-[10px] text-[var(--pixel-accent-2)]"
-          >
-            ● FLIPPING...
-          </motion.span>
-        )}
+        <span className="font-mono text-sm font-bold tabular-nums text-[var(--pixel-accent-2)]">
+          {score} / {targetScore}
+        </span>
       </div>
 
       <div className="flex items-center justify-center gap-3">
@@ -137,12 +133,24 @@ export default function HalliGalliPage() {
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, isReconnecting, reconnectDeadline,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
-    doFlip, doBell, doRematch, exitToMenu,
+    doBell, doRematch, exitToMenu,
   } = useHalliGalliGame();
 
-  const canFlip = myView?.phase === "playing" && myView.isMyTurn && myView.myDeckCount > 0;
   const hasCards = myView && (myView.mySlot1 || myView.mySlot2 || myView.oppSlot1 || myView.oppSlot2);
   const canBell = myView?.phase === "playing" && !!hasCards;
+
+  // Countdown to next flip
+  const [countdown, setCountdown] = useState(5);
+  useEffect(() => {
+    if (!myView || myView.phase !== "playing") return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((myView.nextFlipAt - Date.now()) / 1000));
+      setCountdown(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [myView?.nextFlipAt, myView?.phase]);
 
   // Spacebar → ring bell
   useEffect(() => {
@@ -216,12 +224,14 @@ export default function HalliGalliPage() {
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
                   <h3 className="mb-3 font-sans font-semibold text-xs text-[var(--pixel-accent)]">HOW TO PLAY</h3>
                   <div className="space-y-1 font-mono text-[11px] text-[var(--pixel-muted)]">
-                    <p>&gt; Each player has 2 card positions (Pos 1 &amp; Pos 2)</p>
-                    <p>&gt; Take turns flipping — Pos 1 first, then Pos 2</p>
+                    <p>&gt; Cards auto-flip every 5 seconds for both players</p>
+                    <p>&gt; Each player has 2 visible card positions</p>
                     <p>&gt; Cards can show multiple fruit types 🍓🍌🍋🍇</p>
                     <p>&gt; When any fruit totals exactly <span className="text-[var(--pixel-accent)]">5</span>, ring the bell!</p>
+                    <p>&gt; Correct bell = <span className="text-[var(--pixel-accent)]">+points</span> (visible card count)</p>
+                    <p>&gt; Wrong bell = opponent gets the points instead!</p>
+                    <p>&gt; First to <span className="text-[var(--pixel-accent-2)]">50 points</span> wins</p>
                     <p>&gt; Press <span className="text-[var(--pixel-accent-2)]">Space</span> or click the bell button</p>
-                    <p>&gt; Wrong ring = opponent takes all visible cards!</p>
                   </div>
                 </div>
                 <button
@@ -293,7 +303,8 @@ export default function HalliGalliPage() {
                       slot1={myView.oppSlot1}
                       slot2={myView.oppSlot2}
                       deckCount={myView.oppDeckCount}
-                      isActive={!myView.isMyTurn && myView.phase === "playing"}
+                      score={myView.oppScore}
+                      targetScore={myView.targetScore}
                     />
 
                     {/* Bell result banner */}
@@ -316,11 +327,11 @@ export default function HalliGalliPage() {
                         >
                           {myView.lastBell.valid
                             ? myView.lastBell.iWon
-                              ? "🔔 You rang first — pile is yours!"
-                              : "🔔 Opponent rang first!"
+                              ? "🔔 Correct! You scored points!"
+                              : "🔔 Opponent rang correctly!"
                             : myView.lastBell.iWon
-                              ? "✗ Wrong bell — opponent takes the pile!"
-                              : "✗ Opponent wrong bell — pile is yours!"
+                              ? "✗ Wrong bell — opponent scores!"
+                              : "✗ Opponent wrong bell — you score!"
                           }
                         </motion.div>
                       )}
@@ -336,8 +347,11 @@ export default function HalliGalliPage() {
                         <div className="mb-1 font-mono text-[10px] text-[var(--pixel-muted)] uppercase tracking-wide">
                           Game Over
                         </div>
-                        <div className="mb-4 font-sans font-bold text-3xl text-[var(--pixel-accent)]">
-                          {myView.iWon ? "🏆 You Win!" : "😔 You Lose"}
+                        <div className="mb-2 font-sans font-bold text-3xl text-[var(--pixel-accent)]">
+                          {myView.iWon ? "You Win!" : "You Lose"}
+                        </div>
+                        <div className="mb-4 font-mono text-sm text-[var(--pixel-muted)]">
+                          {myView.myScore} &ndash; {myView.oppScore}
                         </div>
                         <button
                           onClick={doRematch}
@@ -348,21 +362,26 @@ export default function HalliGalliPage() {
                       </motion.div>
                     )}
 
-                    {/* Bell button */}
+                    {/* Countdown + Bell */}
                     {myView.phase === "playing" && (
-                      <motion.button
-                        whileTap={{ scale: 0.93 }}
-                        onClick={doBell}
-                        disabled={!canBell}
-                        className={`w-full rounded-2xl border-2 py-5 font-sans font-bold text-2xl tracking-tight transition-all select-none ${
-                          canBell
-                            ? "border-[var(--pixel-warn)] bg-[var(--pixel-warn)] text-[var(--pixel-bg)] shadow-lg hover:scale-[1.01] active:scale-[0.97] cursor-pointer"
-                            : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)] opacity-40 cursor-not-allowed"
-                        }`}
-                      >
-                        🔔 RING THE BELL
-                        <span className="ml-2 font-mono text-sm font-normal opacity-60">[Space]</span>
-                      </motion.button>
+                      <div className="w-full flex flex-col items-center gap-3">
+                        <div className="font-mono text-xs tabular-nums text-[var(--pixel-muted)]">
+                          NEXT FLIP IN <span className="text-[var(--pixel-accent-2)] font-bold">{countdown}s</span>
+                        </div>
+                        <motion.button
+                          whileTap={{ scale: 0.93 }}
+                          onClick={doBell}
+                          disabled={!canBell}
+                          className={`w-full rounded-2xl border-2 py-5 font-sans font-bold text-2xl tracking-tight transition-all select-none ${
+                            canBell
+                              ? "border-[var(--pixel-warn)] bg-[var(--pixel-warn)] text-[var(--pixel-bg)] shadow-lg hover:scale-[1.01] active:scale-[0.97] cursor-pointer"
+                              : "border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] text-[var(--pixel-muted)] opacity-40 cursor-not-allowed"
+                          }`}
+                        >
+                          RING THE BELL
+                          <span className="ml-2 font-mono text-sm font-normal opacity-60">[Space]</span>
+                        </motion.button>
+                      </div>
                     )}
 
                     {/* My area */}
@@ -372,26 +391,12 @@ export default function HalliGalliPage() {
                       slot1={myView.mySlot1}
                       slot2={myView.mySlot2}
                       deckCount={myView.myDeckCount}
-                      isActive={myView.isMyTurn && myView.phase === "playing"}
+                      score={myView.myScore}
+                      targetScore={myView.targetScore}
                     />
 
-                    {/* Flip + Menu */}
+                    {/* Menu */}
                     <div className="flex gap-2 w-full">
-                      {myView.phase === "playing" && (
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          onClick={doFlip}
-                          disabled={!canFlip}
-                          className={`flex-1 rounded-xl border py-3 font-sans font-semibold text-sm transition-all ${
-                            canFlip
-                              ? "border-[var(--pixel-accent)] bg-[var(--pixel-accent)] text-[var(--pixel-bg)] hover:scale-[1.02] cursor-pointer"
-                              : "border-[var(--pixel-border)] text-[var(--pixel-muted)] opacity-40 cursor-not-allowed"
-                          }`}
-                        >
-                          FLIP
-                          {canFlip && <span className="ml-1 text-xs font-mono font-normal opacity-70">({myView.myDeckCount})</span>}
-                        </motion.button>
-                      )}
                       <button
                         onClick={exitToMenu}
                         className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-[10px] text-[var(--pixel-muted)] transition-colors hover:text-[var(--pixel-accent)]"

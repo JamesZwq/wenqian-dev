@@ -7,7 +7,7 @@ import { useJoinParam } from "@/features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import type { FullHalliState, GameMode, HalliPacket, HalliView } from "../types";
-import { applyBell, applyFlip, createInitialState, createView } from "../gameLogic";
+import { applyBell, applyAutoFlip, createInitialState, createView } from "../gameLogic";
 
 export function useHalliGalliGame() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
@@ -24,6 +24,7 @@ export function useHalliGalliGame() {
   const fullStateRef = useRef<FullHalliState | null>(null);
   const sendRef = useRef<(p: HalliPacket) => boolean>(() => false);
   const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const autoFlipRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const bellLockRef = useRef(false);
 
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
@@ -68,22 +69,25 @@ export function useHalliGalliGame() {
     }
 
     if (idx === 0) {
-      const s = fullStateRef.current;
-      if (payload.type === "flip") {
-        if (!s) return;
-        const ns = applyFlip(s, 1);
-        setFullState(ns); fullStateRef.current = ns;
-        syncToGuest(ns);
-        return;
-      }
       if (payload.type === "bell") {
         processHostBell(1);
         return;
       }
       if (payload.type === "rematch") {
-        const ns = createInitialState();
+        const s = fullStateRef.current;
+        const ts = s?.targetScore ?? 50;
+        const ns = createInitialState(ts);
         setFullState(ns); fullStateRef.current = ns;
         syncToGuest(ns);
+        return;
+      }
+      if (payload.type === "settings") {
+        const s = fullStateRef.current;
+        if (s) {
+          const ns = { ...s, targetScore: payload.targetScore };
+          setFullState(ns); fullStateRef.current = ns;
+          syncToGuest(ns);
+        }
         return;
       }
     }
@@ -109,7 +113,7 @@ export function useHalliGalliGame() {
         if (direction === "outgoing") {
           setMyIndex(0); myIndexRef.current = 0;
           setTimeout(() => {
-            const ns = createInitialState();
+            const ns = createInitialState(50);
             setFullState(ns); fullStateRef.current = ns;
             syncToGuest(ns);
           }, 200);
@@ -122,6 +126,8 @@ export function useHalliGalliGame() {
         setFullState(null); setGuestView(null);
         setLatencyMs(null); setLastRemoteMessageAt(null);
         bellLockRef.current = false;
+        if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+        autoFlipRef.current = undefined;
       },
     });
 
@@ -143,23 +149,36 @@ export function useHalliGalliGame() {
     };
   }, [isConnected]);
 
+  // Auto-flip timer (host only)
+  useEffect(() => {
+    if (myIndex !== 0 || !fullState || fullState.phase !== "playing" || !isConnected) {
+      if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+      autoFlipRef.current = undefined;
+      return;
+    }
+
+    autoFlipRef.current = setInterval(() => {
+      const s = fullStateRef.current;
+      if (!s || s.phase !== "playing") return;
+      if (Date.now() < s.nextFlipAt) return;
+
+      const ns = applyAutoFlip(s);
+      setFullState(ns);
+      fullStateRef.current = ns;
+      syncToGuest(ns);
+    }, 200); // Check every 200ms for precision
+
+    return () => {
+      if (autoFlipRef.current) clearInterval(autoFlipRef.current);
+      autoFlipRef.current = undefined;
+    };
+  }, [myIndex, fullState?.phase, isConnected, syncToGuest]);
+
   const myView = useMemo<HalliView | null>(() => {
     if (myIndex === 0 && fullState) return createView(fullState, 0);
     if (myIndex === 1) return guestView;
     return null;
   }, [myIndex, fullState, guestView]);
-
-  const doFlip = useCallback(() => {
-    if (myIndex === 0) {
-      const s = fullStateRef.current;
-      if (!s) return;
-      const ns = applyFlip(s, 0);
-      setFullState(ns); fullStateRef.current = ns;
-      syncToGuest(ns);
-    } else if (myIndex === 1) {
-      sendRef.current({ type: "flip", sentAt: Date.now() });
-    }
-  }, [myIndex, syncToGuest]);
 
   const doBell = useCallback(() => {
     if (myIndex === 0) {
@@ -171,7 +190,9 @@ export function useHalliGalliGame() {
 
   const doRematch = useCallback(() => {
     if (myIndex === 0) {
-      const ns = createInitialState();
+      const s = fullStateRef.current;
+      const ts = s?.targetScore ?? 50;
+      const ns = createInitialState(ts);
       setFullState(ns); fullStateRef.current = ns;
       syncToGuest(ns);
     } else {
@@ -193,6 +214,6 @@ export function useHalliGalliGame() {
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
-    doFlip, doBell, doRematch, exitToMenu,
+    doBell, doRematch, exitToMenu,
   };
 }
