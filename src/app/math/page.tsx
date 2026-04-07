@@ -22,7 +22,7 @@ export default function MathSprintPage() {
     gameMode, setGameMode, questions, currentIndex, inputValue,
     flashColor, shaking, elapsed, result, isNewRecord, resultOps, resultCount,
     direction, opponentProgress, opponentFinished,
-    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId, inputRef, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch, handleInputChange,
@@ -178,6 +178,7 @@ export default function MathSprintPage() {
                   onClearError={clearError}
                   onReinitialize={reinitialize}
                   roomCode={roomCode}
+                  connectSubstep={connectSubstep}
                 />
                 <div className="mt-4 flex justify-center">
                   <button

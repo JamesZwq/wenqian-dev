@@ -37,6 +37,7 @@ export interface P2PState {
   roomCode: string | null;
   /** Epoch ms when reconnection window expires (0 = not reconnecting) */
   reconnectDeadline: number;
+  connectSubstep: string;
 }
 
 export interface UsePeerConnectionOptions<TData = unknown> {
@@ -60,7 +61,7 @@ export interface UsePeerConnectionOptions<TData = unknown> {
   onError?: (error: P2PErrorState) => void;
 }
 
-export const DEFAULT_CONNECT_TIMEOUT_MS = 8_000;
+export const DEFAULT_CONNECT_TIMEOUT_MS = 20_000;
 export const RECONNECT_WINDOW_MS = 3 * 60 * 1000; // 3 minutes
 
 const SHORT_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

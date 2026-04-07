@@ -836,6 +836,7 @@ export function useMazeGame() {
     retryLastConnection,
     reinitialize,
     roomCode,
+    connectSubstep,
   } = usePeerConnection<MazePacket>({
     connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
     handshake: { site: "wenqian.me", game: "maze" },
@@ -1760,7 +1761,7 @@ export function useMazeGame() {
 
     // P2P connection
     phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, sendChat,
-    clearError, retryLastConnection, reinitialize, roomCode,
+    clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId,
     // Chat
     chatMessages, addMyMessage,

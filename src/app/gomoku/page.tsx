@@ -23,7 +23,7 @@ export default function GomokuPage() {
     myColor, lastMove, previewPos, setPreviewPos,
     cellSize, stats, gameState,
     showExplosion, setShowExplosion, explosionPieces,
-    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId, latencyMs, lastRemoteMessageAt, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startAIGame, exitToMenu, handleBoardClick, makeMove, resetGame,
@@ -130,6 +130,7 @@ export default function GomokuPage() {
                   onClearError={clearError}
                   onReinitialize={reinitialize}
                   roomCode={roomCode}
+                  connectSubstep={connectSubstep}
                 />
                 <div className="mt-4 flex justify-center">
                   <button

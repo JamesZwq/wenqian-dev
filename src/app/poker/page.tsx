@@ -1299,7 +1299,7 @@ const CONNECTION_DESC = [
 export default function PokerPage() {
   const {
     gameMode, setGameMode, displayView, isGameOver,
-    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connectSubstep,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, roomCode,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
@@ -1385,6 +1385,7 @@ export default function PokerPage() {
                   onClearError={clearError}
                   onReinitialize={reinitialize}
                   roomCode={roomCode}
+                  connectSubstep={connectSubstep}
                 />
                 <div className="mt-4 flex justify-center">
                   <button onClick={exitToMenu} className="rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] backdrop-blur-md px-4 py-2 font-sans font-semibold text-[10px] text-[var(--pixel-muted)]">

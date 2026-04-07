@@ -230,7 +230,7 @@ export function useFlashGame() {
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
   // ── P2P connection ──
-  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode } =
+  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep } =
     usePeerConnection<FlashPacket>({
       connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
       handshake: { site: "wenqian.me", game: "flash-count" },
@@ -400,7 +400,7 @@ export function useFlashGame() {
     myP2pAnswer, opponentSubmitted, questionResult,
     myScore, opponentScore, p2pGameResult,
     // P2P connection
-    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId,
     // Chat
     chatMessages, addMyMessage,

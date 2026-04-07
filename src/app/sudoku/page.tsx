@@ -47,7 +47,7 @@ export default function SudokuPage() {
     mistakes, failureReason,
     opponentCorrect, opponentComplete, opponentTime,
     correctCount, totalToFill,
-    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, connect, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     handleCellSelect, handleCellInput, startSolo, requestNewGame, exitToMenu, revealSolution,
@@ -216,6 +216,7 @@ export default function SudokuPage() {
                   onClearError={clearError}
                   onReinitialize={reinitialize}
                   roomCode={roomCode}
+                  connectSubstep={connectSubstep}
                 />
                 <div className="mt-4 flex justify-center">
                   <button

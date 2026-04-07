@@ -19,6 +19,7 @@ interface P2PConnectionPanelProps {
   description?: string[];
   autoConnectPeerId?: string | null;
   roomCode?: string | null;
+  connectSubstep?: string;
   onConnect: (peerId: string) => void;
   onRetry?: () => void;
   onClearError?: () => void;
@@ -48,6 +49,7 @@ export default function P2PConnectionPanel({
   ],
   autoConnectPeerId,
   roomCode,
+  connectSubstep,
   onConnect,
   onRetry,
   onClearError,
@@ -369,6 +371,11 @@ export default function P2PConnectionPanel({
                     <span className="font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent-2)]">
                       CONNECTING...
                     </span>
+                    {connectSubstep && (
+                      <span className="font-mono text-[9px] text-[var(--pixel-muted)] truncate">
+                        {connectSubstep}
+                      </span>
+                    )}
                     {/* Shimmer progress bar */}
                     <div className="relative h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(167,139,250,0.15)" }}>
                       <motion.div

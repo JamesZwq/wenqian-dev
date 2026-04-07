@@ -30,6 +30,7 @@ const INITIAL_STATE: P2PState = {
   lastConnectedPeerId: null,
   roomCode: null,
   reconnectDeadline: 0,
+  connectSubstep: "",
 };
 
 export function usePeerConnection<TData = unknown>(
@@ -112,6 +113,7 @@ export function usePeerConnection<TData = unknown>(
     setState((prev) => ({
       ...prev,
       error: null,
+      connectSubstep: "",
       phase:
         prev.phase === "error" || prev.phase === "disconnected"
           ? "ready"
@@ -160,6 +162,7 @@ export function usePeerConnection<TData = unknown>(
           lastConnectedPeerId: connection.peer,
           error: null,
           reconnectDeadline: 0,
+          connectSubstep: "",
         }));
         optionsRef.current.onConnected?.({
           peerId: connection.peer,
@@ -215,6 +218,7 @@ export function usePeerConnection<TData = unknown>(
           phase: "error",
           remotePeerId: peerId ?? null,
           error: normalized,
+          connectSubstep: "",
         }));
         optionsRef.current.onError?.(normalized);
         optionsRef.current.onDisconnected?.({
@@ -257,6 +261,7 @@ export function usePeerConnection<TData = unknown>(
             remotePeerId: null,
             error: null,
             reconnectDeadline: deadline,
+            connectSubstep: "",
           }));
 
           // Deadline timer — give up after 3 minutes
@@ -307,6 +312,7 @@ export function usePeerConnection<TData = unknown>(
           phase: "disconnected",
           remotePeerId: null,
           error: normalized,
+          connectSubstep: "",
         }));
         optionsRef.current.onError?.(normalized);
         optionsRef.current.onDisconnected?.({
@@ -354,7 +360,7 @@ export function usePeerConnection<TData = unknown>(
         if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
         lastAttemptedPeerIdRef.current = connection.peer;
         latestRemotePeerIdRef.current = connection.peer;
-        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: connection.peer, error: null }));
+        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: connection.peer, error: null, connectSubstep: "Negotiating connection..." }));
         attachConnection(connection, "incoming");
       };
       const handleErr = (raw: unknown) => emitError(normalizePeerError(raw));
@@ -439,7 +445,7 @@ export function usePeerConnection<TData = unknown>(
           const err = createTimeoutError(timeoutMs);
           if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
           connectionCleanupRef.current?.(); connectionCleanupRef.current = null; connectionRef.current = null;
-          setState((prev) => ({ ...prev, phase: "error", error: err }));
+          setState((prev) => ({ ...prev, phase: "error", error: err, connectSubstep: "" }));
           optionsRef.current.onError?.(err);
           optionsRef.current.onDisconnected?.({ peerId: targetId, reason: "timeout" });
         }, timeoutMs);
@@ -471,7 +477,7 @@ export function usePeerConnection<TData = unknown>(
         }
         lastAttemptedPeerIdRef.current = sanitized;
         latestRemotePeerIdRef.current = sanitized;
-        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: sanitized, error: null }));
+        setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: sanitized, error: null, connectSubstep: "Searching for peer..." }));
         connectToPeer(peer, sanitized);
         return true;
       }
@@ -479,7 +485,7 @@ export function usePeerConnection<TData = unknown>(
       // ── Room mode: guest-first, fallback to host ──
       const roomId = `${prefix}-${sanitized}`;
       lastAttemptedPeerIdRef.current = sanitized;
-      setState((prev) => ({ ...prev, phase: "connecting", roomCode: sanitized, error: null }));
+      setState((prev) => ({ ...prev, phase: "connecting", roomCode: sanitized, error: null, connectSubstep: "Connecting to signal server..." }));
 
       teardown();
 
@@ -493,7 +499,7 @@ export function usePeerConnection<TData = unknown>(
         hostPeer.on("open", () => {
           hostEstablished = true;
           peerRef.current = hostPeer;
-          setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized }));
+          setState((prev) => ({ ...prev, phase: "ready", localPeerId: roomId, roomCode: sanitized, connectSubstep: "Waiting for opponent..." }));
         });
 
         hostPeer.on("disconnected", () => {
@@ -509,7 +515,7 @@ export function usePeerConnection<TData = unknown>(
             const meta = conn.metadata as Record<string, string> | undefined;
             if (!meta || !Object.entries(expected).every(([k, v]) => meta[k] === v)) { conn.close(); return; }
           }
-          setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: conn.peer, error: null }));
+          setState((prev) => ({ ...prev, phase: "connecting", remotePeerId: conn.peer, error: null, connectSubstep: "Negotiating connection..." }));
           attachConnection(conn, "incoming");
         });
 
@@ -542,7 +548,8 @@ export function usePeerConnection<TData = unknown>(
       guestPeer.on("open", () => {
         if (switchedToHost) return;
         peerRef.current = guestPeer;
-        setState((prev) => ({ ...prev, roomCode: sanitized }));
+        setState((prev) => ({ ...prev, roomCode: sanitized, connectSubstep: "Signal server connected" }));
+        setState((prev) => ({ ...prev, connectSubstep: "Searching for peer..." }));
         connectToPeer(guestPeer, roomId);
       });
 
@@ -558,6 +565,7 @@ export function usePeerConnection<TData = unknown>(
           connectionRef.current = null;
           try { guestPeer.destroy(); } catch {}
           peerRef.current = null;
+          setState((prev) => ({ ...prev, connectSubstep: "Creating room..." }));
           becomeHost();
           return;
         }
@@ -610,6 +618,7 @@ export function usePeerConnection<TData = unknown>(
       phase: "ready",
       remotePeerId: null,
       error: null,
+      connectSubstep: "",
     }));
     optionsRef.current.onDisconnected?.({
       peerId,

@@ -81,7 +81,7 @@ export default function FlashCountPage() {
     soloResult, isNewRecord, resultDiff, resultCount,
     direction, waitingForConfig, hostPreview,
     myP2pAnswer, opponentSubmitted, questionResult, myScore, opponentScore, p2pGameResult,
-    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode,
+    phase, localPeerId, error, isConnected, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId, inputRef, isReconnecting, reconnectDeadline,
     chatMessages, addMyMessage,
     startSolo, startP2pGame, exitToMenu, handleRematch,
@@ -211,6 +211,7 @@ export default function FlashCountPage() {
                   onClearError={clearError}
                   onReinitialize={reinitialize}
                   roomCode={roomCode}
+                  connectSubstep={connectSubstep}
                 />
                 <div className="mt-4 flex justify-center">
                   <button

@@ -47,7 +47,7 @@ export default function MazePage() {
 
     // P2P connection
     phase, localPeerId, error, isConnected, connect, sendChat,
-    clearError, retryLastConnection, reinitialize, roomCode,
+    clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
     joinPeerId, isReconnecting, reconnectDeadline,
     // Chat
     chatMessages, addMyMessage,
@@ -211,6 +211,7 @@ export default function MazePage() {
                 onClearError={clearError}
                 onReinitialize={reinitialize}
                 roomCode={roomCode}
+                connectSubstep={connectSubstep}
               />
               <div className="mt-4 flex justify-center gap-2">
                 <button
