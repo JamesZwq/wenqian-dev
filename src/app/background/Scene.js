@@ -212,7 +212,7 @@ export function Scene({ theme }) {
       themeTarget: tv,
       themeCurrent: tv,
       transEnergy: 0,
-      speedMul: 1.0,
+      speedMul: 0.4,
       accTime: 0,
       startTime: performance.now(),
       lastTime: performance.now(),
