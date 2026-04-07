@@ -49,7 +49,7 @@ export default function FloatingNav() {
         transition={{ type: "spring", stiffness: 500, damping: 25 }}
       >
         <motion.span
-          className="text-base inline-block"
+          className="text-base inline-flex items-center justify-center leading-none -translate-y-px"
           animate={{ rotate: isOpen ? 90 : 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
