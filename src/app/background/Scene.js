@@ -1,28 +1,26 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import * as THREE from "three";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 
 // ─── Config ───────────────────────────────────
 const INTRO_DURATION = 2.5;
 const THEME_LERP = 5.0;
-const BG_LIGHT = new THREE.Color(0xfafbfe);
-const BG_DARK = new THREE.Color(0x0c0a1d);
+const TARGET_INTERVAL = 33; // ~30fps
 
 // ─── Vertex Shader (fullscreen quad) ──────────
 const VS = `
+attribute vec2 aPosition;
 varying vec2 vUv;
 void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
+  vUv = aPosition * 0.5 + 0.5;
+  gl_Position = vec4(aPosition, 0.0, 1.0);
 }
 `;
 
 // ─── Fragment Shader (topographic contour) ────
 const FS = `
+precision mediump float;
+
 uniform float uTime;
 uniform float uTheme;
 uniform float uAmplitude;
@@ -96,7 +94,7 @@ void main() {
 
   /* ── contour lines ── */
   float interval = 0.1;
-  float tThick = 1.0 + uTransition * 0.8;   /* lines swell during transition */
+  float tThick = 1.0 + uTransition * 0.8;
 
   /* minor contours */
   float cv  = h / interval;
@@ -138,15 +136,48 @@ void main() {
 
   vec3 color = mix(bg, lineColor, lineAlpha * uAmplitude * vig);
 
-  /* subtle background glow during transition */
+  /* subtle glow (replaces bloom post-process) */
   color += lineColor * uTransition * 0.06 * vig;
+  color += lineColor * lineAlpha * uTheme * 0.12 * vig;
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
 `;
 
+// ─── WebGL helpers ────────────────────────────
+function compileShader(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error("Shader compile error:", gl.getShaderInfoLog(s));
+    gl.deleteShader(s);
+    return null;
+  }
+  return s;
+}
+
+function createProgram(gl, vsSrc, fsSrc) {
+  const vs = compileShader(gl, gl.VERTEX_SHADER, vsSrc);
+  const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+  if (!vs || !fs) return null;
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    console.error("Program link error:", gl.getProgramInfoLog(prog));
+    return null;
+  }
+  // Shaders no longer needed after linking
+  gl.deleteShader(vs);
+  gl.deleteShader(fs);
+  return prog;
+}
+
+// ─── React component ─────────────────────────
 export function Scene({ theme }) {
-  const containerRef = useRef(null);
+  const canvasRef = useRef(null);
   const stateRef = useRef(null);
   const mouseRef = useRef({ x: 0, y: 0 });
 
@@ -156,57 +187,63 @@ export function Scene({ theme }) {
     stateRef.current.themeTarget = theme === "dark" ? 1.0 : 0.0;
   }, [theme]);
 
-  /* WebGL setup */
+  /* Raw WebGL setup */
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const W = container.clientWidth;
-    const H = container.clientHeight;
-    const isDark = document.documentElement.classList.contains("dark");
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false })
+            || canvas.getContext("experimental-webgl", { antialias: false, alpha: false });
+    if (!gl) { console.error("WebGL not supported"); return; }
 
-    // Renderer
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(W, H);
-    renderer.setClearColor(isDark ? BG_DARK : BG_LIGHT);
-    container.appendChild(renderer.domElement);
-    renderer.domElement.style.pointerEvents = "none";
+    // Enable OES_standard_derivatives for fwidth()
+    gl.getExtension("OES_standard_derivatives");
 
-    // Scene + camera
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+    const program = createProgram(gl, VS, FS);
+    if (!program) return;
+    gl.useProgram(program);
 
-    // Fullscreen quad
-    const geo = new THREE.PlaneGeometry(2, 2);
-    const uniforms = {
-      uTime:       { value: 0 },
-      uAmplitude:  { value: 0 },
-      uTheme:      { value: isDark ? 1.0 : 0.0 },
-      uTransition: { value: 0 },
-      uMouse:      { value: new THREE.Vector2(0, 0) },
-      uResolution: { value: new THREE.Vector2(W, H) },
+    // Fullscreen quad: two triangles
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(program, "aPosition");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    // Uniform locations
+    const uTime       = gl.getUniformLocation(program, "uTime");
+    const uTheme      = gl.getUniformLocation(program, "uTheme");
+    const uAmplitude  = gl.getUniformLocation(program, "uAmplitude");
+    const uTransition = gl.getUniformLocation(program, "uTransition");
+    const uMouse      = gl.getUniformLocation(program, "uMouse");
+    const uResolution = gl.getUniformLocation(program, "uResolution");
+
+    // Sizing
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
     };
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: VS,
-      fragmentShader: FS,
-      uniforms,
-      depthTest: false,
-      depthWrite: false,
-    });
-    scene.add(new THREE.Mesh(geo, mat));
+    resize();
 
-    // Bloom
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(W, H),
-      isDark ? 0.2 : 0, 0.7, 0.4
-    );
-    composer.addPass(bloom);
+    let resizeTimer = null;
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resize, 200);
+    };
+    window.addEventListener("resize", onResize);
 
     // State
+    const isDark = document.documentElement.classList.contains("dark");
     const tv = isDark ? 1.0 : 0.0;
     const state = {
       themeTarget: tv,
@@ -217,118 +254,82 @@ export function Scene({ theme }) {
       startTime: performance.now(),
       lastTime: performance.now(),
       frameId: 0,
+      mouseX: 0,
+      mouseY: 0,
     };
     stateRef.current = state;
-    composer.render();
 
-    // ── Speed event ──
+    // Events
     const onSpeed = (e) => { state.speedMul = e.detail; };
     window.addEventListener("bg-speed", onSpeed);
 
-    // ── Scroll throttle ──
-    let scrolling = false;
-    let scrollTimer = null;
-    let skipFrame = false;
-    const onScroll = () => {
-      scrolling = true;
-      if (scrollTimer) clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => { scrolling = false; }, 150);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    // ── Mouse ──
     const onMouse = (e) => {
       mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
       mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
     };
     window.addEventListener("mousemove", onMouse, { passive: true });
 
-    // ── Animate (capped at ~30fps to save GPU) ──
-    const TARGET_INTERVAL = 33; // ~30fps
+    // Render loop (~30fps)
     let lastRenderTime = 0;
 
     const animate = () => {
       state.frameId = requestAnimationFrame(animate);
-
       if (document.hidden) return;
 
       const now = performance.now();
       if (now - lastRenderTime < TARGET_INTERVAL) return;
       lastRenderTime = now;
+
       const dt = Math.min((now - state.lastTime) / 1000, 0.1);
       state.lastTime = now;
       const elapsed = (now - state.startTime) / 1000;
 
       state.accTime += dt * state.speedMul;
-      uniforms.uTime.value = state.accTime;
+      gl.uniform1f(uTime, state.accTime);
 
       // Intro fade-in
       const intro = Math.min(elapsed / INTRO_DURATION, 1);
-      uniforms.uAmplitude.value = 1 - Math.pow(1 - intro, 3);
+      gl.uniform1f(uAmplitude, 1 - Math.pow(1 - intro, 3));
 
-      // Theme transition (exponential ease)
+      // Theme transition
       state.themeCurrent += (state.themeTarget - state.themeCurrent) * (1 - Math.exp(-THEME_LERP * dt));
       if (Math.abs(state.themeTarget - state.themeCurrent) < 0.0005) {
         state.themeCurrent = state.themeTarget;
       }
-      uniforms.uTheme.value = state.themeCurrent;
+      gl.uniform1f(uTheme, state.themeCurrent);
 
-      // Transition energy — bell curve peaking at midpoint (0.5)
+      // Transition energy
       const transRaw = Math.min(state.themeCurrent, 1 - state.themeCurrent) * 2;
       state.transEnergy += (transRaw - state.transEnergy) * (1 - Math.exp(-10.0 * dt));
-      uniforms.uTransition.value = state.transEnergy;
+      gl.uniform1f(uTransition, state.transEnergy);
 
-      // Bloom: base dark-mode glow + dramatic transition pulse
-      bloom.strength = state.themeCurrent * 0.2 + state.transEnergy * 0.8;
-
-      // Smooth mouse — slow drift for gentle convergence/dispersion
+      // Smooth mouse
       const ms = 1 - Math.exp(-1 * dt);
-      uniforms.uMouse.value.x += (mouseRef.current.x - uniforms.uMouse.value.x) * ms;
-      uniforms.uMouse.value.y += (mouseRef.current.y - uniforms.uMouse.value.y) * ms;
+      state.mouseX += (mouseRef.current.x - state.mouseX) * ms;
+      state.mouseY += (mouseRef.current.y - state.mouseY) * ms;
+      gl.uniform2f(uMouse, state.mouseX, state.mouseY);
 
-      composer.render();
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
     state.frameId = requestAnimationFrame(animate);
 
-    // ── Resize ──
-    let resizeTimer = null;
-    const onResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (!container) return;
-        const w = container.clientWidth;
-        const h = container.clientHeight;
-        renderer.setSize(w, h);
-        composer.setSize(w, h);
-        uniforms.uResolution.value.set(w, h);
-      }, 200);
-    };
-    window.addEventListener("resize", onResize);
-
-    // ── Cleanup ──
+    // Cleanup
     return () => {
       cancelAnimationFrame(state.frameId);
       window.removeEventListener("bg-speed", onSpeed);
       window.removeEventListener("mousemove", onMouse);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onScroll);
-      if (scrollTimer) clearTimeout(scrollTimer);
       if (resizeTimer) clearTimeout(resizeTimer);
-      renderer.dispose();
-      geo.dispose();
-      mat.dispose();
-      if (renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
-      }
+      gl.deleteProgram(program);
+      gl.deleteBuffer(buf);
       stateRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full"
+    <canvas
+      ref={canvasRef}
       style={{ backgroundColor: theme === "dark" ? "#0c0a1d" : "#fafbfe" }}
     />
   );
