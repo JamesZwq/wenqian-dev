@@ -30,11 +30,10 @@ function CardFace({ card, keyId }: { card: HalliCard; keyId?: string }) {
       className="w-[72px] h-24 md:w-20 md:h-28 rounded-xl border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] flex flex-col items-center justify-center gap-1.5 shadow-md p-1.5 flex-shrink-0"
     >
       {card.fruits.map(({ fruit, count }) => (
-        <div key={fruit} className="flex items-center gap-1">
-          <span className="text-lg leading-none">{FRUIT_EMOJI[fruit]}</span>
-          <span className="font-bold text-sm leading-none tabular-nums" style={{ color: FRUIT_COLOR[fruit] }}>
-            ×{count}
-          </span>
+        <div key={fruit} className="flex items-center justify-center gap-0.5 flex-wrap">
+          {Array.from({ length: count }, (_, i) => (
+            <span key={i} className="text-base leading-none">{FRUIT_EMOJI[fruit]}</span>
+          ))}
         </div>
       ))}
     </motion.div>
