@@ -51,7 +51,7 @@ export function createInitialState(targetScore = 50): FullHalliState {
     score0: 0,
     score1: 0,
     targetScore,
-    nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
+    nextFlipAt: Date.now() + 1000 + Math.floor(Math.random() * 2001),
     nextFlipper: 0,
     phase: "playing",
     winner: null,
@@ -87,11 +87,9 @@ export function isBellValid(state: FullHalliState): boolean {
 
 function recycleDeck(deck: HalliCard[], discard: HalliCard[]): { deck: HalliCard[]; discard: HalliCard[] } {
   if (deck.length > 0) return { deck, discard };
-  // Reshuffle all discard except the last 2 visible cards back into deck
-  if (discard.length <= 2) return { deck, discard };
-  const keep = discard.slice(-2);
-  const recycled = shuffle(discard.slice(0, -2));
-  return { deck: recycled, discard: keep };
+  if (discard.length === 0) return { deck, discard };
+  // Reshuffle ALL discard back into deck
+  return { deck: shuffle(discard), discard: [] };
 }
 
 export function applyAutoFlip(state: FullHalliState): FullHalliState {
@@ -119,7 +117,7 @@ export function applyAutoFlip(state: FullHalliState): FullHalliState {
     [deckKey]: deck,
     [discardKey]: discard,
     nextFlipper: (1 - who) as 0 | 1,
-    nextFlipAt: Date.now() + 3000 + Math.floor(Math.random() * 2001),
+    nextFlipAt: Date.now() + 1000 + Math.floor(Math.random() * 2001),
     lastBell: null,
   };
 }
@@ -141,13 +139,19 @@ export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState 
     if (opp === 0) score0 += points; else score1 += points;
   }
 
-  // Clear discards after bell
+  // Recycle cleared discard cards back into decks (split evenly)
+  const allDiscard = shuffle([...state.discard0, ...state.discard1]);
+  const half = Math.ceil(allDiscard.length / 2);
+  const deck0 = [...state.deck0, ...allDiscard.slice(0, half)];
+  const deck1 = [...state.deck1, ...allDiscard.slice(half)];
+
   const isOver = score0 >= state.targetScore || score1 >= state.targetScore;
   const winner = isOver ? (score0 >= state.targetScore ? 0 : 1) : null;
 
   return {
     ...state,
     score0, score1,
+    deck0, deck1,
     discard0: [],
     discard1: [],
     phase: isOver ? "game_over" : "playing",
