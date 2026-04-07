@@ -27,7 +27,7 @@ function CardFace({ card, keyId }: { card: HalliCard; keyId?: string }) {
       initial={{ rotateY: 90, opacity: 0 }}
       animate={{ rotateY: 0, opacity: 1 }}
       transition={{ duration: 0.2 }}
-      className="w-[72px] h-24 md:w-20 md:h-28 rounded-xl border-2 border-gray-200 bg-white flex flex-col items-center justify-center gap-1.5 shadow-md p-1.5 flex-shrink-0"
+      className="w-[72px] h-24 md:w-20 md:h-28 rounded-xl border-2 border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] flex flex-col items-center justify-center gap-1.5 shadow-md p-1.5 flex-shrink-0"
     >
       {card.fruits.map(({ fruit, count }) => (
         <div key={fruit} className="flex items-center gap-1">
