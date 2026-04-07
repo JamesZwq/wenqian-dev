@@ -137,9 +137,8 @@ void main() {
 
   vec3 color = mix(bg, lineColor, lineAlpha * uAmplitude * vig);
 
-  /* subtle glow (replaces bloom post-process) */
+  /* subtle background glow during transition */
   color += lineColor * uTransition * 0.06 * vig;
-  color += lineColor * lineAlpha * uTheme * 0.12 * vig;
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
