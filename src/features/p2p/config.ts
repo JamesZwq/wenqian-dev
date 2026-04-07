@@ -3,8 +3,8 @@ const FALLBACK_TIMEOUT_MS = 5_000;
 
 export const P2P_CONNECT_TIMEOUT_MS = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : FALLBACK_TIMEOUT_MS;
 
-const METERED_API_URL =
-  "https://wenqian_dev.metered.live/api/v1/turn/credentials?apiKey=af07ddedc0afea4aa7a78d0e3753c46b81dd";
+const METERED_API_URL = process.env.NEXT_PUBLIC_METERED_API_URL ?? "";
+const METERED_API_KEY = process.env.NEXT_PUBLIC_METERED_API_KEY ?? "";
 
 // Fallback ICE servers in case the Metered API is unreachable
 const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
@@ -18,7 +18,8 @@ const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
  */
 export async function fetchIceServers(): Promise<RTCIceServer[]> {
   try {
-    const res = await fetch(METERED_API_URL, { cache: "no-store" });
+    if (!METERED_API_URL || !METERED_API_KEY) throw new Error("Metered env vars not set");
+    const res = await fetch(`${METERED_API_URL}?apiKey=${METERED_API_KEY}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`Metered API ${res.status}`);
     const servers: RTCIceServer[] = await res.json();
     return servers;
