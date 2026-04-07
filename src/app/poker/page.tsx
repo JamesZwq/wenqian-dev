@@ -12,7 +12,8 @@ import ShareButton from "../components/ShareButton";
 import { usePokerGame } from "./hooks/usePokerGame";
 import type { Card, PlayerView } from "./types";
 import { rankStr, suitSymbol, suitColor, getActions, isInBestHand, getNextBlindLevel, evaluateHand } from "./utils";
-import { calcEquity, type EquityResult } from "./equity";
+import type { EquityResult } from "./equity";
+import type { EquityWorkerResponse } from "./equity.worker";
 
 // ── Design tokens (Version D) ──
 
@@ -39,13 +40,13 @@ function AnimatedNumber({ value, className, prefix = "$" }: { value: number; cla
     const from = prev.current;
     prev.current = value;
     const diff = value - from;
-    const dur = Math.min(Math.abs(diff) * 5, 900);
+    const dur = Math.min(Math.abs(diff) * 4, 600);
     if (dur < 30) { setDisplay(value); return; }
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min((now - start) / dur, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
+      const ease = t;
       setDisplay(Math.round(from + diff * ease));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
@@ -653,6 +654,19 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   onNextHand: () => void;
   onRematch: () => void;
 }) {
+  // ── Equity Web Worker ──
+  const equityWorkerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    equityWorkerRef.current = new Worker(
+      new URL("./equity.worker.ts", import.meta.url)
+    );
+    return () => {
+      equityWorkerRef.current?.terminate();
+      equityWorkerRef.current = null;
+    };
+  }, []);
+
   // ── Equity analysis (hold SPACE / tap ?) ──
   const [showEquity, setShowEquity] = useState(false);
   const [equityResult, setEquityResult] = useState<EquityResult | null>(null);
@@ -660,7 +674,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
   const equityCacheKey = useRef("");
   const canShowEquity = view.phase !== "showdown" && view.phase !== "waiting" && view.myCards.length === 2;
 
-  // Compute equity on demand
+  // Compute equity on demand (via worker)
   useEffect(() => {
     if (!showEquity || !canShowEquity) return;
     const key = view.myCards.map(c => `${c.rank}${c.suit}`).join(",") + "|" + view.community.map(c => `${c.rank}${c.suit}`).join(",");
@@ -668,13 +682,20 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     equityCacheKey.current = key;
     setEquityLoading(true);
     setEquityResult(null);
-    // Defer to next frame so "Computing..." renders first
-    const raf = requestAnimationFrame(() => {
-      const r = calcEquity(view.myCards, view.community);
-      setEquityResult(r);
+
+    const worker = equityWorkerRef.current;
+    if (!worker) return;
+
+    const handler = (e: MessageEvent<EquityWorkerResponse>) => {
+      if (e.data.id !== "full") return;
+      setEquityResult(e.data.result);
       setEquityLoading(false);
-    });
-    return () => cancelAnimationFrame(raf);
+      worker.removeEventListener("message", handler);
+    };
+    worker.addEventListener("message", handler);
+    worker.postMessage({ id: "full", myCards: view.myCards, community: view.community });
+
+    return () => worker.removeEventListener("message", handler);
   }, [showEquity, canShowEquity, view.myCards, view.community, equityResult]);
 
   // Reset cache on new hand/phase
@@ -793,11 +814,20 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
     const key = view.myCards.map(c => `${c.rank}${c.suit}`).join(",") + "|" + view.community.map(c => `${c.rank}${c.suit}`).join(",");
     if (eqKey.current === key) return;
     eqKey.current = key;
-    // Delay 400ms so card deal animations finish before heavy computation
+
+    const worker = equityWorkerRef.current;
+    if (!worker) return;
+
     const timer = setTimeout(() => {
-      const r = calcEquity(view.myCards, view.community);
-      setEquityPct(Math.round(r.winPct));
+      const handler = (e: MessageEvent<EquityWorkerResponse>) => {
+        if (e.data.id !== "quick") return;
+        setEquityPct(Math.round(e.data.winPct));
+        worker.removeEventListener("message", handler);
+      };
+      worker.addEventListener("message", handler);
+      worker.postMessage({ id: "quick", myCards: view.myCards, community: view.community });
     }, 400);
+
     return () => clearTimeout(timer);
   }, [view.phase, view.myCards, view.community]);
 
