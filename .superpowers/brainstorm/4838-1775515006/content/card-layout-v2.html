@@ -1,0 +1,231 @@
+<h2>游戏卡片布局 v2 — 固定宽度卡片</h2>
+<p class="subtitle">所有方案卡片宽度固定（约 160px），flex-wrap 自动换行，不横向撑满</p>
+
+<style>
+  :root {
+    --px-accent: #7c3aed;
+    --px-accent2: #0ea5e9;
+    --px-warn: #f59e0b;
+    --px-card: #0f0f1a;
+    --px-border: rgba(124,58,237,0.35);
+    --px-text: #c4b5fd;
+    --px-muted: #6b7280;
+    --px-bg: #07071a;
+    --px-glow: rgba(124,58,237,0.2);
+  }
+
+  .preview-wrap {
+    background: var(--px-bg);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .section-label {
+    font-family: monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--px-accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--px-border); }
+
+  /* Shared card row */
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* ── Option A: Compact Square ── */
+  .card-a {
+    width: 140px;
+    flex-shrink: 0;
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 12px;
+    padding: 16px 12px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-a:hover {
+    border-color: var(--px-accent);
+    box-shadow: 0 6px 20px var(--px-glow);
+    transform: translateY(-4px) scale(1.03);
+  }
+  .card-a .emoji { font-size: 28px; display: block; margin-bottom: 10px; }
+  .card-a .name { font-size: 11px; font-weight: 700; color: var(--px-text); font-family: sans-serif; line-height: 1.3; }
+  .card-a .tag {
+    margin-top: 8px;
+    display: inline-block;
+    font-size: 9px; font-family: monospace;
+    color: var(--px-accent);
+    border: 1px solid rgba(124,58,237,0.3);
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(124,58,237,0.08);
+  }
+
+  /* ── Option B: Tall Portrait ── */
+  .card-b {
+    width: 150px;
+    flex-shrink: 0;
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 14px;
+    padding: 20px 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-b:hover {
+    border-color: var(--px-accent);
+    box-shadow: 0 8px 28px var(--px-glow);
+    transform: translateY(-5px);
+  }
+  .card-b .icon-wrap {
+    width: 48px; height: 48px;
+    margin: 0 auto 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(124,58,237,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    transition: transform 0.2s;
+  }
+  .card-b:hover .icon-wrap { transform: scale(1.15) rotate(-5deg); }
+  .card-b .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; text-align: center; margin-bottom: 6px; }
+  .card-b .desc { font-size: 10px; font-family: monospace; color: var(--px-muted); text-align: center; line-height: 1.4; }
+  .card-b .play {
+    display: block; margin-top: 12px; text-align: center;
+    font-size: 10px; font-family: monospace; color: var(--px-accent);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .card-b:hover .play { opacity: 1; }
+  /* Animated bottom glow bar */
+  .card-b::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--px-accent), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .card-b:hover::after { opacity: 1; }
+
+  /* ── Option C: Glass / Frosted ── */
+  .card-c {
+    width: 155px;
+    flex-shrink: 0;
+    background: rgba(124,58,237,0.05);
+    border: 1px solid rgba(124,58,237,0.2);
+    border-radius: 16px;
+    padding: 18px 14px;
+    cursor: pointer;
+    transition: all 0.25s;
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-c:hover {
+    background: rgba(124,58,237,0.12);
+    border-color: rgba(124,58,237,0.6);
+    box-shadow: 0 8px 32px rgba(124,58,237,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+    transform: translateY(-4px);
+  }
+  /* Shimmer top border */
+  .card-c::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+  .card-c .emoji { font-size: 26px; display: block; margin-bottom: 10px; }
+  .card-c .name { font-size: 12px; font-weight: 700; color: #e2d9f3; font-family: sans-serif; margin-bottom: 5px; }
+  .card-c .desc { font-size: 10px; font-family: monospace; color: rgba(196,181,253,0.5); line-height: 1.4; }
+  .card-c .arrow {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 10px;
+    font-size: 10px; font-family: monospace; color: var(--px-accent);
+    opacity: 0; transform: translateX(-4px);
+    transition: all 0.2s;
+  }
+  .card-c:hover .arrow { opacity: 1; transform: translateX(0); }
+</style>
+
+<div class="options">
+
+  <!-- Option A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>紧凑方形卡片</h3>
+      <p>固定 140px 宽，emoji + 名称 + 标签，hover 上浮 + 放大 + 发光</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-a"><span class="emoji">⚫</span><div class="name">Gomoku</div><div class="tag">P2P</div></div>
+          <div class="card-a"><span class="emoji">🏃</span><div class="name">Maze Runner</div><div class="tag">Race</div></div>
+          <div class="card-a"><span class="emoji">🧮</span><div class="name">Math Sprint</div><div class="tag">Speed</div></div>
+          <div class="card-a"><span class="emoji">♠️</span><div class="name">Texas Hold'em</div><div class="tag">Poker</div></div>
+          <div class="card-a"><span class="emoji">🧊</span><div class="name">Flash Count</div><div class="tag">Memory</div></div>
+          <div class="card-a"><span class="emoji">🔢</span><div class="name">Sudoku</div><div class="tag">Puzzle</div></div>
+          <div class="card-a"><span class="emoji">🔔</span><div class="name">Halli Galli</div><div class="tag">Party</div></div>
+          <div class="card-a"><span class="emoji">💬</span><div class="name">P2P Chat</div><div class="tag">Chat</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>竖版卡片 + 方形图标框</h3>
+      <p>固定 150px 宽，圆角图标框 + 描述 + hover 时底部发光条 + 图标旋转</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-b"><div class="icon-wrap">⚫</div><div class="name">Gomoku</div><div class="desc">Five in a Row</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">🏃</div><div class="name">Maze Runner</div><div class="desc">P2P race</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">🧮</div><div class="name">Math Sprint</div><div class="desc">Speed math</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">♠️</div><div class="name">Texas Hold'em</div><div class="desc">P2P poker</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">🧊</div><div class="name">Flash Count</div><div class="desc">3D memory</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">🔢</div><div class="name">Sudoku</div><div class="desc">P2P puzzle</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">🔔</div><div class="name">Halli Galli</div><div class="desc">Party game</div><span class="play">▶ Play Now</span></div>
+          <div class="card-b"><div class="icon-wrap">💬</div><div class="name">P2P Chat</div><div class="desc">Encrypted</div><span class="play">▶ Open</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>玻璃磨砂卡片</h3>
+      <p>固定 155px 宽，半透明玻璃效果，顶部光泽线 + hover 时内发光 + 箭头滑入</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-c"><span class="emoji">⚫</span><div class="name">Gomoku</div><div class="desc">Five in a Row</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">🏃</span><div class="name">Maze Runner</div><div class="desc">P2P race</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">🧮</span><div class="name">Math Sprint</div><div class="desc">Speed math</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">♠️</span><div class="name">Texas Hold'em</div><div class="desc">P2P poker</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">🧊</span><div class="name">Flash Count</div><div class="desc">3D memory</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">🔢</span><div class="name">Sudoku</div><div class="desc">P2P puzzle</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">🔔</span><div class="name">Halli Galli</div><div class="desc">Party game</div><span class="arrow">▶ Play →</span></div>
+          <div class="card-c"><span class="emoji">💬</span><div class="name">P2P Chat</div><div class="desc">Encrypted</div><span class="arrow">▶ Open →</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

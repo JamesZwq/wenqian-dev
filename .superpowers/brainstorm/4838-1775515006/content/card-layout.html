@@ -1,0 +1,269 @@
+<h2>游戏区卡片布局 — 选哪种风格？</h2>
+<p class="subtitle">以下是 3 种卡片布局方案，基于你现有的 pixel/暗色主题设计风格</p>
+
+<style>
+  /* Pixel theme simulation */
+  :root {
+    --px-accent: #7c3aed;
+    --px-accent2: #0ea5e9;
+    --px-warn: #f59e0b;
+    --px-card: #0f0f1a;
+    --px-border: rgba(124,58,237,0.35);
+    --px-text: #c4b5fd;
+    --px-muted: #6b7280;
+    --px-bg: #07071a;
+    --px-glow: rgba(124,58,237,0.2);
+  }
+
+  .preview-wrap {
+    background: var(--px-bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .section-label {
+    font-family: monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--px-accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--px-border); }
+
+  /* === Option A: Uniform Grid === */
+  .grid-a {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .card-a {
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .card-a:hover {
+    border-color: var(--px-accent);
+    box-shadow: 0 6px 24px var(--px-glow);
+    transform: translateY(-3px);
+  }
+  .card-a .emoji { font-size: 24px; margin-bottom: 8px; display: block; }
+  .card-a .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; }
+  .card-a .tag { font-size: 10px; font-family: monospace; color: var(--px-muted); margin-top: 4px; }
+  .card-a::after {
+    content: '→';
+    position: absolute;
+    bottom: 8px; right: 10px;
+    font-size: 11px;
+    color: var(--px-accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .card-a:hover::after { opacity: 1; }
+
+  /* === Option B: Horizontal Wide Cards === */
+  .grid-b {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .card-b {
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-b:hover {
+    border-color: var(--px-accent);
+    box-shadow: 0 6px 24px var(--px-glow);
+    transform: translateX(3px);
+  }
+  .card-b .emoji-wrap {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--px-border);
+    display: flex;align-items:center;justify-content:center;
+    font-size: 22px;
+    flex-shrink: 0;
+    background: rgba(124,58,237,0.08);
+  }
+  .card-b .info { flex: 1; }
+  .card-b .name { font-size: 13px; font-weight: 700; color: var(--px-text); font-family: sans-serif; }
+  .card-b .desc { font-size: 11px; font-family: monospace; color: var(--px-muted); margin-top: 2px; line-height: 1.4; }
+  .card-b .arrow { color: var(--px-accent); opacity: 0; font-size: 16px; transition: all 0.2s; flex-shrink:0; }
+  .card-b:hover .arrow { opacity: 1; transform: translateX(3px); }
+
+  /* === Option C: Magazine Mixed Grid === */
+  .grid-c {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+  .card-c {
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-c:hover {
+    border-color: var(--px-accent);
+    box-shadow: 0 6px 24px var(--px-glow);
+    transform: scale(1.02);
+  }
+  .card-c.featured {
+    grid-column: span 2;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(14,165,233,0.06));
+  }
+  .card-c .emoji { font-size: 20px; margin-bottom: 8px; display: block; }
+  .card-c.featured .emoji { font-size: 36px; margin-bottom: 0; }
+  .card-c.featured .info { flex: 1; }
+  .card-c .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; }
+  .card-c.featured .name { font-size: 15px; margin-bottom: 4px; color: var(--px-accent); }
+  .card-c .desc { font-size: 11px; font-family: monospace; color: var(--px-muted); margin-top: 3px; line-height: 1.4; }
+  .card-c.featured .desc { font-size: 12px; }
+  .play-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--px-accent);
+    color: var(--px-accent);
+    font-size: 11px;
+    font-family: monospace;
+    background: rgba(124,58,237,0.1);
+  }
+  .corner-tag {
+    position: absolute;
+    top: 8px; right: 8px;
+    font-size: 9px;
+    font-family: monospace;
+    color: var(--px-muted);
+    background: rgba(255,255,255,0.04);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+</style>
+
+<div class="options">
+
+  <!-- Option A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>统一方形网格</h3>
+      <p>8张卡片均等布局，4列网格，hover 时上浮 + 发光</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="grid-a">
+          <div class="card-a"><span class="emoji">⚫</span><div class="name">Gomoku</div><div class="tag">P2P</div></div>
+          <div class="card-a"><span class="emoji">🏃</span><div class="name">Maze</div><div class="tag">Race</div></div>
+          <div class="card-a"><span class="emoji">🧮</span><div class="name">Math Sprint</div><div class="tag">Speed</div></div>
+          <div class="card-a"><span class="emoji">🧊</span><div class="name">Flash Count</div><div class="tag">Memory</div></div>
+          <div class="card-a"><span class="emoji">♠️</span><div class="name">Texas Hold'em</div><div class="tag">Poker</div></div>
+          <div class="card-a"><span class="emoji">🔢</span><div class="name">Sudoku</div><div class="tag">Puzzle</div></div>
+          <div class="card-a"><span class="emoji">🔔</span><div class="name">Halli Galli</div><div class="tag">Party</div></div>
+          <div class="card-a"><span class="emoji">💬</span><div class="name">P2P Chat</div><div class="tag">Chat</div></div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>整洁对称</li><li>一眼看到所有游戏</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>每个游戏信息较少</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>宽幅横向卡片</h3>
+      <p>2列横向卡片，emoji图标 + 标题 + 描述，hover 时右移 + 发光</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="grid-b">
+          <div class="card-b"><div class="emoji-wrap">⚫</div><div class="info"><div class="name">Gomoku</div><div class="desc">Five in a Row multiplayer</div></div><span class="arrow">→</span></div>
+          <div class="card-b"><div class="emoji-wrap">🏃</div><div class="info"><div class="name">Maze Runner</div><div class="desc">P2P maze race with power-ups</div></div><span class="arrow">→</span></div>
+          <div class="card-b"><div class="emoji-wrap">🧮</div><div class="info"><div class="name">Math Sprint</div><div class="desc">Speed arithmetic challenge</div></div><span class="arrow">→</span></div>
+          <div class="card-b"><div class="emoji-wrap">♠️</div><div class="info"><div class="name">Texas Hold'em</div><div class="desc">Heads-up P2P poker</div></div><span class="arrow">→</span></div>
+          <div class="card-b"><div class="emoji-wrap">🧊</div><div class="info"><div class="name">Flash Count</div><div class="desc">Count 3D blocks before they vanish</div></div><span class="arrow">→</span></div>
+          <div class="card-b"><div class="emoji-wrap">🔢</div><div class="info"><div class="name">Sudoku</div><div class="desc">Solo or P2P race puzzle</div></div><span class="arrow">→</span></div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>有描述文字</li><li>视觉清晰易读</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>占高度较多</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>杂志混排网格</h3>
+      <p>2个特色大卡片 + 6个小卡片，层次感强，hover 时放大 + 发光</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="grid-c">
+          <div class="card-c featured">
+            <span class="emoji">⚫</span>
+            <div class="info">
+              <div class="name">Gomoku</div>
+              <div class="desc">Five in a Row — real-time P2P multiplayer with AI opponent</div>
+              <div class="play-btn">▶ Play Now</div>
+            </div>
+            <span class="corner-tag">P2P</span>
+          </div>
+          <div class="card-c"><span class="emoji">🏃</span><div class="name">Maze Runner</div><div class="desc">P2P race</div></div>
+          <div class="card-c featured">
+            <span class="emoji">♠️</span>
+            <div class="info">
+              <div class="name">Texas Hold'em</div>
+              <div class="desc">Heads-up poker with escalating blinds — P2P no server</div>
+              <div class="play-btn">▶ Play Now</div>
+            </div>
+            <span class="corner-tag">Poker</span>
+          </div>
+          <div class="card-c"><span class="emoji">🧮</span><div class="name">Math Sprint</div><div class="desc">Speed math</div></div>
+          <div class="card-c"><span class="emoji">🧊</span><div class="name">Flash Count</div><div class="desc">3D memory</div></div>
+          <div class="card-c"><span class="emoji">🔢</span><div class="name">Sudoku</div><div class="desc">P2P race</div></div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>视觉层次最丰富</li><li>突出重点游戏</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要决定哪些是"特色"</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

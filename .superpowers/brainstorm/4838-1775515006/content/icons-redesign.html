@@ -1,0 +1,262 @@
+<h2>图标重新设计 — Gomoku / Maze / Sudoku</h2>
+<p class="subtitle">每个图标提供 2 个方案，选你喜欢的，或告诉我继续调整</p>
+
+<style>
+  :root {
+    --px-accent: #7c3aed;
+    --px-card: #0f0f1a;
+    --px-border: rgba(124,58,237,0.35);
+    --px-text: #c4b5fd;
+    --px-muted: #6b7280;
+    --px-bg: #07071a;
+  }
+  .icon-section { margin-bottom: 32px; }
+  .icon-section h3 { font-size: 13px; font-family: sans-serif; color: var(--px-text); margin-bottom: 12px; font-weight: 700; }
+  .icon-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .icon-card {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    cursor: pointer;
+    padding: 16px 20px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(124,58,237,0.2);
+    background: var(--px-card);
+    transition: all 0.2s;
+    min-width: 100px;
+  }
+  .icon-card:hover { border-color: rgba(124,58,237,0.7); background: rgba(124,58,237,0.08); transform: translateY(-2px); }
+  .icon-card.selected-icon { border-color: #7c3aed; background: rgba(124,58,237,0.15); box-shadow: 0 0 0 2px rgba(124,58,237,0.4); }
+  .icon-wrap {
+    width: 56px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-label { font-size: 10px; font-family: monospace; color: var(--px-muted); text-align: center; }
+  .divider { height: 1px; background: rgba(124,58,237,0.12); margin: 24px 0; }
+
+  /* ─── Preview strip ─── */
+  .preview-strip {
+    background: var(--px-bg);
+    border-radius: 10px;
+    padding: 16px 20px;
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-top: 24px;
+  }
+  .preview-strip h4 { font-size: 10px; font-family: monospace; color: var(--px-muted); margin-bottom: 12px; letter-spacing: .1em; text-transform: uppercase; }
+  .mini-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+  .mini-card {
+    width: 76px; height: 121px; /* 1:1.586 scaled down */
+    border-radius: 8px;
+    border: 1px solid rgba(124,58,237,0.25);
+    background: var(--px-card);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .mini-card .top { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(124,58,237,0.07); }
+  .mini-card .bot { padding: 6px 7px; border-top: 1px solid rgba(124,58,237,0.12); }
+  .mini-card .mn { font-size: 9px; font-weight: 700; color: var(--px-text); font-family: sans-serif; }
+  .mini-card .mt { font-size: 8px; color: var(--px-muted); font-family: monospace; }
+</style>
+
+<!-- ══ GOMOKU ══ -->
+<div class="icon-section">
+  <h3>⚫ 五子棋 (Gomoku) — 选一个</h3>
+  <div class="icon-row">
+
+    <!-- G1: 棋盘交叉点 + 五子连珠 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- board grid lines -->
+          <line x1="8" y1="12" x2="40" y2="12" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="8" y1="20" x2="40" y2="20" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="8" y1="28" x2="40" y2="28" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="8" y1="36" x2="40" y2="36" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="16" y1="8" x2="16" y2="40" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="24" y1="8" x2="24" y2="40" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <line x1="32" y1="8" x2="32" y2="40" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+          <!-- black stones (5 in a row, diagonal) -->
+          <circle cx="16" cy="28" r="4.5" fill="#c4b5fd" opacity="0.9"/>
+          <circle cx="20" cy="24" r="4.5" fill="#c4b5fd" opacity="0.9"/>
+          <circle cx="24" cy="20" r="4.5" fill="#c4b5fd" opacity="0.9"/>
+          <circle cx="28" cy="16" r="4.5" fill="#c4b5fd" opacity="0.9"/>
+          <circle cx="32" cy="12" r="4.5" fill="#c4b5fd" opacity="0.9"/>
+          <!-- white stone contrast -->
+          <circle cx="24" cy="36" r="4.5" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.5"/>
+          <circle cx="32" cy="28" r="4.5" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.5"/>
+          <!-- winning line overlay -->
+          <line x1="16" y1="28" x2="32" y2="12" stroke="#a78bfa" stroke-width="1.5" opacity="0.5" stroke-dasharray="2 2"/>
+        </svg>
+      </div>
+      <div class="icon-label">棋盘 + 对角连珠</div>
+    </div>
+
+    <!-- G2: 简洁三子 + 胜利光 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- subtle board -->
+          <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#7c3aed" stroke-width="1" opacity="0.2"/>
+          <line x1="6" y1="18" x2="42" y2="18" stroke="#7c3aed" stroke-width="0.8" opacity="0.2"/>
+          <line x1="6" y1="30" x2="42" y2="30" stroke="#7c3aed" stroke-width="0.8" opacity="0.2"/>
+          <line x1="18" y1="6" x2="18" y2="42" stroke="#7c3aed" stroke-width="0.8" opacity="0.2"/>
+          <line x1="30" y1="6" x2="30" y2="42" stroke="#7c3aed" stroke-width="0.8" opacity="0.2"/>
+          <!-- 3 black stones horizontal win -->
+          <circle cx="12" cy="24" r="5" fill="#a78bfa"/>
+          <circle cx="24" cy="24" r="5" fill="#a78bfa"/>
+          <circle cx="36" cy="24" r="5" fill="#a78bfa"/>
+          <!-- glow on middle -->
+          <circle cx="24" cy="24" r="7" fill="none" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+          <!-- white stones -->
+          <circle cx="12" cy="12" r="5" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.4"/>
+          <circle cx="36" cy="36" r="5" fill="none" stroke="#c4b5fd" stroke-width="1.5" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="icon-label">横排连珠 + 中心光晕</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ MAZE ══ -->
+<div class="icon-section">
+  <h3>🏃 迷宫跑者 (Maze Runner) — 选一个</h3>
+  <div class="icon-row">
+
+    <!-- M1: 清晰的迷宫墙壁 + 入口出口 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- outer border -->
+          <rect x="4" y="4" width="40" height="40" rx="4" stroke="#7c3aed" stroke-width="2" fill="none" opacity="0.5"/>
+          <!-- entrance gap top-left -->
+          <!-- internal walls — clean maze shape -->
+          <!-- Row 1 walls -->
+          <line x1="4"  y1="4"  x2="17" y2="4"  stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="23" y1="4"  x2="44" y2="4"  stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="17" y1="4"  x2="17" y2="17" stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="31" y1="4"  x2="31" y2="17" stroke="#7c3aed" stroke-width="2.5"/>
+          <!-- Row 2 walls -->
+          <line x1="4"  y1="17" x2="31" y2="17" stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="17" y1="17" x2="17" y2="31" stroke="#7c3aed" stroke-width="2.5"/>
+          <!-- Row 3 walls -->
+          <line x1="17" y1="31" x2="44" y2="31" stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="31" y1="17" x2="31" y2="31" stroke="#7c3aed" stroke-width="2.5"/>
+          <!-- Bottom wall with exit gap -->
+          <line x1="4"  y1="44" x2="27" y2="44" stroke="#7c3aed" stroke-width="2.5"/>
+          <line x1="33" y1="44" x2="44" y2="44" stroke="#7c3aed" stroke-width="2.5"/>
+          <!-- player dot -->
+          <circle cx="10" cy="10" r="3" fill="#a78bfa"/>
+          <!-- exit marker -->
+          <circle cx="38" cy="38" r="2.5" fill="#7c3aed" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="icon-label">迷宫墙壁 + 入口/出口</div>
+    </div>
+
+    <!-- M2: 路径线 + 跑者箭头 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- grid dots -->
+          <rect x="5" y="5" width="38" height="38" rx="5" stroke="#7c3aed" stroke-width="1.5" fill="none" opacity="0.25"/>
+          <!-- maze path (the corridor, highlighted) -->
+          <path d="M10 10 h10 v8 h8 v-8 h10 v28 h-10 v-8 h-8 v8 h-10 z"
+                fill="none" stroke="#7c3aed" stroke-width="1.5" opacity="0.25" stroke-linejoin="round"/>
+          <!-- solution path highlighted -->
+          <path d="M10 10 h10 v8 h8 v8 h10 v12"
+                stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- start circle -->
+          <circle cx="10" cy="10" r="3.5" fill="#7c3aed"/>
+          <!-- end star / flag -->
+          <circle cx="38" cy="38" r="4" fill="#7c3aed" opacity="0.8"/>
+          <path d="M38 35 l.7 2h2.1l-1.7 1.3.7 2-1.8-1.3-1.8 1.3.7-2-1.7-1.3h2.1z" fill="#c4b5fd" transform="scale(0.7) translate(20 15)"/>
+          <!-- arrow direction -->
+          <path d="M28 22 l4 4 -4 4" stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="icon-label">解法路径 + 起终点</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ SUDOKU ══ -->
+<div class="icon-section">
+  <h3>🔢 数独 (Sudoku) — 选一个</h3>
+  <div class="icon-row">
+
+    <!-- S1: 标准数独粗细边框 + 部分数字 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- outer -->
+          <rect x="4" y="4" width="40" height="40" rx="3" fill="none" stroke="#7c3aed" stroke-width="2" opacity="0.7"/>
+          <!-- thin inner lines (9-cell) -->
+          <line x1="4"  y1="17.3" x2="44" y2="17.3" stroke="#7c3aed" stroke-width="0.8" opacity="0.4"/>
+          <line x1="4"  y1="30.7" x2="44" y2="30.7" stroke="#7c3aed" stroke-width="0.8" opacity="0.4"/>
+          <line x1="17.3" y1="4" x2="17.3" y2="44" stroke="#7c3aed" stroke-width="0.8" opacity="0.4"/>
+          <line x1="30.7" y1="4" x2="30.7" y2="44" stroke="#7c3aed" stroke-width="0.8" opacity="0.4"/>
+          <!-- bold 3x3 block lines -->
+          <line x1="4"  y1="17.3" x2="44" y2="17.3" stroke="#7c3aed" stroke-width="2" opacity="0.7"/>
+          <line x1="4"  y1="30.7" x2="44" y2="30.7" stroke="#7c3aed" stroke-width="2" opacity="0.7"/>
+          <line x1="17.3" y1="4" x2="17.3" y2="44" stroke="#7c3aed" stroke-width="2" opacity="0.7"/>
+          <line x1="30.7" y1="4" x2="30.7" y2="44" stroke="#7c3aed" stroke-width="2" opacity="0.7"/>
+          <!-- a few numbers -->
+          <text x="7"  y="14" font-size="8" fill="#a78bfa" font-family="monospace" font-weight="700">3</text>
+          <text x="20" y="14" font-size="8" fill="#c4b5fd" font-family="monospace" opacity="0.5">·</text>
+          <text x="33" y="14" font-size="8" fill="#a78bfa" font-family="monospace" font-weight="700">7</text>
+          <text x="7"  y="27" font-size="8" fill="#c4b5fd" font-family="monospace" opacity="0.5">·</text>
+          <text x="20" y="27" font-size="8" fill="#a78bfa" font-family="monospace" font-weight="700">5</text>
+          <text x="33" y="27" font-size="8" fill="#c4b5fd" font-family="monospace" opacity="0.5">·</text>
+          <text x="7"  y="41" font-size="8" fill="#a78bfa" font-family="monospace" font-weight="700">9</text>
+          <text x="20" y="41" font-size="8" fill="#a78bfa" font-family="monospace" font-weight="700">2</text>
+          <text x="33" y="41" font-size="8" fill="#c4b5fd" font-family="monospace" opacity="0.5">·</text>
+        </svg>
+      </div>
+      <div class="icon-label">标准粗线分组 + 数字</div>
+    </div>
+
+    <!-- S2: 填写中的高亮格 -->
+    <div class="icon-card" onclick="this.classList.toggle('selected-icon')">
+      <div class="icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <!-- highlight active cell -->
+          <rect x="4" y="4" width="40" height="40" rx="3" fill="rgba(124,58,237,0.06)"/>
+          <!-- active cell highlight (center block) -->
+          <rect x="18" y="18" width="12" height="12" rx="2" fill="rgba(124,58,237,0.25)"/>
+          <!-- outer -->
+          <rect x="4" y="4" width="40" height="40" rx="3" fill="none" stroke="#7c3aed" stroke-width="2" opacity="0.6"/>
+          <!-- 3x3 bold borders -->
+          <line x1="4"  y1="17.3" x2="44" y2="17.3" stroke="#7c3aed" stroke-width="2" opacity="0.6"/>
+          <line x1="4"  y1="30.7" x2="44" y2="30.7" stroke="#7c3aed" stroke-width="2" opacity="0.6"/>
+          <line x1="17.3" y1="4" x2="17.3" y2="44" stroke="#7c3aed" stroke-width="2" opacity="0.6"/>
+          <line x1="30.7" y1="4" x2="30.7" y2="44" stroke="#7c3aed" stroke-width="2" opacity="0.6"/>
+          <!-- thin lines -->
+          <line x1="4"  y1="10.7" x2="44" y2="10.7" stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <line x1="4"  y1="24"   x2="44" y2="24"   stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <line x1="4"  y1="37.3" x2="44" y2="37.3" stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <line x1="10.7" y1="4" x2="10.7" y2="44" stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <line x1="24"   y1="4" x2="24"   y2="44" stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <line x1="37.3" y1="4" x2="37.3" y2="44" stroke="#7c3aed" stroke-width="0.8" opacity="0.25"/>
+          <!-- numbers scattered -->
+          <text x="6.5" y="14"  font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">4</text>
+          <text x="34"  y="14"  font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">8</text>
+          <text x="6.5" y="27"  font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">6</text>
+          <!-- active cell number -->
+          <text x="21" y="27" font-size="9" fill="#e9d5ff" font-family="monospace" font-weight="900">5</text>
+          <text x="34"  y="27"  font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">3</text>
+          <text x="20.5" y="41" font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">1</text>
+          <text x="34"  y="41"  font-size="7" fill="#a78bfa" font-family="monospace" font-weight="700">9</text>
+        </svg>
+      </div>
+      <div class="icon-label">全 9 格 + 高亮填写中</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<p style="font-size:11px;font-family:monospace;color:#6b7280;">↑ 点击你喜欢的图标方案（可多选），或者告诉我哪里还需要调整</p>

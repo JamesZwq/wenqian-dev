@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Compare</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #07071a;
+    font-family: sans-serif;
+    padding: 32px 24px 48px;
+  }
+
+  .compare-row {
+    display: flex;
+    gap: 48px;
+    align-items: flex-start;
+  }
+  .col { flex: 1; }
+  .col-label {
+    font-size: 11px; font-family: monospace; letter-spacing: .12em;
+    text-transform: uppercase; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .col-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+  .mono-label { color: #7c3aed; }
+  .color-label { color: #f59e0b; }
+
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Portrait card 152×241 */
+  .card {
+    width: 138px;
+    height: 219px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    position: relative;
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+  }
+  .card:hover { transform: translateY(-7px); }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 15%; right: 15%; height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--card-shine, rgba(167,139,250,0.5)), transparent);
+    z-index: 2; opacity: 0; transition: opacity .2s;
+  }
+  .card:hover::before { opacity: 1; }
+
+  .icon-zone {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .icon-zone::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px);
+    background-size: 13px 13px;
+  }
+  .icon-box {
+    width: 58px; height: 58px;
+    border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 1;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    overflow: hidden;
+  }
+  .card:hover .icon-box { transform: scale(1.12) rotate(-5deg); }
+
+  .icon-box img { width: 30px; height: 30px; display: block; }
+  .icon-box svg { width: 30px; height: 30px; display: block; }
+
+  .info-zone {
+    padding: 10px 11px 11px;
+    background: rgba(0,0,0,0.25);
+  }
+  .game-name { font-size: 11px; font-weight: 700; color: #c4b5fd; font-family: sans-serif; margin-bottom: 3px; }
+  .play-row { display: flex; align-items: center; justify-content: space-between; }
+  .badge { font-size: 8px; font-family: monospace; padding: 1px 5px; border-radius: 3px; letter-spacing: .04em; }
+  .arrow { font-size: 11px; font-family: monospace; opacity: 0; transform: translateX(-3px); transition: all .2s; }
+  .card:hover .arrow { opacity: 1; transform: translateX(0); }
+
+  /* ═══════════════════════════════
+     MONO variant — purple tint
+  ═══════════════════════════════ */
+  .mono .card {
+    border: 1px solid rgba(124,58,237,0.25);
+    background: #0d0d1f;
+    --card-shine: rgba(167,139,250,0.5);
+  }
+  .mono .card:hover { box-shadow: 0 14px 36px rgba(124,58,237,0.28); border-color: rgba(124,58,237,0.7); }
+  .mono .icon-zone { background: linear-gradient(160deg, rgba(124,58,237,0.13), rgba(14,165,233,0.06)); }
+  .mono .icon-box {
+    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(124,58,237,0.1);
+  }
+  .mono .icon-box img {
+    filter: brightness(0) saturate(100%) invert(72%) sepia(40%) saturate(700%) hue-rotate(215deg) brightness(1.05);
+  }
+  .mono .badge { color: #7c3aed; border: 1px solid rgba(124,58,237,0.3); background: rgba(124,58,237,0.08); }
+  .mono .arrow { color: #7c3aed; }
+
+  /* ═══════════════════════════════
+     COLOR variant — per-game color
+  ═══════════════════════════════ */
+  .color-v .card {
+    border: 1px solid rgba(255,255,255,0.06);
+    background: #0d0d1f;
+  }
+  .color-v .card:hover { box-shadow: 0 14px 36px var(--glow, rgba(124,58,237,0.3)); border-color: var(--accent, #7c3aed); }
+  .color-v .icon-zone { background: color-mix(in oklab, var(--accent, #7c3aed) 10%, #07071a); }
+  .color-v .icon-box {
+    background: var(--accent, #7c3aed);
+    box-shadow: 0 4px 16px var(--glow, rgba(124,58,237,0.4));
+  }
+  /* white icon on colored background */
+  .color-v .icon-box img { filter: brightness(0) invert(1); }
+  .color-v .badge { color: var(--accent, #7c3aed); border: 1px solid var(--accent-faint, rgba(124,58,237,0.3)); background: var(--accent-bg, rgba(124,58,237,0.08)); }
+  .color-v .arrow { color: var(--accent, #7c3aed); }
+  .color-v .card::before { --card-shine: var(--accent, #7c3aed); }
+
+  /* game-specific accent tokens */
+  .c-gomoku   { --accent:#6366f1; --glow:rgba(99,102,241,0.35);  --accent-faint:rgba(99,102,241,0.3);  --accent-bg:rgba(99,102,241,0.08);  }
+  .c-maze     { --accent:#f97316; --glow:rgba(249,115,22,0.35);  --accent-faint:rgba(249,115,22,0.3);  --accent-bg:rgba(249,115,22,0.08);  }
+  .c-math     { --accent:#10b981; --glow:rgba(16,185,129,0.35);  --accent-faint:rgba(16,185,129,0.3);  --accent-bg:rgba(16,185,129,0.08);  }
+  .c-flash    { --accent:#3b82f6; --glow:rgba(59,130,246,0.35);  --accent-faint:rgba(59,130,246,0.3);  --accent-bg:rgba(59,130,246,0.08);  }
+  .c-poker    { --accent:#ef4444; --glow:rgba(239,68,68,0.35);   --accent-faint:rgba(239,68,68,0.3);   --accent-bg:rgba(239,68,68,0.08);   }
+  .c-sudoku   { --accent:#8b5cf6; --glow:rgba(139,92,246,0.35);  --accent-faint:rgba(139,92,246,0.3);  --accent-bg:rgba(139,92,246,0.08);  }
+  .c-halli    { --accent:#f59e0b; --glow:rgba(245,158,11,0.35);  --accent-faint:rgba(245,158,11,0.3);  --accent-bg:rgba(245,158,11,0.08);  }
+  .c-chat     { --accent:#14b8a6; --glow:rgba(20,184,166,0.35);  --accent-faint:rgba(20,184,166,0.3);  --accent-bg:rgba(20,184,166,0.08);  }
+</style>
+</head>
+<body>
+
+<div class="compare-row">
+
+  <!-- ── LEFT: Monochrome Purple ── -->
+  <div class="col mono">
+    <div class="col-label mono-label">A · 单色紫</div>
+    <div class="card-row">
+
+      <!-- Gomoku -->
+      <div class="card">
+        <div class="icon-zone">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none">
+              <line x1="4"  y1="4"  x2="4"  y2="20" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="9"  y1="4"  x2="9"  y2="20" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="14" y1="4"  x2="14" y2="20" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="19" y1="4"  x2="19" y2="20" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="4"  y1="7"  x2="20" y2="7"  stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="4"  y1="12" x2="20" y2="12" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <line x1="4"  y1="17" x2="20" y2="17" stroke="#a78bfa" stroke-width="1" opacity="0.45"/>
+              <circle cx="4"  cy="17" r="2.2" fill="#a78bfa"/>
+              <circle cx="9"  cy="12" r="2.2" fill="#a78bfa"/>
+              <circle cx="14" cy="7"  r="2.2" fill="#a78bfa"/>
+              <circle cx="9"  cy="17" r="2.2" fill="none" stroke="#a78bfa" stroke-width="1.4"/>
+              <circle cx="14" cy="12" r="2.2" fill="none" stroke="#a78bfa" stroke-width="1.4"/>
+              <circle cx="4"  cy="12" r="2.2" fill="none" stroke="#a78bfa" stroke-width="1.4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="info-zone">
+          <div class="game-name">Gomoku</div>
+          <div class="play-row"><span class="badge">P2P</span><span class="arrow">→</span></div>
+        </div>
+      </div>
+
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/maze-1-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Maze Runner</div><div class="play-row"><span class="badge">Race</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/math-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Math Sprint</div><div class="play-row"><span class="badge">Solo</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/cube-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Flash Count</div><div class="play-row"><span class="badge">Memory</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/clovers-poker-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Texas Hold'em</div><div class="play-row"><span class="badge">Poker</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/sudoku-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Sudoku</div><div class="play-row"><span class="badge">Puzzle</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/bell-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Halli Galli</div><div class="play-row"><span class="badge">Party</span><span class="arrow">→</span></div></div></div>
+      <div class="card"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/chat-round-dots-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">P2P Chat</div><div class="play-row"><span class="badge">Chat</span><span class="arrow">→</span></div></div></div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Colorful ── -->
+  <div class="col color-v">
+    <div class="col-label color-label">B · 彩色</div>
+    <div class="card-row">
+
+      <!-- Gomoku — indigo -->
+      <div class="card c-gomoku">
+        <div class="icon-zone">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none">
+              <line x1="4"  y1="4"  x2="4"  y2="20" stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="9"  y1="4"  x2="9"  y2="20" stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="14" y1="4"  x2="14" y2="20" stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="19" y1="4"  x2="19" y2="20" stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="4"  y1="7"  x2="20" y2="7"  stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="4"  y1="12" x2="20" y2="12" stroke="white" stroke-width="1" opacity="0.4"/>
+              <line x1="4"  y1="17" x2="20" y2="17" stroke="white" stroke-width="1" opacity="0.4"/>
+              <circle cx="4"  cy="17" r="2.2" fill="white"/>
+              <circle cx="9"  cy="12" r="2.2" fill="white"/>
+              <circle cx="14" cy="7"  r="2.2" fill="white"/>
+              <circle cx="9"  cy="17" r="2.2" fill="none" stroke="white" stroke-width="1.4"/>
+              <circle cx="14" cy="12" r="2.2" fill="none" stroke="white" stroke-width="1.4"/>
+              <circle cx="4"  cy="12" r="2.2" fill="none" stroke="white" stroke-width="1.4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="info-zone">
+          <div class="game-name">Gomoku</div>
+          <div class="play-row"><span class="badge">P2P</span><span class="arrow">→</span></div>
+        </div>
+      </div>
+
+      <div class="card c-maze">  <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/maze-1-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Maze Runner</div><div class="play-row"><span class="badge">Race</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-math">  <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/math-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Math Sprint</div><div class="play-row"><span class="badge">Solo</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-flash"> <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/cube-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Flash Count</div><div class="play-row"><span class="badge">Memory</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-poker"> <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/clovers-poker-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Texas Hold'em</div><div class="play-row"><span class="badge">Poker</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-sudoku"><div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/sudoku-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Sudoku</div><div class="play-row"><span class="badge">Puzzle</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-halli"> <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/bell-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">Halli Galli</div><div class="play-row"><span class="badge">Party</span><span class="arrow">→</span></div></div></div>
+      <div class="card c-chat">  <div class="icon-zone"><div class="icon-box"><img src="http://localhost:3000/games/chat-round-dots-svgrepo-com.svg"></div></div><div class="info-zone"><div class="game-name">P2P Chat</div><div class="play-row"><span class="badge">Chat</span><span class="arrow">→</span></div></div></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

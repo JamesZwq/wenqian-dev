@@ -1,0 +1,350 @@
+<h2>纵向卡片 — 1:1.586 比例</h2>
+<p class="subtitle">固定宽度约 160px，高度约 254px，三种视觉风格</p>
+
+<style>
+  :root {
+    --px-accent: #7c3aed;
+    --px-accent2: #0ea5e9;
+    --px-warn: #f59e0b;
+    --px-card: #0f0f1a;
+    --px-border: rgba(124,58,237,0.35);
+    --px-text: #c4b5fd;
+    --px-muted: #6b7280;
+    --px-bg: #07071a;
+    --px-glow: rgba(124,58,237,0.2);
+  }
+
+  .preview-wrap {
+    background: var(--px-bg);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .section-label {
+    font-family: monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--px-accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--px-border); }
+
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* ── Option A: Cover Art Style ── */
+  .card-a {
+    width: 152px;
+    height: 241px; /* 152 × 1.586 */
+    flex-shrink: 0;
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .card-a:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 16px 40px rgba(124,58,237,0.35);
+    border-color: var(--px-accent);
+  }
+  /* Top cover area */
+  .card-a .cover {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: linear-gradient(160deg, rgba(124,58,237,0.15) 0%, rgba(14,165,233,0.08) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  /* subtle grid pattern */
+  .card-a .cover::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 18px, rgba(124,58,237,0.05) 18px, rgba(124,58,237,0.05) 19px),
+                      repeating-linear-gradient(90deg, transparent, transparent 18px, rgba(124,58,237,0.05) 18px, rgba(124,58,237,0.05) 19px);
+  }
+  .card-a .cover .emoji { position: relative; z-index: 1; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  .card-a:hover .cover .emoji { transform: scale(1.2) rotate(-8deg); }
+  /* Bottom info area */
+  .card-a .info {
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--px-border);
+    background: rgba(0,0,0,0.3);
+  }
+  .card-a .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; margin-bottom: 3px; }
+  .card-a .tag {
+    font-size: 9px; font-family: monospace; color: var(--px-accent);
+    border: 1px solid rgba(124,58,237,0.3); padding: 1px 5px; border-radius: 3px;
+    background: rgba(124,58,237,0.08); display: inline-block;
+  }
+  /* Play button that slides in on hover */
+  .card-a .play-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(7,7,26,0.6);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .card-a:hover .play-overlay { opacity: 1; }
+  .card-a .play-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    background: var(--px-accent); color: white;
+    font-size: 11px; font-family: monospace; font-weight: 700;
+    border: none; transform: translateY(6px);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 4px 16px rgba(124,58,237,0.5);
+  }
+  .card-a:hover .play-btn { transform: translateY(0); }
+
+  /* ── Option B: Split Color Band ── */
+  .card-b {
+    width: 152px;
+    height: 241px;
+    flex-shrink: 0;
+    background: var(--px-card);
+    border: 1px solid var(--px-border);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .card-b:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 16px 40px rgba(124,58,237,0.3);
+    border-color: rgba(124,58,237,0.6);
+  }
+  .card-b .top-band {
+    height: 6px;
+    background: linear-gradient(90deg, var(--band-a, #7c3aed), var(--band-b, #0ea5e9));
+    transition: height 0.25s;
+  }
+  .card-b:hover .top-band { height: 8px; }
+  .card-b .body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .card-b .icon-box {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(124,58,237,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
+  }
+  .card-b:hover .icon-box { transform: scale(1.15) rotate(-6deg); background: rgba(124,58,237,0.2); }
+  .card-b .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; text-align: center; }
+  .card-b .desc { font-size: 10px; color: var(--px-muted); font-family: monospace; text-align: center; line-height: 1.4; }
+  .card-b .bottom {
+    padding: 10px 12px;
+    border-top: 1px solid rgba(124,58,237,0.12);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-b .badge {
+    font-size: 9px; font-family: monospace; color: var(--px-muted);
+    background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;
+  }
+  .card-b .go { font-size: 14px; color: var(--px-accent); opacity: 0; transform: translateX(-4px); transition: all 0.2s; }
+  .card-b:hover .go { opacity: 1; transform: translateX(0); }
+
+  /* ── Option C: Neon Glow Edge ── */
+  .card-c {
+    width: 152px;
+    height: 241px;
+    flex-shrink: 0;
+    background: rgba(5,5,18,0.95);
+    border: 1px solid rgba(124,58,237,0.25);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .card-c::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% -20%, rgba(124,58,237,0.15), transparent 70%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .card-c:hover::before { opacity: 1; }
+  .card-c:hover {
+    border-color: rgba(124,58,237,0.8);
+    box-shadow: 0 0 0 1px rgba(124,58,237,0.2), 0 12px 40px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    transform: translateY(-6px);
+  }
+  .card-c .art {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px;
+    position: relative;
+  }
+  /* Scan line effect */
+  .card-c .art::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+  }
+  .card-c .art .emoji { transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); filter: drop-shadow(0 0 0px transparent); }
+  .card-c:hover .art .emoji { transform: scale(1.18); filter: drop-shadow(0 0 12px rgba(124,58,237,0.8)); }
+  .card-c .footer {
+    padding: 12px;
+    background: rgba(124,58,237,0.06);
+    border-top: 1px solid rgba(124,58,237,0.15);
+  }
+  .card-c .name { font-size: 12px; font-weight: 700; color: var(--px-text); font-family: sans-serif; margin-bottom: 4px; }
+  .card-c .desc { font-size: 10px; color: rgba(196,181,253,0.45); font-family: monospace; line-height: 1.35; }
+  .card-c .cta {
+    margin-top: 8px;
+    font-size: 9px; font-family: monospace; color: var(--px-accent);
+    letter-spacing: 0.05em;
+    opacity: 0; transform: translateY(3px); transition: all 0.2s;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .card-c:hover .cta { opacity: 1; transform: translateY(0); }
+</style>
+
+<div class="options">
+
+  <!-- Option A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Cover Art 封面风</h3>
+      <p>上半大图区域 + 下半信息，hover 时整体上浮 + 浮现"Play"按钮覆盖层</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-a">
+            <div class="cover"><span class="emoji">⚫</span></div>
+            <div class="info"><div class="name">Gomoku</div><div class="tag">P2P</div></div>
+            <div class="play-overlay"><div class="play-btn">▶ Play</div></div>
+          </div>
+          <div class="card-a">
+            <div class="cover"><span class="emoji">🏃</span></div>
+            <div class="info"><div class="name">Maze Runner</div><div class="tag">Race</div></div>
+            <div class="play-overlay"><div class="play-btn">▶ Play</div></div>
+          </div>
+          <div class="card-a">
+            <div class="cover"><span class="emoji">♠️</span></div>
+            <div class="info"><div class="name">Texas Hold'em</div><div class="tag">Poker</div></div>
+            <div class="play-overlay"><div class="play-btn">▶ Play</div></div>
+          </div>
+          <div class="card-a">
+            <div class="cover"><span class="emoji">🔔</span></div>
+            <div class="info"><div class="name">Halli Galli</div><div class="tag">Party</div></div>
+            <div class="play-overlay"><div class="play-btn">▶ Play</div></div>
+          </div>
+          <div class="card-a">
+            <div class="cover"><span class="emoji">🧮</span></div>
+            <div class="info"><div class="name">Math Sprint</div><div class="tag">Speed</div></div>
+            <div class="play-overlay"><div class="play-btn">▶ Play</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>彩色顶条 + 居中图标</h3>
+      <p>顶部渐变色条标识游戏类型，中间方形图标框，底部标签 + hover 箭头</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-b" style="--band-a:#7c3aed;--band-b:#0ea5e9">
+            <div class="top-band"></div>
+            <div class="body"><div class="icon-box">⚫</div><div class="name">Gomoku</div><div class="desc">Five in a Row</div></div>
+            <div class="bottom"><span class="badge">P2P</span><span class="go">→</span></div>
+          </div>
+          <div class="card-b" style="--band-a:#f59e0b;--band-b:#ef4444">
+            <div class="top-band"></div>
+            <div class="body"><div class="icon-box">🏃</div><div class="name">Maze Runner</div><div class="desc">Race with items</div></div>
+            <div class="bottom"><span class="badge">Race</span><span class="go">→</span></div>
+          </div>
+          <div class="card-b" style="--band-a:#0ea5e9;--band-b:#6366f1">
+            <div class="top-band"></div>
+            <div class="body"><div class="icon-box">♠️</div><div class="name">Texas Hold'em</div><div class="desc">P2P Poker</div></div>
+            <div class="bottom"><span class="badge">Poker</span><span class="go">→</span></div>
+          </div>
+          <div class="card-b" style="--band-a:#10b981;--band-b:#0ea5e9">
+            <div class="top-band"></div>
+            <div class="body"><div class="icon-box">🔔</div><div class="name">Halli Galli</div><div class="desc">Ring the bell!</div></div>
+            <div class="bottom"><span class="badge">Party</span><span class="go">→</span></div>
+          </div>
+          <div class="card-b" style="--band-a:#7c3aed;--band-b:#f59e0b">
+            <div class="top-band"></div>
+            <div class="body"><div class="icon-box">🧮</div><div class="name">Math Sprint</div><div class="desc">Speed math</div></div>
+            <div class="bottom"><span class="badge">Speed</span><span class="go">→</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>霓虹发光边框风</h3>
+      <p>暗背景 + 顶部光晕，hover 时 emoji 发紫光 + 描边亮起 + CTA 滑入</p>
+      <div class="preview-wrap">
+        <div class="section-label">🎮 Play Games</div>
+        <div class="card-row">
+          <div class="card-c">
+            <div class="art"><span class="emoji">⚫</span></div>
+            <div class="footer"><div class="name">Gomoku</div><div class="desc">Five in a Row</div><div class="cta">▶ Play Now →</div></div>
+          </div>
+          <div class="card-c">
+            <div class="art"><span class="emoji">🏃</span></div>
+            <div class="footer"><div class="name">Maze Runner</div><div class="desc">P2P race</div><div class="cta">▶ Play Now →</div></div>
+          </div>
+          <div class="card-c">
+            <div class="art"><span class="emoji">♠️</span></div>
+            <div class="footer"><div class="name">Texas Hold'em</div><div class="desc">P2P poker</div><div class="cta">▶ Play Now →</div></div>
+          </div>
+          <div class="card-c">
+            <div class="art"><span class="emoji">🔔</span></div>
+            <div class="footer"><div class="name">Halli Galli</div><div class="desc">Ring the bell</div><div class="cta">▶ Play Now →</div></div>
+          </div>
+          <div class="card-c">
+            <div class="art"><span class="emoji">🧮</span></div>
+            <div class="footer"><div class="name">Math Sprint</div><div class="desc">Speed math</div><div class="cta">▶ Play Now →</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

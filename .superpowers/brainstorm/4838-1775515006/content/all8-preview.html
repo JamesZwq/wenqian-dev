@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8 Game Cards Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #07071a;
+    font-family: sans-serif;
+    padding: 32px 24px 48px;
+    min-height: 100vh;
+  }
+  h2 {
+    color: #c4b5fd;
+    font-size: 13px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    font-family: monospace;
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2::after { content: ''; flex: 1; height: 1px; background: rgba(124,58,237,0.3); }
+  .sub { color: #4b5563; font-family: monospace; font-size: 11px; margin-bottom: 28px; }
+
+  /* ── Card row ── */
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  /* ── Portrait card: 152 × 241px (1 : 1.586) ── */
+  .card {
+    width: 152px;
+    height: 241px;
+    flex-shrink: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(124,58,237,0.25);
+    background: #0d0d1f;
+    cursor: pointer;
+    position: relative;
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1), border-color .2s, box-shadow .2s;
+  }
+  .card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(124,58,237,0.7);
+    box-shadow: 0 16px 40px rgba(124,58,237,0.28);
+  }
+
+  /* Icon zone */
+  .icon-zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, rgba(124,58,237,0.13) 0%, rgba(14,165,233,0.06) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  /* subtle dot grid */
+  .icon-zone::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(124,58,237,0.2) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity: .5;
+  }
+  .icon-box {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(124,58,237,0.3);
+    background: rgba(124,58,237,0.1);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 1;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .2s;
+  }
+  .card:hover .icon-box {
+    transform: scale(1.12) rotate(-5deg);
+    background: rgba(124,58,237,0.2);
+  }
+  .icon-box svg, .icon-box img {
+    width: 34px; height: 34px;
+    display: block;
+    /* recolor dark SVGs to site accent */
+    filter: brightness(0) saturate(100%) invert(75%) sepia(40%) saturate(600%) hue-rotate(215deg) brightness(1.1);
+  }
+
+  /* Info zone */
+  .info-zone {
+    padding: 12px 13px 13px;
+    border-top: 1px solid rgba(124,58,237,0.12);
+    background: rgba(0,0,0,0.2);
+  }
+  .game-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #c4b5fd;
+    font-family: sans-serif;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .game-desc {
+    font-size: 10px;
+    font-family: monospace;
+    color: #4b5563;
+    line-height: 1.4;
+    margin-bottom: 9px;
+  }
+  .play-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .badge {
+    font-size: 9px; font-family: monospace;
+    color: #7c3aed;
+    border: 1px solid rgba(124,58,237,0.3);
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(124,58,237,0.08);
+    letter-spacing: .04em;
+  }
+  .arrow {
+    font-size: 12px; color: #7c3aed;
+    opacity: 0; transform: translateX(-4px);
+    transition: all .2s;
+    font-family: monospace;
+  }
+  .card:hover .arrow { opacity: 1; transform: translateX(0); }
+
+  /* top accent line */
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 15%; right: 15%; height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(167,139,250,0.5), transparent);
+    z-index: 2;
+    opacity: 0; transition: opacity .2s;
+  }
+  .card:hover::before { opacity: 1; }
+
+  /* Note */
+  .note {
+    margin-top: 28px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #374151;
+    line-height: 1.7;
+    border-left: 2px solid rgba(124,58,237,0.2);
+    padding-left: 12px;
+  }
+  .note span { color: #7c3aed; }
+</style>
+</head>
+<body>
+
+<h2>🎮 Play Games</h2>
+<p class="sub">8 张卡片预览 · 152×241px (1:1.586) · hover 查看动画</p>
+
+<div class="card-row">
+
+  <!-- 1. Gomoku -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="4"  y1="4"  x2="4"  y2="20" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="9"  y1="4"  x2="9"  y2="20" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="14" y1="4"  x2="14" y2="20" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="19" y1="4"  x2="19" y2="20" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="4"  y1="7"  x2="20" y2="7"  stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="4"  y1="12" x2="20" y2="12" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="4"  y1="17" x2="20" y2="17" stroke="#1C274C" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="4"  cy="17" r="2.2" fill="#1C274C"/>
+          <circle cx="9"  cy="12" r="2.2" fill="#1C274C"/>
+          <circle cx="14" cy="7"  r="2.2" fill="#1C274C"/>
+          <circle cx="9"  cy="17" r="2.2" fill="white" stroke="#1C274C" stroke-width="1.4"/>
+          <circle cx="14" cy="12" r="2.2" fill="white" stroke="#1C274C" stroke-width="1.4"/>
+          <circle cx="4"  cy="12" r="2.2" fill="white" stroke="#1C274C" stroke-width="1.4"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Gomoku</div>
+      <div class="game-desc">Five in a Row</div>
+      <div class="play-row">
+        <span class="badge">P2P</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Maze Runner -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon fill="#1C274C" points="0,0 0,40.478 292.346,40.478 292.346,219.686 398.949,219.686 398.949,197.01 315.03,197.01 315.03,40.478 471.53,40.478 471.53,101.706 398.949,101.706 398.949,124.405 471.53,124.405 471.53,471.522 208.372,471.522 208.372,512 512,512 512,0"/>
+          <polygon fill="#1C274C" points="315.03,410.239 315.03,314.998 387.611,314.998 387.611,398.9 410.294,398.9 410.294,292.314 292.346,292.314 292.346,387.555 219.718,387.555 219.718,197.01 124.422,197.01 124.422,124.405 208.372,124.405 208.372,101.706 0,101.706 0,512 124.422,512 124.422,398.9 101.738,398.9 101.738,471.522 40.479,471.522 40.479,124.405 101.738,124.405 101.738,219.686 197.026,219.686 197.026,292.314 113.083,292.314 113.083,314.998 197.026,314.998 197.026,410.239"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Maze Runner</div>
+      <div class="game-desc">P2P race + items</div>
+      <div class="play-row">
+        <span class="badge">Race</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Math Sprint -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0.52" y1="5.28" x2="10.09" y2="5.28" stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="5.3"  y1="0.5"  x2="5.3"  y2="10.07" stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="1.48" y1="14.85" x2="9.13" y2="22.5"  stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="9.13" y1="14.85" x2="1.48" y2="22.5"  stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="13.91" y1="5.28"  x2="23.48" y2="5.28"  stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="13.91" y1="18.67" x2="23.48" y2="18.67" stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="17.74" y1="14.85" x2="19.65" y2="14.85" stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+          <line x1="17.74" y1="22.5"  x2="19.65" y2="22.5"  stroke="#1C274C" stroke-width="1.91" stroke-miterlimit="10"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Math Sprint</div>
+      <div class="game-desc">Speed arithmetic</div>
+      <div class="play-row">
+        <span class="badge">Solo</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Flash Count -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- top face -->
+          <path fill="#1C274C" d="M12 2L21 7V8L12 13L3 8V7L12 2Z"/>
+          <!-- left face -->
+          <path fill="#1C274C" d="M3 9V16L11 21V14L3 9Z" opacity="0.6"/>
+          <!-- right face -->
+          <path fill="#1C274C" d="M21 9V16L13 21V14L21 9Z" opacity="0.8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Flash Count</div>
+      <div class="game-desc">Count 3D blocks</div>
+      <div class="play-row">
+        <span class="badge">Memory</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Texas Hold'em -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- spade body: inverted heart -->
+          <path fill="#1C274C" d="M12 3C12 3 3 9 3 15C3 18 5.5 20 8.5 20C10 20 11.2 19.4 12 18.4C12.8 19.4 14 20 15.5 20C18.5 20 21 18 21 15C21 9 12 3 12 3Z"/>
+          <!-- spade stem -->
+          <path fill="#1C274C" d="M10 20C9.5 21.8 7.5 22.8 6.5 23.5H17.5C16.5 22.8 14.5 21.8 14 20H10Z"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Texas Hold'em</div>
+      <div class="game-desc">P2P poker</div>
+      <div class="play-row">
+        <span class="badge">Poker</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Sudoku -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 445.049 445.049" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#1C274C" d="M56.507,73.548c-3.393-3.632-3.2-9.327,0.433-12.72l26.938-25.166c2.619-2.447,6.44-3.106,9.729-1.679c3.288,1.428,5.415,4.67,5.415,8.255v70.863c0,4.971-4.029,9-9,9s-9-4.029-9-9V62.963L69.228,73.98C65.595,77.374,59.9,77.181,56.507,73.548z M437.533,9v170.012c0,4.971-4.029,9-9,9s-9-4.029-9-9v-23.673H300.193v119.338h25.329c4.971,0,9,4.029,9,9s-4.029,9-9,9h-25.329v119.338h25.329c4.971,0,9,4.029,9,9s-4.029,9-9,9h-34.138c-0.063,0.001-0.127,0.002-0.191,0.002c-0.063,0-0.127-0.001-0.191-0.002H154.048c-0.125,0.003-0.254,0.003-0.382,0H16.546c-4.97,0-9-4.029-9-8.999L7.536,284.28c-0.013-0.2-0.02-0.4-0.02-0.604c0-0.202,0.007-0.402,0.02-0.602l-0.01-136.31c-0.006-0.142-0.01-0.283-0.01-0.427c0-0.143,0.003-0.284,0.01-0.426L7.516,9.001c0-2.388,0.948-4.677,2.636-6.364C11.84,0.948,14.129,0,16.516,0h412.017C433.503,0,437.533,4.029,437.533,9z M144.857,292.677H25.537l0.009,119.338h119.312V292.677z M144.857,155.339H25.527l0.008,119.338h119.322V155.339z M144.857,18H25.517l0.009,119.339h119.332V18z M282.193,292.677H162.857v119.338h119.336V292.677z M282.193,155.339H162.857v119.338h119.336V155.339z M282.193,18H162.857v119.339h119.336V18z M419.533,18H300.193v119.339h119.339V18z"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Sudoku</div>
+      <div class="game-desc">Solo or P2P race</div>
+      <div class="play-row">
+        <span class="badge">Puzzle</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Halli Galli -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.35179 20.2418C9.19288 21.311 10.5142 22 12 22C13.4858 22 14.8071 21.311 15.6482 20.2418C13.2264 20.57 10.7736 20.57 8.35179 20.2418Z" fill="#1C274C"/>
+          <path d="M18.7491 9V9.7041C18.7491 10.5491 18.9903 11.3752 19.4422 12.0782L20.5496 13.8012C21.5612 15.3749 20.789 17.5139 19.0296 18.0116C14.4273 19.3134 9.57274 19.3134 4.97036 18.0116C3.21105 17.5139 2.43882 15.3749 3.45036 13.8012L4.5578 12.0782C5.00972 11.3752 5.25087 10.5491 5.25087 9.7041V9C5.25087 5.13401 8.27256 2 12 2C15.7274 2 18.7491 5.13401 18.7491 9Z" fill="#1C274C"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">Halli Galli</div>
+      <div class="game-desc">Ring at 5 fruits</div>
+      <div class="play-row">
+        <span class="badge">Party</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. P2P Chat -->
+  <div class="card">
+    <div class="icon-zone">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 3.33782C15.5291 2.48697 13.8214 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22C17.5228 22 22 17.5228 22 12C22 10.1786 21.513 8.47087 20.6622 7" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M8 12H8.009M11.991 12H12M15.991 12H16" stroke="#1C274C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="info-zone">
+      <div class="game-name">P2P Chat</div>
+      <div class="game-desc">Encrypted, no server</div>
+      <div class="play-row">
+        <span class="badge">Chat</span>
+        <span class="arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <span>五子棋图标</span>：自行绘制，棋盘网格 + 黑白棋子对角排列，与其他图标同属单色几何风格。<br>
+  <span>德扑图标</span>：当前使用 clovers-poker 原始多色版（含心形、梅花等花色），过滤后显示为单色。<br>
+  如图标需要调整，告诉我哪张不对。
+</div>
+
+</body>
+</html>
