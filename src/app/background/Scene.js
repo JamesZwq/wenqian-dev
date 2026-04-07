@@ -243,18 +243,18 @@ export function Scene({ theme }) {
     };
     window.addEventListener("mousemove", onMouse, { passive: true });
 
-    // ── Animate ──
+    // ── Animate (capped at ~30fps to save GPU) ──
+    const TARGET_INTERVAL = 33; // ~30fps
+    let lastRenderTime = 0;
+
     const animate = () => {
-      if (document.hidden) {
-        state.frameId = requestAnimationFrame(animate);
-        return;
-      }
-      if (scrolling) {
-        skipFrame = !skipFrame;
-        if (skipFrame) { state.frameId = requestAnimationFrame(animate); return; }
-      }
+      state.frameId = requestAnimationFrame(animate);
+
+      if (document.hidden) return;
 
       const now = performance.now();
+      if (now - lastRenderTime < TARGET_INTERVAL) return;
+      lastRenderTime = now;
       const dt = Math.min((now - state.lastTime) / 1000, 0.1);
       state.lastTime = now;
       const elapsed = (now - state.startTime) / 1000;
@@ -287,7 +287,6 @@ export function Scene({ theme }) {
       uniforms.uMouse.value.y += (mouseRef.current.y - uniforms.uMouse.value.y) * ms;
 
       composer.render();
-      state.frameId = requestAnimationFrame(animate);
     };
 
     state.frameId = requestAnimationFrame(animate);
