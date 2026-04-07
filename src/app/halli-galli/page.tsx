@@ -148,51 +148,11 @@ export default function HalliGalliPage() {
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId, isReconnecting, reconnectDeadline,
     latencyMs, lastRemoteMessageAt,
     chatMessages, addMyMessage,
-    doBell, doRematch, exitToMenu, countdownEnd,
+    doBell, doRematch, exitToMenu,
   } = useHalliGalliGame();
 
   const hasCards = myView && (myView.mySlot1 || myView.mySlot2 || myView.oppSlot1 || myView.oppSlot2);
   const canBell = myView?.phase === "playing" && !!hasCards;
-
-  // Countdown to next flip
-  const [countdown, setCountdown] = useState(5);
-  useEffect(() => {
-    if (!myView || myView.phase !== "playing") return;
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((myView.nextFlipAt - Date.now()) / 1000));
-      setCountdown(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 200);
-    return () => clearInterval(id);
-  }, [myView?.nextFlipAt, myView?.phase]);
-
-  // 3-2-1-GO countdown
-  const [countdownNum, setCountdownNum] = useState<string | null>(null);
-  useEffect(() => {
-    if (!countdownEnd || !isConnected) { setCountdownNum(null); return; }
-    const steps = [
-      { label: "3", at: countdownEnd - 3800 },
-      { label: "2", at: countdownEnd - 2800 },
-      { label: "1", at: countdownEnd - 1800 },
-      { label: "GO!", at: countdownEnd - 800 },
-      { label: null, at: countdownEnd },
-    ];
-    const timers: NodeJS.Timeout[] = [];
-    const now = Date.now();
-    for (const step of steps) {
-      const delay = step.at - now;
-      if (delay <= 0) continue;
-      timers.push(setTimeout(() => setCountdownNum(step.label), delay));
-    }
-    // If we're already past countdown, don't show
-    if (now >= countdownEnd) { setCountdownNum(null); }
-    else if (now >= steps[3].at) { setCountdownNum("GO!"); }
-    else if (now >= steps[2].at) { setCountdownNum("1"); }
-    else if (now >= steps[1].at) { setCountdownNum("2"); }
-    else { setCountdownNum("3"); }
-    return () => timers.forEach(clearTimeout);
-  }, [countdownEnd, isConnected]);
 
   // Spacebar → ring bell
   useEffect(() => {
@@ -208,41 +168,6 @@ export default function HalliGalliPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* 3-2-1-GO Countdown Overlay */}
-      <AnimatePresence>
-        {countdownNum && (
-          <motion.div
-            key="countdown-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-[color-mix(in_oklab,var(--pixel-bg)_85%,transparent)] backdrop-blur-sm"
-          >
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={countdownNum}
-                initial={{ scale: 0.3, opacity: 0, filter: "blur(8px)" }}
-                animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-                exit={{ scale: 2.5, opacity: 0, filter: "blur(4px)" }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className={`font-sans font-black tracking-tighter ${
-                  countdownNum === "GO!"
-                    ? "text-7xl md:text-9xl text-[var(--pixel-warn)]"
-                    : "text-8xl md:text-[10rem] text-[var(--pixel-accent)]"
-                }`}
-                style={{
-                  textShadow: countdownNum === "GO!"
-                    ? "0 0 60px var(--pixel-warn), 0 0 120px var(--pixel-warn)"
-                    : "0 0 40px var(--pixel-glow)",
-                }}
-              >
-                {countdownNum}
-              </motion.span>
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Back button */}
       <motion.div
         initial={{ opacity: 0, x: -16 }}
@@ -442,9 +367,6 @@ export default function HalliGalliPage() {
                     {/* Countdown + Bell */}
                     {myView.phase === "playing" && (
                       <div className="w-full flex flex-col items-center gap-3">
-                        <div className="font-mono text-xs tabular-nums text-[var(--pixel-muted)]">
-                          NEXT FLIP IN <span className="text-[var(--pixel-accent-2)] font-bold">{countdown}s</span>
-                        </div>
                         <motion.button
                           whileTap={{ scale: 0.93 }}
                           onClick={doBell}
