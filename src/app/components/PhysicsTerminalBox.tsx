@@ -221,6 +221,16 @@ export default function PhysicsTerminalBox(props: {
 
     let alive = true;
 
+    // Cache content dimensions — only recompute on resize, NOT every frame
+    let cachedW = content.clientWidth;
+    let cachedH = content.clientHeight;
+    const updateSize = () => {
+      cachedW = content.clientWidth;
+      cachedH = content.clientHeight;
+    };
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(content);
+
     const tick = (t: number) => {
       if (!alive) return;
 
@@ -231,10 +241,8 @@ export default function PhysicsTerminalBox(props: {
       const { gravity, bounce, airDrag, floorFriction, springKIdle, springKDrag, dampC, inertialGain } =
         paramsRef.current;
 
-      // 内容区域边界（盒子内部坐标）
-      const rect = content.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      const W = cachedW;
+      const H = cachedH;
 
       // 拖拽时：粒子更“散”，回原位更弱；松手：回弹更强
       const k = draggingRef.current ? springKDrag : springKIdle;
@@ -305,6 +313,7 @@ export default function PhysicsTerminalBox(props: {
 
     return () => {
       alive = false;
+      ro.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
