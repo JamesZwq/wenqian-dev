@@ -59,7 +59,11 @@ function GomokuIcon() {
 function CardVisual({ game }: { game: Game }) {
   return (
     <motion.div
-      whileHover={{ y: -9, borderColor: "color-mix(in oklab, var(--pixel-border) 200%, transparent)" }}
+      whileHover={{
+        y: -9,
+        boxShadow: `0 0 20px ${game.glow}, 0 8px 32px ${game.glow}`,
+        borderColor: game.accent,
+      }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       style={{
@@ -69,11 +73,12 @@ function CardVisual({ game }: { game: Game }) {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        border: "1px solid var(--pixel-border)",
+        border: `1px solid var(--pixel-border)`,
         background: "var(--pixel-card-bg)",
         backdropFilter: "blur(24px) saturate(160%)",
         WebkitBackdropFilter: "blur(24px) saturate(160%)",
         position: "relative",
+        boxShadow: "none",
       }}
     >
       {/* shimmer top line */}
