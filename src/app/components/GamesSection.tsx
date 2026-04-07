@@ -47,14 +47,49 @@ function GomokuIcon() {
   );
 }
 
+// ── Fan-to-grid entry helper ──────────────────────────────
+function getFanInitial(index: number, total: number) {
+  const spreadDeg = 70;
+  const angle = -spreadDeg / 2 + index * (spreadDeg / (total - 1));
+  const rad = (angle * Math.PI) / 180;
+  const R = 280;
+  return {
+    rotate: angle,
+    x: Math.sin(rad) * R,
+    y: (Math.cos(rad) - 1) * R + 220,
+    scale: 0.72,
+    opacity: 0,
+  };
+}
+
 // ── Card component ─────────────────────────────────────────
-function GameCard({ game }: { game: Game }) {
+function GameCard({ game, index, total }: { game: Game; index: number; total: number }) {
   return (
     <Link href={game.href} className="block" style={{ width: 152, flexShrink: 0 }}>
       <motion.div
-        whileHover={{ y: -9, borderColor: "rgba(255,255,255,0.22)" }}
+        initial="fan"
+        whileInView="grid"
+        whileHover="hover"
         whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 320, damping: 24 }}
+        viewport={{ once: true, margin: "-80px" }}
+        variants={{
+          fan: getFanInitial(index, total),
+          grid: {
+            rotate: 0, x: 0, y: 0, scale: 1, opacity: 1,
+            transition: {
+              rotate:  { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
+              x:       { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
+              y:       { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
+              scale:   { type: "spring", stiffness: 200, damping: 24, delay: index * 0.055 + 0.15 },
+              opacity: { duration: 0.3, delay: index * 0.055 + 0.15 },
+            },
+          },
+          hover: {
+            y: -9,
+            borderColor: "rgba(255,255,255,0.22)",
+            transition: { type: "spring", stiffness: 320, damping: 24, delay: 0 },
+          },
+        }}
         style={{
           width: 152,
           height: 241,
@@ -66,7 +101,6 @@ function GameCard({ game }: { game: Game }) {
           background: "rgba(255,255,255,0.05)",
           backdropFilter: "blur(24px) saturate(160%)",
           WebkitBackdropFilter: "blur(24px) saturate(160%)",
-          boxShadow: "none",
           position: "relative",
         }}
       >
@@ -208,8 +242,8 @@ export default function GamesSection() {
 
       {/* Card grid */}
       <div className="flex flex-wrap gap-3 sm:gap-4">
-        {GAMES.map((game) => (
-          <GameCard key={game.href} game={game} />
+        {GAMES.map((game, i) => (
+          <GameCard key={game.href} game={game} index={i} total={GAMES.length} />
         ))}
       </div>
     </motion.section>
