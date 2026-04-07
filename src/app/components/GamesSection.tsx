@@ -49,29 +49,26 @@ function GomokuIcon() {
 
 // ── Fan-to-grid entry helper ──────────────────────────────
 function getFanInitial(index: number, total: number) {
-  const spreadDeg = 70;
+  const spreadDeg = 60;
   const angle = -spreadDeg / 2 + index * (spreadDeg / (total - 1));
-  const rad = (angle * Math.PI) / 180;
-  const R = 280;
   return {
     rotate: angle,
-    x: Math.sin(rad) * R,
-    y: (Math.cos(rad) - 1) * R + 220,
-    scale: 0.72,
-    opacity: 0,
+    scale: 0.78,
+    y: 30,
+    opacity: 1,
   };
 }
 
 // ── Card component ─────────────────────────────────────────
 function GameCard({ game, index, total }: { game: Game; index: number; total: number }) {
   return (
-    <Link href={game.href} className="block" style={{ width: 152, flexShrink: 0 }}>
+    <Link href={game.href} className="block">
       <motion.div
         initial="fan"
         whileInView="grid"
         whileHover="hover"
         whileTap={{ scale: 0.97 }}
-        viewport={{ once: true, margin: "-80px" }}
+        viewport={{ once: true, amount: 0.3 }}
         variants={{
           fan: getFanInitial(index, total),
           grid: {
@@ -94,6 +91,7 @@ function GameCard({ game, index, total }: { game: Game; index: number; total: nu
           width: 152,
           height: 241,
           borderRadius: 18,
+          transformOrigin: "center bottom",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -241,7 +239,7 @@ export default function GamesSection() {
       </motion.div>
 
       {/* Card grid */}
-      <div className="flex flex-wrap gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center">
         {GAMES.map((game, i) => (
           <GameCard key={game.href} game={game} index={i} total={GAMES.length} />
         ))}
