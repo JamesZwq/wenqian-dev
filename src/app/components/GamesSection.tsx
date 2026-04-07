@@ -188,7 +188,7 @@ export default function GamesSection() {
 
   useEffect(() => {
     if (isInView && inFan) {
-      const timer = setTimeout(() => setInFan(false), 120);
+      const timer = setTimeout(() => setInFan(false), 1500);
       return () => clearTimeout(timer);
     }
   }, [isInView, inFan]);
