@@ -348,9 +348,6 @@ export default function ExtraSections() {
           </div>
         </motion.section>
 
-        {/* Games */}
-        <GamesSection />
-
         {/* Section Divider */}
         <div className="mb-16 sm:mb-24 flex items-center gap-4">
           <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)]" />
@@ -400,6 +397,9 @@ export default function ExtraSections() {
             ))}
           </div>
         </motion.section>
+
+        {/* Games */}
+        <GamesSection />
       </div>
     </>
   );

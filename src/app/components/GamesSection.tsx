@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { Gamepad2 } from "lucide-react";
 
 // ── Game registry ──────────────────────────────────────────
@@ -12,7 +13,7 @@ type Game = {
   badge: string;
   accent: string;
   glow: string;
-  iconFile?: string; // filename inside /public/games/
+  iconFile?: string;
 };
 
 const GAMES: Game[] = [
@@ -25,6 +26,13 @@ const GAMES: Game[] = [
   { href: "/halli-galli", name: "Halli Galli",   desc: "Ring at 5 fruits",       badge: "Party",  accent: "#f59e0b", glow: "rgba(245,158,11,0.5)",  iconFile: "bell-svgrepo-com.svg"       },
   { href: "/chat",        name: "P2P Chat",      desc: "Encrypted, no server",   badge: "Chat",   accent: "#14b8a6", glow: "rgba(20,184,166,0.5)",  iconFile: "chat-round-dots-svgrepo-com.svg" },
 ];
+
+const TOTAL = GAMES.length;
+const FAN_SPREAD = 56; // total degrees
+
+function getFanAngle(index: number) {
+  return -FAN_SPREAD / 2 + index * (FAN_SPREAD / (TOTAL - 1));
+}
 
 // ── Gomoku custom inline SVG ───────────────────────────────
 function GomokuIcon() {
@@ -47,203 +55,207 @@ function GomokuIcon() {
   );
 }
 
-// ── Fan-to-grid entry helper ──────────────────────────────
-function getFanInitial(index: number, total: number) {
-  const spreadDeg = 60;
-  const angle = -spreadDeg / 2 + index * (spreadDeg / (total - 1));
-  return {
-    rotate: angle,
-    scale: 0.78,
-    y: 30,
-    opacity: 1,
-  };
-}
-
-// ── Card component ─────────────────────────────────────────
-function GameCard({ game, index, total }: { game: Game; index: number; total: number }) {
+// ── Inner card visual (handles hover) ─────────────────────
+function CardVisual({ game }: { game: Game }) {
   return (
-    <Link href={game.href} className="block">
-      <motion.div
-        initial="fan"
-        whileInView="grid"
-        whileHover="hover"
-        whileTap={{ scale: 0.97 }}
-        viewport={{ once: true, amount: 0.3 }}
-        variants={{
-          fan: getFanInitial(index, total),
-          grid: {
-            rotate: 0, x: 0, y: 0, scale: 1, opacity: 1,
-            transition: {
-              rotate:  { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
-              x:       { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
-              y:       { type: "spring", stiffness: 180, damping: 22, delay: index * 0.055 + 0.15 },
-              scale:   { type: "spring", stiffness: 200, damping: 24, delay: index * 0.055 + 0.15 },
-              opacity: { duration: 0.3, delay: index * 0.055 + 0.15 },
-            },
-          },
-          hover: {
-            y: -9,
-            borderColor: "rgba(255,255,255,0.22)",
-            transition: { type: "spring", stiffness: 320, damping: 24, delay: 0 },
-          },
-        }}
+    <motion.div
+      whileHover={{ y: -9, borderColor: "rgba(255,255,255,0.22)" }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 320, damping: 24 }}
+      style={{
+        width: 152,
+        height: 241,
+        borderRadius: 18,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px) saturate(160%)",
+        WebkitBackdropFilter: "blur(24px) saturate(160%)",
+        position: "relative",
+      }}
+    >
+      {/* shimmer top line */}
+      <div
         style={{
-          width: 152,
-          height: 241,
-          borderRadius: 18,
-          transformOrigin: "center bottom",
-          overflow: "hidden",
+          position: "absolute",
+          top: 0, left: "12%", right: "12%",
+          height: 1,
+          background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
+          zIndex: 2,
+        }}
+      />
+
+      {/* icon zone */}
+      <div
+        style={{
+          flex: 1,
           display: "flex",
-          flexDirection: "column",
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px) saturate(160%)",
-          WebkitBackdropFilter: "blur(24px) saturate(160%)",
+          alignItems: "center",
+          justifyContent: "center",
           position: "relative",
+          overflow: "hidden",
         }}
       >
-        {/* shimmer top line */}
         <div
           style={{
             position: "absolute",
-            top: 0, left: "12%", right: "12%",
-            height: 1,
-            background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)",
-            zIndex: 2,
+            width: 90, height: 90,
+            borderRadius: "50%",
+            background: game.accent,
+            filter: "blur(28px)",
+            opacity: 0.25,
+            pointerEvents: "none",
           }}
         />
-
-        {/* icon zone */}
-        <div
+        <motion.div
+          whileHover={{ scale: 1.12, rotate: -5 }}
+          transition={{ type: "spring", stiffness: 320, damping: 20 }}
           style={{
-            flex: 1,
+            width: 62, height: 62,
+            borderRadius: 16,
+            background: game.accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
-            overflow: "hidden",
+            zIndex: 1,
+            boxShadow: `0 4px 20px ${game.glow}`,
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              width: 90, height: 90,
-              borderRadius: "50%",
-              background: game.accent,
-              filter: "blur(28px)",
-              opacity: 0.25,
-              pointerEvents: "none",
-            }}
-          />
-          <motion.div
-            whileHover={{ scale: 1.12, rotate: -5 }}
-            transition={{ type: "spring", stiffness: 320, damping: 20 }}
-            style={{
-              width: 62, height: 62,
-              borderRadius: 16,
-              background: game.accent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-              zIndex: 1,
-              boxShadow: `0 4px 20px ${game.glow}`,
-            }}
-          >
-            {game.iconFile ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`/games/${game.iconFile}`}
-                alt={game.name}
-                width={30}
-                height={30}
-                style={{ filter: "brightness(0) invert(1)" }}
-              />
-            ) : (
-              <GomokuIcon />
-            )}
-          </motion.div>
-        </div>
+          {game.iconFile ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/games/${game.iconFile}`}
+              alt={game.name}
+              width={30}
+              height={30}
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+          ) : (
+            <GomokuIcon />
+          )}
+        </motion.div>
+      </div>
 
-        {/* info zone */}
-        <div
-          style={{
-            padding: "12px 14px 13px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(0,0,0,0.20)",
-          }}
+      {/* info zone */}
+      <div
+        style={{
+          padding: "12px 14px 13px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(0,0,0,0.20)",
+        }}
+      >
+        <p
+          className="font-sans font-bold"
+          style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", marginBottom: 4, lineHeight: 1.2 }}
         >
-          <p
-            className="font-sans font-bold"
-            style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", marginBottom: 4, lineHeight: 1.2 }}
-          >
-            {game.name}
-          </p>
-          <p
+          {game.name}
+        </p>
+        <p
+          className="font-mono"
+          style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.3, marginBottom: 8 }}
+        >
+          {game.desc}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span
             className="font-mono"
-            style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.3, marginBottom: 8 }}
+            style={{
+              fontSize: 9,
+              color: game.accent,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.04)",
+              padding: "1px 6px",
+              borderRadius: 4,
+              letterSpacing: "0.04em",
+            }}
           >
-            {game.desc}
-          </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span
-              className="font-mono"
-              style={{
-                fontSize: 9,
-                color: game.accent,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                padding: "1px 6px",
-                borderRadius: 4,
-                letterSpacing: "0.04em",
-              }}
-            >
-              {game.badge}
-            </span>
-            <motion.span
-              initial={{ opacity: 0, x: -4 }}
-              whileHover={{ opacity: 1, x: 0 }}
-              style={{ fontSize: 12, color: game.accent, fontFamily: "monospace" }}
-            >
-              →
-            </motion.span>
-          </div>
+            {game.badge}
+          </span>
         </div>
-      </motion.div>
-    </Link>
+      </div>
+    </motion.div>
   );
 }
 
 // ── Section ────────────────────────────────────────────────
 export default function GamesSection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, amount: 0.15 });
+  const [inFan, setInFan] = useState(true);
+
+  useEffect(() => {
+    if (isInView && inFan) {
+      const timer = setTimeout(() => setInFan(false), 120);
+      return () => clearTimeout(timer);
+    }
+  }, [isInView, inFan]);
+
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="mb-16 sm:mb-24"
-    >
+    <section className="mt-16 sm:mt-24">
       {/* Section header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="flex items-center gap-4 mb-10"
-      >
+      <div className="flex items-center gap-4 mb-10">
         <div className="p-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-bg)] text-[var(--pixel-accent)]">
           <Gamepad2 size={20} />
         </div>
         <h2 className="font-sans text-base md:text-lg font-bold text-[var(--pixel-accent)] tracking-tight uppercase">
           Play Games
         </h2>
-      </motion.div>
+      </div>
 
-      {/* Card grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center">
+      {/* Card area */}
+      <div
+        ref={sectionRef}
+        className={
+          inFan
+            ? "relative mx-auto flex justify-center items-end"
+            : "grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 justify-items-center"
+        }
+        style={inFan ? { height: 280 } : undefined}
+      >
         {GAMES.map((game, i) => (
-          <GameCard key={game.href} game={game} index={i} total={GAMES.length} />
+          <motion.div
+            key={game.href}
+            layout
+            animate={{
+              rotate: inFan ? getFanAngle(i) : 0,
+              scale: inFan ? 0.82 : 1,
+            }}
+            transition={{
+              layout: {
+                type: "spring",
+                stiffness: 160,
+                damping: 22,
+                delay: inFan ? 0 : i * 0.06 + 0.08,
+              },
+              rotate: {
+                type: "spring",
+                stiffness: 160,
+                damping: 22,
+                delay: inFan ? 0 : i * 0.06 + 0.08,
+              },
+              scale: {
+                type: "spring",
+                stiffness: 160,
+                damping: 22,
+                delay: inFan ? 0 : i * 0.06 + 0.08,
+              },
+            }}
+            style={{
+              position: inFan ? "absolute" : "relative",
+              bottom: inFan ? 0 : undefined,
+              transformOrigin: "center bottom",
+              zIndex: inFan ? i : undefined,
+            }}
+          >
+            <Link href={game.href} className="block">
+              <CardVisual game={game} />
+            </Link>
+          </motion.div>
         ))}
       </div>
-    </motion.section>
+    </section>
   );
 }
