@@ -17,13 +17,13 @@ import { calcEquity, type EquityResult } from "./equity";
 // ── Design tokens (Version D) ──
 
 const D = {
-  panelBg:     "rgba(8,6,20,0.85)",
-  panelBorder: "rgba(139,92,246,0.22)",
-  oppBg:       "rgba(6,4,16,0.8)",
-  tableBg:     "rgba(4,3,12,0.9)",
-  tableBorder: "rgba(129,140,248,0.2)",
-  myTurnBorder:"rgba(129,140,248,0.6)",
-  myTurnGlow:  "0 0 0 1px rgba(129,140,248,0.12), 0 0 22px rgba(129,140,248,0.1)",
+  panelBg:     "var(--pixel-card-bg)",
+  panelBorder: "var(--pixel-border)",
+  oppBg:       "color-mix(in oklab, var(--pixel-bg-alt) 80%, transparent)",
+  tableBg:     "color-mix(in oklab, var(--pixel-bg) 90%, transparent)",
+  tableBorder: "var(--pixel-border)",
+  myTurnBorder:"color-mix(in oklab, var(--pixel-accent) 60%, transparent)",
+  myTurnGlow:  "0 0 0 1px color-mix(in oklab, var(--pixel-accent) 12%, transparent), 0 0 22px color-mix(in oklab, var(--pixel-accent) 10%, transparent)",
 } as const;
 
 type LogEntry = { who: "YOU" | "OPP"; action: string; amount: number; phase: string };
@@ -87,7 +87,7 @@ function PhaseFlash({ phase, handNumber }: { phase: string; handNumber: number }
         >
           <motion.div
             className="absolute inset-y-0 w-[60%]"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }}
+            style={{ background: "linear-gradient(90deg, transparent, color-mix(in oklab, var(--pixel-text) 18%, transparent), transparent)" }}
             initial={{ left: "-60%" }}
             animate={{ left: "100%" }}
             transition={{ duration: 0.6, ease: "easeInOut" }}
@@ -229,7 +229,7 @@ function CardView({ card, faceDown, small, highlight, dimmed, delay, fresh }: {
         : "border-gray-300 dark:border-gray-500"
       } bg-white flex flex-col items-center justify-center relative dark:shadow-black/30`}
       style={fresh
-        ? { boxShadow: "0 0 10px rgba(167,139,250,0.35)", willChange: "transform, opacity" }
+        ? { boxShadow: "0 0 10px color-mix(in oklab, var(--pixel-accent-2) 35%, transparent)", willChange: "transform, opacity" }
         : highlight ? { zIndex: 2, boxShadow: "0 0 12px rgba(250,204,21,0.5)" } : { willChange: "transform, opacity" }}
     >
       <span className={`absolute top-0.5 left-1 font-bold ${fs}`} style={{ color: c }}>{rankStr(card.rank)}</span>
@@ -484,17 +484,17 @@ function PotDisplay({ pot, myBet, opponentBet, myChips, opponentChips }: {
         <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">POT</div>
         <AnimatedNumber value={pot} className="font-mono text-base font-bold text-[var(--pixel-warn)]" />
       </div>
-      <div className="w-px h-5 bg-white/8" />
+      <div className="w-px h-5 bg-[var(--pixel-border)]" />
       <div className="text-center">
         <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">BETS</div>
         <AnimatedNumber value={bets} className="font-mono text-sm font-bold text-[var(--pixel-accent-2)]" prefix="+" />
       </div>
-      <div className="w-px h-5 bg-white/8" />
+      <div className="w-px h-5 bg-[var(--pixel-border)]" />
       <div className="text-center">
         <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">TOTAL</div>
         <AnimatedNumber value={total} className="font-mono text-sm font-bold text-[var(--pixel-warn)]" />
       </div>
-      <div className="w-px h-5 bg-white/8" />
+      <div className="w-px h-5 bg-[var(--pixel-border)]" />
       <div className="text-center">
         <div className="font-mono text-[7px] tracking-widest text-[var(--pixel-muted)] mb-0.5">SPR</div>
         <span className="font-mono text-sm font-bold text-[var(--pixel-muted)]">{spr}</span>
@@ -513,7 +513,7 @@ function PotOdds({ toCall, total, equityPct }: { toCall: number; total: number; 
     <div className={`font-mono text-[8px] font-bold px-2 py-0.5 rounded-md border ${
       isGood
         ? "text-[#4ade80] bg-[rgba(74,222,128,0.07)] border-[rgba(74,222,128,0.25)]"
-        : "text-[var(--pixel-muted)] bg-white/3 border-white/8"
+        : "text-[var(--pixel-muted)] bg-[color-mix(in_oklab,var(--pixel-text)_3%,transparent)] border-[var(--pixel-border)]"
     }`}>
       {oddsPct}% pot odds{isGood ? " · Good odds" : " · Poor odds"}
     </div>
@@ -533,12 +533,12 @@ function ChipBar({ myChips, opponentChips }: { myChips: number; opponentChips: n
         <span className="text-[var(--pixel-accent-2)]">OPP {oppPct}%</span>
         <span className="text-[var(--pixel-accent)]">YOU {mePct}%</span>
       </div>
-      <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--pixel-text) 6%, transparent)" }}>
         <motion.div
           className="h-full rounded-full"
           animate={{ width: `${mePct}%` }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          style={{ marginLeft: "auto", background: "linear-gradient(90deg, rgba(129,140,248,0.5), #818cf8)" }}
+          style={{ marginLeft: "auto", background: "linear-gradient(90deg, color-mix(in oklab, var(--pixel-accent) 50%, transparent), var(--pixel-accent))" }}
         />
       </div>
     </div>
@@ -556,9 +556,9 @@ function BlindProgress({ handNumber, smallBlind }: { handNumber: number; smallBl
 
   return (
     <div className="flex items-center gap-2 w-full font-mono text-[8px] text-[var(--pixel-muted)]"
-         style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 7, padding: "4px 10px", background: "rgba(4,3,12,0.5)" }}>
+         style={{ border: "1px solid var(--pixel-border)", borderRadius: 7, padding: "4px 10px", background: "color-mix(in oklab, var(--pixel-bg) 50%, transparent)" }}>
       <span>Blinds <span className="text-[var(--pixel-warn)] font-bold">{smallBlind}/{smallBlind * 2}</span></span>
-      <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--pixel-text) 6%, transparent)" }}>
         <motion.div
           className="h-full rounded-full"
           animate={{ width: `${Math.min(progress * 100, 100)}%` }}
@@ -581,13 +581,13 @@ function ActionLog({ entries, isMyTurn }: { entries: LogEntry[]; isMyTurn: boole
   const visible = entries.slice(-5);
   return (
     <div className="w-full rounded-lg border flex flex-col gap-[3px] px-2 py-1.5"
-         style={{ background: "rgba(4,3,12,0.6)", borderColor: "rgba(255,255,255,0.06)" }}>
+         style={{ background: "color-mix(in oklab, var(--pixel-bg) 60%, transparent)", borderColor: "var(--pixel-border)" }}>
       {visible.map((e, i) => (
         <div key={i} className="flex items-center gap-1.5 font-mono text-[8px] text-[var(--pixel-muted)]">
           <span className={`font-bold w-6 ${e.who === "YOU" ? "text-[var(--pixel-accent)]" : "text-[var(--pixel-accent-2)]"}`}>
             {e.who}
           </span>
-          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgba(139,92,246,0.4)" }} />
+          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "color-mix(in oklab, var(--pixel-accent-2) 40%, transparent)" }} />
           <span className="text-[var(--pixel-text)]">{e.action.toUpperCase()}</span>
           {e.amount > 0 && (
             <span className="ml-auto text-[var(--pixel-warn)]">${e.amount}</span>
@@ -616,7 +616,7 @@ function HandStrengthBadge({ myCards, community }: { myCards: Card[]; community:
   const { name } = evaluateHand(myCards, community);
   return (
     <div className="inline-flex items-center font-mono text-[8px] font-bold px-1.5 py-0.5 rounded-md"
-         style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+         style={{ color: "var(--pixel-accent-2)", background: "color-mix(in oklab, var(--pixel-accent-2) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--pixel-accent-2) 20%, transparent)" }}>
       {name.toUpperCase()}
     </div>
   );
@@ -839,7 +839,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         </span>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md"
-                style={{ color: "var(--pixel-accent)", background: "rgba(129,140,248,0.1)", border: "1px solid rgba(129,140,248,0.2)" }}>
+                style={{ color: "var(--pixel-accent)", background: "color-mix(in oklab, var(--pixel-accent) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--pixel-accent) 20%, transparent)" }}>
             {phaseName}
           </span>
           {canShowEquity && (
@@ -860,7 +860,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
 
       {/* Opponent panel */}
       <div className="rounded-xl backdrop-blur-md p-3"
-           style={{ background: D.oppBg, border: "1px solid rgba(255,255,255,0.07)" }}>
+           style={{ background: D.oppBg, border: "1px solid var(--pixel-border)" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <DealerChip show={!view.amDealer} />
@@ -894,7 +894,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           </div>
           {view.opponentBet > 0 && (
             <span className="ml-auto font-mono text-[10px] font-bold px-2 py-0.5 rounded-md"
-                  style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+                  style={{ color: "var(--pixel-accent-2)", background: "color-mix(in oklab, var(--pixel-accent-2) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--pixel-accent-2) 20%, transparent)" }}>
               ${view.opponentBet}
             </span>
           )}
@@ -916,7 +916,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
            style={{ background: D.tableBg, border: "1px solid " + D.tableBorder }}>
         {/* Top glow */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-12"
-             style={{ background: "linear-gradient(180deg, rgba(129,140,248,0.06), transparent)" }} />
+             style={{ background: "linear-gradient(180deg, color-mix(in oklab, var(--pixel-accent) 6%, transparent), transparent)" }} />
         <PhaseFlash phase={view.phase} handNumber={view.handNumber} />
         <div className="relative flex gap-2 min-h-[74px] items-center justify-center">
           {view.community.length === 0 ? (
@@ -946,7 +946,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
                   initial={{ opacity: 0, scale: 0.3 }}
                   animate={{ opacity: [0, 0.8, 0], scale: 1 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  style={{ width: 140, height: 90, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(167,139,250,0.3), transparent 70%)" }}
+                  style={{ width: 140, height: 90, borderRadius: "50%", background: "radial-gradient(ellipse, color-mix(in oklab, var(--pixel-accent-2) 30%, transparent), transparent 70%)" }}
                 />
               </motion.div>
             )}
@@ -1092,7 +1092,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
         {myTurn && (
           <motion.div
             className="absolute inset-x-0 top-0 h-[2px]"
-            style={{ background: "linear-gradient(90deg, transparent, #818cf8, transparent)" }}
+            style={{ background: "linear-gradient(90deg, transparent, var(--pixel-accent), transparent)" }}
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -1120,7 +1120,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
             <span className="font-sans font-semibold text-xs text-[var(--pixel-accent)]">YOU</span>
             {myTurn && (
               <span className="font-mono text-[8px] font-bold tracking-widest px-1.5 py-0.5 rounded-md"
-                    style={{ color: "#818cf8", background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.25)" }}>
+                    style={{ color: "var(--pixel-accent)", background: "color-mix(in oklab, var(--pixel-accent) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--pixel-accent) 25%, transparent)" }}>
                 YOUR TURN
               </span>
             )}
@@ -1140,7 +1140,7 @@ function PokerTable({ view, isGameOver, onAction, onNextHand, onRematch }: {
           <HandStrengthBadge myCards={view.myCards} community={view.community} />
           {view.myBet > 0 && (
             <span className="ml-auto font-mono text-[10px] font-bold px-2 py-0.5 rounded-md"
-                  style={{ color: "var(--pixel-accent-2)", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+                  style={{ color: "var(--pixel-accent-2)", background: "color-mix(in oklab, var(--pixel-accent-2) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--pixel-accent-2) 20%, transparent)" }}>
               ${view.myBet}
             </span>
           )}
@@ -1226,7 +1226,7 @@ function ConnectCelebration() {
         {/* Center checkmark / connected icon */}
         <motion.div
           className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full"
-          style={{ background: "rgba(129,140,248,0.15)", border: "2px solid var(--pixel-accent)" }}
+          style={{ background: "color-mix(in oklab, var(--pixel-accent) 15%, transparent)", border: "2px solid var(--pixel-accent)" }}
           initial={{ scale: 0 }}
           animate={{ scale: [0, 1.2, 1] }}
           transition={{ duration: 0.5, delay: 0.1, times: [0, 0.6, 1] }}
@@ -1251,7 +1251,7 @@ function ConnectCelebration() {
         className="text-center space-y-2"
       >
         <div className="font-sans font-bold text-xl"
-             style={{ background: "linear-gradient(135deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+             style={{ background: "linear-gradient(135deg, var(--pixel-accent), var(--pixel-accent-2))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
           CONNECTED
         </div>
         <motion.div
@@ -1273,7 +1273,7 @@ function ConnectCelebration() {
             style={{
               left: `${20 + i * 20}%`,
               bottom: "10%",
-              color: suit === "♥" || suit === "♦" ? "rgba(239,68,68,0.3)" : "rgba(129,140,248,0.3)"
+              color: suit === "♥" || suit === "♦" ? "rgba(239,68,68,0.3)" : "color-mix(in oklab, var(--pixel-accent) 30%, transparent)"
             }}
             initial={{ y: 0, opacity: 0 }}
             animate={{ y: -200, opacity: [0, 0.6, 0] }}
@@ -1338,7 +1338,7 @@ export default function PokerPage() {
         <motion.div initial={{ opacity: 0, y: -24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-4 text-center md:mb-6">
           <h1
             className="mb-2 font-sans font-bold text-2xl tracking-tight md:text-5xl"
-            style={{ background: "linear-gradient(135deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+            style={{ background: "linear-gradient(135deg, var(--pixel-accent), var(--pixel-accent-2))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
           >
             TEXAS HOLD&apos;EM
           </h1>
