@@ -1728,11 +1728,32 @@ export function useMazeGame() {
     }
   }, [runBuildAnimation]);
 
+  const restartGame = useCallback(() => {
+    const m = modeRef.current;
+    if (m === "single" || m === "local" || (m === "remote" && myRemotePlayerIdRef.current === 1)) {
+      const s = settingsRef.current;
+      const nextMaze = generateMaze(s.rows, s.cols, s.difficulty);
+      if (m === "remote") {
+        const goal = generateGoal(nextMaze, s.difficulty);
+        runBuildAnimation(nextMaze, "remote", true, goal);
+        sendRef.current?.({
+          type: "maze_sync",
+          maze: nextMaze,
+          settings: s,
+          goalPos: goal,
+          timestamp: Date.now(),
+        });
+      } else {
+        runBuildAnimation(nextMaze, m, m === "local");
+      }
+    }
+  }, [runBuildAnimation]);
+
   useRoomUrl(roomCode, phase);
 
   return {
     // Settings
-    settings, setSettings, settingsOpen, setSettingsOpen, handleSettingsClose,
+    settings, setSettings, settingsOpen, setSettingsOpen, handleSettingsClose, restartGame,
 
     // Maze display
     cellSize, displayMaze, displayRows, displayCols,

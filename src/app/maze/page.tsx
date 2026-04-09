@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../features/p2p/config";
@@ -19,7 +19,7 @@ import Confetti from "../components/Confetti";
 export default function MazePage() {
   const {
     // Settings
-    settings, setSettings, settingsOpen, setSettingsOpen, handleSettingsClose,
+    settings, setSettings, settingsOpen, setSettingsOpen, handleSettingsClose, restartGame,
 
     // Maze display
     cellSize, displayMaze, displayRows, displayCols,
@@ -104,6 +104,18 @@ export default function MazePage() {
       </div>
     );
   };
+
+  // Space → restart when game is over
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && winner !== null && !isGenerating) {
+        e.preventDefault();
+        restartGame();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [winner, isGenerating, restartGame]);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
