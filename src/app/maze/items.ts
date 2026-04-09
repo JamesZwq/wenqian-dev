@@ -31,8 +31,8 @@ export const ITEM_META: Record<
   ItemType,
   { label: string; emoji: string; color: string; duration: number }
 > = {
-  SPEED_BOOST: { label: "Speed", emoji: "\u26A1", color: "#FFD700", duration: 3000 },
-  SLOW_TRAP: { label: "Slow", emoji: "\uD83D\uDC0C", color: "#FF6B6B", duration: 3000 },
+  SPEED_BOOST: { label: "Speed", emoji: "\u26A1", color: "#FFD700", duration: 5000 },
+  SLOW_TRAP: { label: "Slow", emoji: "\uD83D\uDC0C", color: "#FF6B6B", duration: 5000 },
   FOG: { label: "Fog", emoji: "\uD83C\uDF2B\uFE0F", color: "#8B8BAE", duration: 5000 },
   X_RAY: { label: "X-Ray", emoji: "\uD83D\uDC41", color: "#00CED1", duration: 2000 },
   BOMB: { label: "Bomb", emoji: "\uD83D\uDCA3", color: "#FF4500", duration: 0 },

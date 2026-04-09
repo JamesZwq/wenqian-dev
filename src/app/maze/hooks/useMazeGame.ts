@@ -965,13 +965,13 @@ export function useMazeGame() {
           e.type === "SPEED_BOOST" &&
           e.targetPlayer === playerId
         ) {
-          delay = Math.floor(delay / 2);
+          delay = Math.floor(delay / 3);
         }
         if (
           e.type === "SLOW_TRAP" &&
           e.targetPlayer === playerId
         ) {
-          delay = delay * 2;
+          delay = delay * 3;
         }
       }
 
