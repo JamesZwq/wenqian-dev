@@ -14,6 +14,7 @@ import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverl
 import { useMazeGame } from "./hooks/useMazeGame";
 import { AnimatedCircle } from "./components/AnimatedCircle";
 import ShareButton from "../components/ShareButton";
+import Confetti from "../components/Confetti";
 
 export default function MazePage() {
   const {
@@ -106,6 +107,15 @@ export default function MazePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
+      {/* Confetti on win */}
+      <Confetti active={
+        winner !== null && (
+          mode === "single" ||
+          (mode === "remote" && winner === myRemotePlayerId) ||
+          (mode === "local" && winner === 1)
+        )
+      } />
+
       <motion.div
         initial={{ opacity: 0, x: -16 }}
         animate={{ opacity: 1, x: 0 }}
