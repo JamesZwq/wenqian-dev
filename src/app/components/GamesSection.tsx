@@ -75,8 +75,8 @@ function CardVisual({ game }: { game: Game }) {
         flexDirection: "column",
         border: `1px solid var(--pixel-border)`,
         background: "var(--pixel-card-bg)",
-        backdropFilter: "blur(24px) saturate(160%)",
-        WebkitBackdropFilter: "blur(24px) saturate(160%)",
+        backdropFilter: "blur(12px) saturate(140%)",
+        WebkitBackdropFilter: "blur(12px) saturate(140%)",
         position: "relative",
         boxShadow: "none",
       }}

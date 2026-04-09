@@ -41,16 +41,21 @@ function TypewriterLine({ text, delay = 0, onComplete }: { text: string; delay?:
     }
     const timer = setTimeout(() => {
       let i = 0;
-      const id = setInterval(() => {
+      let lastTime = 0;
+      const step = (now: number) => {
+        if (now - lastTime < 50) { requestAnimationFrame(step); return; } // ~20 chars/sec
+        lastTime = now;
         i++;
         setDisplay(text.slice(0, i));
         if (i >= text.length) {
-          clearInterval(id);
           setDone(true);
           onComplete?.();
+          return;
         }
-      }, 35);
-      return () => clearInterval(id);
+        requestAnimationFrame(step);
+      };
+      const raf = requestAnimationFrame(step);
+      return () => cancelAnimationFrame(raf);
     }, delay);
     return () => clearTimeout(timer);
   }, [text, delay, onComplete]);
