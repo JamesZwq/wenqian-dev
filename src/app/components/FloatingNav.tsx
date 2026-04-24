@@ -10,8 +10,10 @@ const menuItems = [
   { href: "/maze", label: "Maze Runner", icon: "🏃", color: "var(--pixel-accent-2)", description: "P2P maze race with items & power-ups" },
   { href: "/math", label: "Math Sprint", icon: "🧮", color: "var(--pixel-accent)", description: "Speed arithmetic challenge" },
   { href: "/flash-count", label: "Flash Count", icon: "🧊", color: "var(--pixel-accent-2)", description: "Count 3D blocks before they vanish" },
+  { href: "/pulse-duel", label: "Pulse Duel", icon: "⚔️", color: "var(--pixel-warn)", description: "Shared-clock duel of charge, strike, guard, and break" },
   { href: "/poker", label: "Texas Hold'em", icon: "♠️", color: "var(--pixel-warn)", description: "Heads-up P2P poker, blinds escalate" },
   { href: "/sudoku", label: "Sudoku", icon: "🔢", color: "var(--pixel-accent)", description: "Solo or P2P race — same puzzle, fastest wins" },
+  { href: "/schulte", label: "Schulte", icon: "⚡", color: "var(--pixel-warn)", description: "Reaction speed test — click numbers in order" },
   { href: "/halli-galli", label: "Halli Galli", icon: "🔔", color: "var(--pixel-warn)", description: "Ring the bell when any fruit totals exactly 5!" },
 ];
 

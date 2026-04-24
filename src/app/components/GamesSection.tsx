@@ -21,8 +21,10 @@ const GAMES: Game[] = [
   { href: "/maze",        name: "Maze Runner",   desc: "P2P race + items",       badge: "Race",   accent: "#f97316", glow: "rgba(249,115,22,0.5)",  iconFile: "maze-1-svgrepo-com.svg"     },
   { href: "/math",        name: "Math Sprint",   desc: "Speed arithmetic",       badge: "Solo",   accent: "#10b981", glow: "rgba(16,185,129,0.5)",  iconFile: "math-svgrepo-com.svg"       },
   { href: "/flash-count", name: "Flash Count",   desc: "Count 3D blocks",        badge: "Memory", accent: "#3b82f6", glow: "rgba(59,130,246,0.5)",  iconFile: "cube-svgrepo-com.svg"       },
+  { href: "/pulse-duel",  name: "Pulse Duel",    desc: "Lag-aware mind game",    badge: "Duel",   accent: "#ef4444", glow: "rgba(239,68,68,0.45)",  iconFile: "pulse-duel-svgrepo-custom.svg" },
   { href: "/poker",       name: "Texas Hold'em", desc: "P2P poker",              badge: "Poker",  accent: "#ef4444", glow: "rgba(239,68,68,0.5)",   iconFile: "clovers-poker-svgrepo-com.svg" },
   { href: "/sudoku",      name: "Sudoku",        desc: "Solo or P2P race",       badge: "Puzzle", accent: "#8b5cf6", glow: "rgba(139,92,246,0.5)",  iconFile: "sudoku-svgrepo-com.svg"     },
+  { href: "/schulte",     name: "Schulte",       desc: "Reaction speed test",    badge: "Speed",  accent: "#ec4899", glow: "rgba(236,72,153,0.5)"  },
   { href: "/halli-galli", name: "Halli Galli",   desc: "Ring at 5 fruits",       badge: "Party",  accent: "#f59e0b", glow: "rgba(245,158,11,0.5)",  iconFile: "bell-svgrepo-com.svg"       },
   { href: "/chat",        name: "P2P Chat",      desc: "Encrypted, no server",   badge: "Chat",   accent: "#14b8a6", glow: "rgba(20,184,166,0.5)",  iconFile: "chat-round-dots-svgrepo-com.svg" },
 ];
@@ -51,6 +53,30 @@ function GomokuIcon() {
       <circle cx="9"  cy="17" r="2.2" fill="none" stroke="white" strokeWidth="1.4" />
       <circle cx="14" cy="12" r="2.2" fill="none" stroke="white" strokeWidth="1.4" />
       <circle cx="4"  cy="12" r="2.2" fill="none" stroke="white" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+// ── Schulte custom inline SVG ──────────────────────────────
+function SchulteIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      {/* 3x3 grid outline */}
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="white" strokeWidth="1.4" fill="none" opacity="0.4"/>
+      <line x1="9" y1="3" x2="9" y2="21" stroke="white" strokeWidth="1" opacity="0.4"/>
+      <line x1="15" y1="3" x2="15" y2="21" stroke="white" strokeWidth="1" opacity="0.4"/>
+      <line x1="3" y1="9" x2="21" y2="9" stroke="white" strokeWidth="1" opacity="0.4"/>
+      <line x1="3" y1="15" x2="21" y2="15" stroke="white" strokeWidth="1" opacity="0.4"/>
+      {/* Some highlighted numbers in sequence — shown with scrambled positions */}
+      <text x="6" y="8" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">3</text>
+      <text x="12" y="8" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">7</text>
+      <text x="18" y="8" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">1</text>
+      <text x="6" y="14" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">9</text>
+      <text x="12" y="14" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">2</text>
+      <text x="18" y="14" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">5</text>
+      <text x="6" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">8</text>
+      <text x="12" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">4</text>
+      <text x="18" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">6</text>
     </svg>
   );
 }
@@ -138,6 +164,8 @@ function CardVisual({ game }: { game: Game }) {
               height={30}
               style={{ filter: "brightness(0) invert(1)" }}
             />
+          ) : game.name === "Schulte" ? (
+            <SchulteIcon />
           ) : (
             <GomokuIcon />
           )}
