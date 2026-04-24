@@ -1,0 +1,691 @@
+.page {
+  --bg: #05070b;
+  --bg-alt: #0a1017;
+  --surface: rgba(12, 19, 27, 0.92);
+  --surface-soft: rgba(15, 24, 34, 0.72);
+  --line: rgba(111, 210, 255, 0.2);
+  --line-strong: rgba(111, 210, 255, 0.42);
+  --text: #edf4f9;
+  --muted: #9ab0c3;
+  --accent: #5bd1ff;
+  --accent-2: #f7bf4f;
+  --accent-3: #ff7557;
+  --max: 1180px;
+  background:
+    radial-gradient(circle at top, rgba(91, 209, 255, 0.1), transparent 30%),
+    linear-gradient(180deg, #061018 0%, #05070b 30%, #05070b 100%);
+  color: var(--text);
+}
+
+.page :global(*) {
+  box-sizing: border-box;
+}
+
+.container {
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+}
+
+.hero {
+  position: relative;
+  min-height: 88svh;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.heroImage {
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.06);
+  animation: drift 26s ease-in-out infinite alternate;
+}
+
+.heroScrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 11, 0.08), rgba(5, 7, 11, 0.68) 42%, rgba(5, 7, 11, 0.94)),
+    linear-gradient(90deg, rgba(5, 7, 11, 0.94) 0%, rgba(5, 7, 11, 0.7) 44%, rgba(5, 7, 11, 0.3) 100%);
+}
+
+.heroGrid {
+  position: relative;
+  z-index: 1;
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 96px 0 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.8fr);
+  gap: 48px;
+  align-items: end;
+}
+
+.heroCopy,
+.heroAside,
+.heroStats,
+.credit {
+  animation: fadeUp 700ms ease both;
+}
+
+.heroCopy {
+  animation-delay: 80ms;
+}
+
+.heroAside {
+  animation-delay: 180ms;
+}
+
+.heroStats {
+  animation-delay: 280ms;
+}
+
+.kicker {
+  margin: 0 0 14px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  max-width: 12ch;
+  margin: 0;
+  font-size: clamp(2.8rem, 5.5vw, 5.6rem);
+  line-height: 0.95;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+.heroLead {
+  max-width: 62ch;
+  margin: 22px 0 0;
+  font-size: clamp(1rem, 1.7vw, 1.18rem);
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.heroActions,
+.bottomActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.primaryAction {
+  background: var(--accent);
+  color: #081019;
+}
+
+.secondaryAction {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.primaryAction:hover,
+.secondaryAction:hover {
+  transform: translateY(-1px);
+}
+
+.heroAside {
+  align-self: center;
+  padding: 20px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.heroAsideLabel,
+.claimLabel,
+.techniqueStep {
+  margin: 0 0 12px;
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.scrollCue {
+  margin-top: 26px;
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scrollCue::after {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 54px;
+  margin-top: 10px;
+  background: linear-gradient(180deg, var(--accent), transparent);
+}
+
+.heroStats {
+  position: relative;
+  z-index: 1;
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 0 0 34px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.statItem {
+  padding: 16px 14px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+}
+
+.statItem strong {
+  display: block;
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  line-height: 1;
+  color: var(--accent);
+}
+
+.statItem span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.credit {
+  position: relative;
+  z-index: 1;
+  width: min(var(--max), calc(100vw - 32px));
+  margin: 0 auto;
+  padding-bottom: 14px;
+  color: rgba(237, 244, 249, 0.58);
+  font-size: 0.84rem;
+}
+
+.credit a {
+  color: inherit;
+}
+
+.band,
+.bandAlt,
+.finalBand,
+.techniqueSection {
+  position: relative;
+}
+
+.band {
+  padding: 88px 0;
+}
+
+.bandAlt {
+  padding: 88px 0;
+  background:
+    linear-gradient(180deg, rgba(12, 19, 27, 0.92), rgba(7, 11, 16, 0.92)),
+    var(--bg-alt);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.finalBand {
+  padding: 88px 0 96px;
+  background: linear-gradient(180deg, rgba(91, 209, 255, 0.06), transparent 18%), var(--bg);
+}
+
+.techniqueSection {
+  padding: 88px 0;
+}
+
+.sectionHeading {
+  margin-bottom: 34px;
+}
+
+.sectionHeading h2 {
+  max-width: 14ch;
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.problemLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 32px;
+}
+
+.problemNarrative {
+  display: grid;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.challengeGrid,
+.correctnessGrid,
+.formulaGrid,
+.contributionGrid,
+.overviewMetrics {
+  display: grid;
+  gap: 14px;
+}
+
+.challengeGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.challengeCard,
+.correctnessItem,
+.formulaPanel,
+.contributionCard,
+.metricPanel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 18px;
+}
+
+.challengeCard h3,
+.correctnessItem h3,
+.formulaPanel h3,
+.contributionCard h3,
+.runList h3 {
+  margin: 0 0 12px;
+  font-size: 1.02rem;
+}
+
+.challengeCard p,
+.correctnessItem p,
+.formulaPanel p,
+.contributionCard p,
+.metricPanel span,
+.runItem span,
+.claimBoundary p,
+.commandNote {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.techniqueLayout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.08fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.stickyPanel {
+  position: sticky;
+  top: 86px;
+}
+
+.stickyVisual {
+  position: relative;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #020406;
+}
+
+.detailImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.stickyScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 4, 6, 0.1), rgba(2, 4, 6, 0.85));
+}
+
+.stickyQuote {
+  position: absolute;
+  inset: auto 18px 18px 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.techniqueFlow {
+  display: grid;
+  gap: 12px;
+}
+
+.techniqueCard {
+  padding: 22px 0 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.techniqueHeader,
+.correctnessHeader,
+.formulaTitle {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.techniqueHeader h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.techniqueCard p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.codeBlock,
+.commandLine {
+  margin: 18px 0 0;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(1, 4, 8, 0.88);
+  padding: 14px 16px;
+  color: #d7eef9;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.formulaGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.formulaTitle {
+  align-items: center;
+}
+
+.correctnessGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.correctnessHeader,
+.formulaTitle {
+  margin-bottom: 12px;
+}
+
+.resultsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.overviewMetrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 20px;
+}
+
+.metricPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.metricPanel strong {
+  font-size: 1.18rem;
+}
+
+.datasetTable,
+.runList,
+.commandPanel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow,
+.runItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.2fr) 92px 72px;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+}
+
+.tableHeader {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tableRow {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background-color 180ms ease;
+}
+
+.tableRow:hover,
+.runItem:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tableRow strong,
+.runItem strong {
+  display: block;
+}
+
+.tableRow span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.barCell {
+  display: grid;
+  gap: 8px;
+}
+
+.barTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.runList {
+  padding: 16px 18px 6px;
+}
+
+.runList h3 {
+  margin-bottom: 8px;
+}
+
+.runItem {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.1fr) 84px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.runItem > div:last-of-type,
+.runItem > div:first-of-type {
+  display: grid;
+  gap: 4px;
+}
+
+.contributionGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.claimBoundary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.claimBoundary > div {
+  padding: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+}
+
+.finalLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.commandPanel {
+  padding: 18px;
+}
+
+.commandLine {
+  margin-top: 0;
+}
+
+.commandLine + .commandLine {
+  margin-top: 10px;
+}
+
+.commandNote {
+  margin-top: 16px;
+}
+
+.commandNote span {
+  color: var(--text);
+}
+
+@keyframes drift {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.12) translate3d(2%, -1.5%, 0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (max-width: 960px) {
+  .hero {
+    min-height: auto;
+  }
+
+  .heroGrid,
+  .problemLayout,
+  .techniqueLayout,
+  .resultsGrid,
+  .finalLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .heroGrid {
+    padding-top: 86px;
+    gap: 22px;
+  }
+
+  .heroTitle {
+    max-width: 12.5ch;
+  }
+
+  .heroStats,
+  .challengeGrid,
+  .correctnessGrid,
+  .formulaGrid,
+  .contributionGrid,
+  .overviewMetrics,
+  .claimBoundary {
+    grid-template-columns: 1fr;
+  }
+
+  .stickyPanel {
+    position: static;
+  }
+
+  .stickyVisual {
+    min-height: 360px;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow,
+  .runItem {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .container,
+  .heroGrid,
+  .heroStats,
+  .credit {
+    width: min(var(--max), calc(100vw - 24px));
+  }
+
+  .band,
+  .bandAlt,
+  .techniqueSection,
+  .finalBand {
+    padding: 68px 0;
+  }
+
+  .heroGrid {
+    padding-bottom: 32px;
+  }
+
+  .heroLead {
+    font-size: 1rem;
+  }
+
+  .statItem {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .stickyQuote {
+    inset: auto 14px 14px 14px;
+    font-size: 1rem;
+  }
+}

@@ -6,135 +6,258 @@ import { useP2PChat } from "@/features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "@/features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
+import {
+  createClockSyncSample,
+  estimatePeerClockMs,
+  getLagCompensationWindowMs,
+  mergeClockSyncEstimate,
+  type ClockSyncEstimate,
+} from "@/features/p2p/lib/clockSync";
 import type { FullHalliState, GameMode, HalliPacket, HalliView } from "../types";
-import { applyBell, applyAutoFlip, createInitialState, createView } from "../gameLogic";
+import { advanceStateToTime, applyBell, createInitialState, createView } from "../gameLogic";
+
+type BellClaim = {
+  player: 0 | 1;
+  boardVersion: number;
+  pressedAtHostTime: number;
+  receivedAtHostTime: number;
+};
+
+type BellContest = {
+  boardVersion: number;
+  claims: BellClaim[];
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 export function useHalliGalliGame() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const joinPeerId = useJoinParam();
-  useEffect(() => { if (joinPeerId) setGameMode("p2p"); }, [joinPeerId]);
+  const resolvedGameMode: GameMode = joinPeerId ? "p2p" : gameMode;
 
   const [myIndex, setMyIndex] = useState<0 | 1 | null>(null);
   const [fullState, setFullState] = useState<FullHalliState | null>(null);
-  const [guestView, setGuestView] = useState<HalliView | null>(null);
   const [countdownEnd, setCountdownEnd] = useState<number | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [lastRemoteMessageAt, setLastRemoteMessageAt] = useState<number | null>(null);
+  const [clockSync, setClockSync] = useState<ClockSyncEstimate | null>(null);
 
   const myIndexRef = useRef<0 | 1 | null>(null);
   const fullStateRef = useRef<FullHalliState | null>(null);
   const sendRef = useRef<(p: HalliPacket) => boolean>(() => false);
   const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const autoFlipRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const bellLockRef = useRef(false);
+  const bellResolveRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const bellContestRef = useRef<BellContest | null>(null);
+  const clockSyncRef = useRef<ClockSyncEstimate | null>(null);
 
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
   useEffect(() => { fullStateRef.current = fullState; }, [fullState]);
 
-  const syncToGuest = useCallback((state: FullHalliState) => {
-    sendRef.current({ type: "sync", view: createView(state, 1), timestamp: Date.now() });
+  const updateClockSync = useCallback((next: ClockSyncEstimate | null) => {
+    clockSyncRef.current = next;
+    setClockSync(next);
+    setLatencyMs(next ? Math.round(next.rttMs) : null);
   }, []);
 
-  const processHostBell = useCallback((ringer: 0 | 1) => {
-    if (bellLockRef.current) return;
-    const s = fullStateRef.current;
-    if (!s || s.phase !== "playing") return;
-    bellLockRef.current = true;
+  const updateFullState = useCallback((next: FullHalliState | null) => {
+    fullStateRef.current = next;
+    setFullState(next);
+  }, []);
 
-    const ns = applyBell(s, ringer);
-    setFullState(ns);
-    fullStateRef.current = ns;
-    syncToGuest(ns);
+  const clearBellContest = useCallback(() => {
+    if (bellResolveRef.current) clearTimeout(bellResolveRef.current);
+    bellResolveRef.current = undefined;
+    bellContestRef.current = null;
+  }, []);
 
-    setTimeout(() => { bellLockRef.current = false; }, 800);
-  }, [syncToGuest]);
+  const syncFullState = useCallback((state: FullHalliState) => {
+    sendRef.current({ type: "sync", state, hostSentAt: Date.now() });
+  }, []);
+
+  const createNewMatch = useCallback((targetScore: number, startAt = Date.now()) => {
+    const next = createInitialState(targetScore, startAt);
+    updateFullState(next);
+    clearBellContest();
+    syncFullState(next);
+  }, [clearBellContest, syncFullState, updateFullState]);
+
+  const resolveBellContest = useCallback((expectedBoardVersion: number) => {
+    const contest = bellContestRef.current;
+    clearBellContest();
+
+    const current = fullStateRef.current;
+    if (!contest || !current || current.phase !== "playing") return;
+    if (contest.boardVersion !== expectedBoardVersion || current.boardVersion !== expectedBoardVersion) return;
+
+    const winner = [...contest.claims].sort((a, b) => {
+      if (a.pressedAtHostTime !== b.pressedAtHostTime) {
+        return a.pressedAtHostTime - b.pressedAtHostTime;
+      }
+      return a.receivedAtHostTime - b.receivedAtHostTime;
+    })[0];
+
+    if (!winner) return;
+
+    const resolvedAt = Math.max(Date.now(), winner.pressedAtHostTime);
+    const next = applyBell(current, winner.player, resolvedAt);
+    updateFullState(next);
+    syncFullState(next);
+  }, [clearBellContest, syncFullState, updateFullState]);
+
+  const registerBellClaim = useCallback((claim: BellClaim) => {
+    const current = fullStateRef.current;
+    if (!current || current.phase !== "playing") return;
+    if (claim.boardVersion !== current.boardVersion) return;
+
+    let contest = bellContestRef.current;
+    if (!contest || contest.boardVersion !== claim.boardVersion) {
+      clearBellContest();
+      contest = { boardVersion: claim.boardVersion, claims: [] };
+      bellContestRef.current = contest;
+    }
+
+    const existing = contest.claims.find((entry) => entry.player === claim.player);
+    if (existing) {
+      if (claim.pressedAtHostTime < existing.pressedAtHostTime) {
+        existing.pressedAtHostTime = claim.pressedAtHostTime;
+        existing.receivedAtHostTime = claim.receivedAtHostTime;
+      }
+    } else {
+      contest.claims.push(claim);
+    }
+
+    if (contest.claims.length >= 2) {
+      resolveBellContest(claim.boardVersion);
+      return;
+    }
+
+    const waitMs = getLagCompensationWindowMs(
+      clockSyncRef.current?.rttMs ?? null,
+      clockSyncRef.current?.jitterMs ?? null,
+    );
+
+    bellResolveRef.current = setTimeout(() => {
+      resolveBellContest(claim.boardVersion);
+    }, waitMs);
+  }, [clearBellContest, resolveBellContest]);
+
+  const getHostNow = useCallback((localNow = Date.now()) => {
+    return myIndexRef.current === 0
+      ? localNow
+      : estimatePeerClockMs(clockSyncRef.current?.offsetMs ?? null, localNow);
+  }, []);
 
   const handleIncomingData = useCallback((payload: HalliPacket) => {
     if (!payload?.type) return;
     setLastRemoteMessageAt(Date.now());
 
     if (payload.type === "ping") {
-      sendRef.current({ type: "pong", sentAt: payload.sentAt });
+      sendRef.current({
+        type: "pong",
+        echoSentAt: payload.sentAt,
+        responderNow: Date.now(),
+      });
       return;
     }
+
     if (payload.type === "pong") {
-      setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
+      const sample = createClockSyncSample(payload.echoSentAt, Date.now(), payload.responderNow);
+      updateClockSync(mergeClockSyncEstimate(clockSyncRef.current, sample));
+      return;
+    }
+
+    if (payload.type === "sync") {
+      clearBellContest();
+      updateFullState(payload.state);
       return;
     }
 
     const idx = myIndexRef.current;
 
-    if (payload.type === "sync" && idx === 1) {
-      setGuestView(payload.view);
-      return;
-    }
-
     if (idx === 0) {
       if (payload.type === "bell") {
-        processHostBell(1);
+        const receivedAtHostTime = Date.now();
+        const plausibleLookbackMs = Math.max(450, Math.round((clockSyncRef.current?.rttMs ?? 120) * 1.35));
+
+        registerBellClaim({
+          player: 1,
+          boardVersion: payload.boardVersion,
+          pressedAtHostTime: clamp(
+            payload.claimedHostPressAt,
+            receivedAtHostTime - plausibleLookbackMs,
+            receivedAtHostTime + 24,
+          ),
+          receivedAtHostTime,
+        });
         return;
       }
+
       if (payload.type === "rematch") {
-        const s = fullStateRef.current;
-        const ts = s?.targetScore ?? 50;
-        const ns = createInitialState(ts);
-        setFullState(ns); fullStateRef.current = ns;
-        syncToGuest(ns);
+        const targetScore = fullStateRef.current?.targetScore ?? 50;
+        createNewMatch(targetScore, Date.now());
         return;
       }
+
       if (payload.type === "settings") {
-        const s = fullStateRef.current;
-        if (s) {
-          const ns = { ...s, targetScore: payload.targetScore };
-          setFullState(ns); fullStateRef.current = ns;
-          syncToGuest(ns);
-        }
-        return;
+        const current = fullStateRef.current;
+        if (!current) return;
+        const next = { ...current, targetScore: payload.targetScore };
+        updateFullState(next);
+        syncFullState(next);
       }
     }
-  }, [processHostBell, syncToGuest]);
+  }, [clearBellContest, createNewMatch, registerBellClaim, syncFullState, updateClockSync, updateFullState]);
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
-  const { phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep } =
-    usePeerConnection<HalliPacket>({
-      connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
-      handshake: { site: "wenqian.me", game: "halli-galli" },
-      onData: handleIncomingData,
-      onChat,
-      acceptIncomingConnections: true,
-      onConnected: ({ direction, reconnected }) => {
-        if (reconnected) {
-          // Host resends current game state on reconnection
-          if (myIndexRef.current === 0 && fullStateRef.current) {
-            setTimeout(() => syncToGuest(fullStateRef.current!), 200);
-          }
-          return;
+  const {
+    phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline,
+    connect, send, sendChat, clearError, retryLastConnection, reinitialize, roomCode, connectSubstep,
+  } = usePeerConnection<HalliPacket>({
+    connectTimeoutMs: P2P_CONNECT_TIMEOUT_MS,
+    handshake: { site: "wenqian.me", game: "halli-galli" },
+    onData: handleIncomingData,
+    onChat,
+    acceptIncomingConnections: true,
+    onConnected: ({ direction, reconnected }) => {
+      if (reconnected) {
+        clearBellContest();
+        if (myIndexRef.current === 0 && fullStateRef.current) {
+          setTimeout(() => syncFullState(fullStateRef.current!), 200);
         }
-        const cdEnd = Date.now() + 3800; // 3-2-1-GO countdown
-        setCountdownEnd(cdEnd);
-        if (direction === "outgoing") {
-          setMyIndex(0); myIndexRef.current = 0;
-          setTimeout(() => {
-            const ns = createInitialState(50);
-            // First flip happens after countdown + random 3-5s
-            ns.nextFlipAt = cdEnd + 3000 + Math.floor(Math.random() * 2001);
-            setFullState(ns); fullStateRef.current = ns;
-            syncToGuest(ns);
-          }, 200);
-        } else {
-          setMyIndex(1); myIndexRef.current = 1;
-        }
-      },
-      onDisconnected: () => {
-        setMyIndex(null); myIndexRef.current = null;
-        setFullState(null); setGuestView(null);
-        setLatencyMs(null); setLastRemoteMessageAt(null);
-        bellLockRef.current = false;
-        if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
-        autoFlipRef.current = undefined;
-      },
-    });
+        return;
+      }
+
+      const cdEnd = Date.now() + 3800;
+      setCountdownEnd(cdEnd);
+
+      if (direction === "outgoing") {
+        setMyIndex(0);
+        myIndexRef.current = 0;
+        setTimeout(() => {
+          createNewMatch(50, cdEnd);
+        }, 200);
+      } else {
+        setMyIndex(1);
+        myIndexRef.current = 1;
+      }
+    },
+    onDisconnected: () => {
+      setMyIndex(null);
+      myIndexRef.current = null;
+      updateFullState(null);
+      setLatencyMs(null);
+      setLastRemoteMessageAt(null);
+      setCountdownEnd(null);
+      updateClockSync(null);
+      clearBellContest();
+      if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
+      autoFlipRef.current = undefined;
+    },
+  });
 
   useEffect(() => { sendRef.current = send; }, [send]);
 
@@ -142,82 +265,121 @@ export function useHalliGalliGame() {
     if (!isConnected) {
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       pingIntervalRef.current = undefined;
-      setLatencyMs(null);
       return;
     }
+
     pingIntervalRef.current = setInterval(() => {
-      sendRef.current({ type: "ping", sentAt: Date.now() });
-    }, 2000);
+      sendRef.current({
+        type: "ping",
+        sentAt: Date.now(),
+        senderNow: Date.now(),
+      });
+    }, 1500);
+
     return () => {
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       pingIntervalRef.current = undefined;
     };
-  }, [isConnected]);
+  }, [isConnected, updateClockSync]);
 
-  // Auto-flip timer (host only) — single setTimeout, not polling interval
   useEffect(() => {
-    if (myIndex !== 0 || !fullState || fullState.phase !== "playing" || !isConnected) {
+    if (!isConnected || !fullState || fullState.phase !== "playing" || myIndex === null) {
       if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
       autoFlipRef.current = undefined;
       return;
     }
 
-    const delay = Math.max(0, fullState.nextFlipAt - Date.now());
-    autoFlipRef.current = setTimeout(() => {
-      const s = fullStateRef.current;
-      if (!s || s.phase !== "playing") return;
+    const scheduleTick = () => {
+      const current = fullStateRef.current;
+      if (!current || current.phase !== "playing") return;
 
-      const ns = applyAutoFlip(s);
-      setFullState(ns);
-      fullStateRef.current = ns;
-      syncToGuest(ns);
-    }, delay);
+      if (myIndexRef.current === 0 && bellContestRef.current) {
+        autoFlipRef.current = setTimeout(scheduleTick, 24);
+        return;
+      }
+
+      const hostNow = getHostNow();
+      const advanced = advanceStateToTime(current, hostNow);
+
+      if (advanced !== current) {
+        updateFullState(advanced);
+        if (myIndexRef.current === 0) {
+          syncFullState(advanced);
+        }
+      }
+
+      const next = fullStateRef.current;
+      if (!next || next.phase !== "playing") return;
+
+      const delay = Math.max(16, next.nextFlipAt - getHostNow() + 18);
+      autoFlipRef.current = setTimeout(scheduleTick, delay);
+    };
+
+    scheduleTick();
 
     return () => {
       if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
       autoFlipRef.current = undefined;
     };
-  }, [myIndex, fullState?.phase, fullState?.nextFlipAt, isConnected, syncToGuest]);
+  }, [fullState, fullState?.nextFlipAt, fullState?.phase, getHostNow, isConnected, myIndex, syncFullState, updateFullState]);
 
   const myView = useMemo<HalliView | null>(() => {
-    if (myIndex === 0 && fullState) return createView(fullState, 0);
-    if (myIndex === 1) return guestView;
-    return null;
-  }, [myIndex, fullState, guestView]);
+    if (myIndex === null || !fullState) return null;
+    return createView(fullState, myIndex);
+  }, [fullState, myIndex]);
 
   const doBell = useCallback(() => {
-    if (myIndex === 0) {
-      processHostBell(0);
-    } else if (myIndex === 1) {
-      sendRef.current({ type: "bell", sentAt: Date.now() });
+    const current = fullStateRef.current;
+    if (!current || current.phase !== "playing") return;
+
+    if (myIndexRef.current === 0) {
+      registerBellClaim({
+        player: 0,
+        boardVersion: current.boardVersion,
+        pressedAtHostTime: Date.now(),
+        receivedAtHostTime: Date.now(),
+      });
+      return;
     }
-  }, [myIndex, processHostBell]);
+
+    if (myIndexRef.current === 1) {
+      sendRef.current({
+        type: "bell",
+        boardVersion: current.boardVersion,
+        claimedHostPressAt: getHostNow(),
+        sentAt: Date.now(),
+      });
+    }
+  }, [getHostNow, registerBellClaim]);
 
   const doRematch = useCallback(() => {
     if (myIndex === 0) {
-      const s = fullStateRef.current;
-      const ts = s?.targetScore ?? 50;
-      const ns = createInitialState(ts);
-      setFullState(ns); fullStateRef.current = ns;
-      syncToGuest(ns);
+      const targetScore = fullStateRef.current?.targetScore ?? 50;
+      createNewMatch(targetScore, Date.now());
     } else {
       sendRef.current({ type: "rematch", sentAt: Date.now() });
     }
-  }, [myIndex, syncToGuest]);
+  }, [createNewMatch, myIndex]);
 
   useRoomUrl(roomCode, phase);
 
   const exitToMenu = useCallback(() => {
     setGameMode("menu");
-    setFullState(null); setGuestView(null);
-    setMyIndex(null); myIndexRef.current = null;
-  }, []);
+    updateFullState(null);
+    setMyIndex(null);
+    myIndexRef.current = null;
+    setCountdownEnd(null);
+    setLatencyMs(null);
+    setLastRemoteMessageAt(null);
+    updateClockSync(null);
+    clearBellContest();
+  }, [clearBellContest, updateClockSync, updateFullState]);
 
   return {
-    gameMode, setGameMode, myIndex, myView,
+    gameMode: resolvedGameMode, setGameMode, myIndex, myView,
     phase, localPeerId, error, isConnected, isReconnecting, reconnectDeadline, roomCode, connectSubstep,
     connect, sendChat, clearError, retryLastConnection, reinitialize, joinPeerId,
-    latencyMs, lastRemoteMessageAt,
+    latencyMs, lastRemoteMessageAt, clockOffsetMs: clockSync?.offsetMs ?? null,
     chatMessages, addMyMessage,
     doBell, doRematch, exitToMenu, countdownEnd,
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import P2PConnectionPanel from "@/features/p2p/components/P2PConnectionPanel";
@@ -10,7 +10,7 @@ import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import ShareButton from "../components/ShareButton";
 import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useHalliGalliGame } from "./hooks/useHalliGalliGame";
-import { FRUIT_EMOJI, FRUIT_COLOR, type HalliCard } from "./types";
+import { FRUIT_EMOJI, type HalliCard } from "./types";
 
 const CONNECTION_DESCRIPTION = [
   "> Share your ID with a friend",
@@ -68,19 +68,6 @@ function CardFace({ card, keyId }: { card: HalliCard; keyId?: string }) {
         <FruitGrid key={fruit} emoji={FRUIT_EMOJI[fruit]} count={count} />
       ))}
     </motion.div>
-  );
-}
-
-function CardBack({ count }: { count: number }) {
-  return (
-    <div className="relative w-[72px] h-24 md:w-20 md:h-28 flex-shrink-0">
-      <div className="w-full h-full rounded-xl border-2 border-[var(--pixel-border)] bg-gradient-to-br from-[var(--pixel-card-bg)] to-[var(--pixel-bg-alt)] flex items-center justify-center shadow-md">
-        <div className="w-3/5 h-3/5 rounded-lg border border-[var(--pixel-border)] opacity-25" />
-      </div>
-      <div className="absolute -bottom-1.5 -right-1.5 rounded-full bg-[var(--pixel-accent)] min-w-[20px] px-1 py-0.5 text-center font-mono text-[10px] font-bold text-[var(--pixel-bg)]">
-        {count}
-      </div>
-    </div>
   );
 }
 
@@ -226,10 +213,11 @@ export default function HalliGalliPage() {
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
                   <h3 className="mb-3 font-sans font-semibold text-xs text-[var(--pixel-accent)]">HOW TO PLAY</h3>
                   <div className="space-y-1 font-mono text-[11px] text-[var(--pixel-muted)]">
-                    <p>&gt; Cards auto-flip every 5 seconds for both players</p>
+                    <p>&gt; Cards auto-flip every 1&ndash;3 seconds on a shared clock</p>
                     <p>&gt; Each player has 2 visible card positions</p>
                     <p>&gt; Cards can show multiple fruit types 🍓🍌🍋🍇</p>
                     <p>&gt; When any fruit totals exactly <span className="text-[var(--pixel-accent)]">5</span>, ring the bell!</p>
+                    <p>&gt; Bell timing is judged with lag compensation, not first packet arrival</p>
                     <p>&gt; Correct bell = <span className="text-[var(--pixel-accent)]">+points</span> (visible card count)</p>
                     <p>&gt; Wrong bell = opponent gets the points instead!</p>
                     <p>&gt; First to <span className="text-[var(--pixel-accent-2)]">50 points</span> wins</p>

@@ -39,8 +39,11 @@ export interface FullHalliState {
   targetScore: number;
   nextFlipAt: number; // host clock timestamp for next auto-flip
   nextFlipper: 0 | 1; // whose card gets flipped next
+  flipCursor: number;
+  flipDelays: number[];
   phase: GamePhase;
   winner: 0 | 1 | null;
+  boardVersion: number;
   lastBell: { valid: boolean; ringer: 0 | 1 } | null;
 }
 
@@ -56,15 +59,16 @@ export interface HalliView {
   oppScore: number;
   targetScore: number;
   nextFlipAt: number;
+  boardVersion: number;
   phase: GamePhase;
   iWon: boolean | null;
   lastBell: { valid: boolean; iWon: boolean } | null;
 }
 
 export type HalliPacket =
-  | { type: "sync"; view: HalliView; timestamp: number }
-  | { type: "bell"; sentAt: number }
+  | { type: "sync"; state: FullHalliState; hostSentAt: number }
+  | { type: "bell"; boardVersion: number; claimedHostPressAt: number; sentAt: number }
   | { type: "rematch"; sentAt: number }
   | { type: "settings"; targetScore: number; sentAt: number }
-  | { type: "ping"; sentAt: number }
-  | { type: "pong"; sentAt: number };
+  | { type: "ping"; sentAt: number; senderNow: number }
+  | { type: "pong"; echoSentAt: number; responderNow: number };

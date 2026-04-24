@@ -1,6 +1,9 @@
 import type { Fruit, FruitEntry, HalliCard, FullHalliState, HalliView } from "./types";
 
 const FRUITS: Fruit[] = ["strawberry", "banana", "lemon", "plum"];
+const DEFAULT_FLIP_DELAY_MS = 1800;
+const FLIP_DELAY_COUNT = 1024;
+const AUTO_FLIP_CATCH_UP_LIMIT = 48;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -41,8 +44,18 @@ export function createDeck(): HalliCard[] {
   return shuffle(cards);
 }
 
-export function createInitialState(targetScore = 50): FullHalliState {
+function createFlipDelays(count = FLIP_DELAY_COUNT): number[] {
+  return Array.from({ length: count }, () => 1000 + Math.floor(Math.random() * 2001));
+}
+
+function getUpcomingDelay(state: FullHalliState): number {
+  return state.flipDelays[state.flipCursor] ?? DEFAULT_FLIP_DELAY_MS;
+}
+
+export function createInitialState(targetScore = 50, startAt = Date.now()): FullHalliState {
   const deck = createDeck();
+  const flipDelays = createFlipDelays();
+
   return {
     deck0: deck.slice(0, 28),
     deck1: deck.slice(28),
@@ -51,10 +64,13 @@ export function createInitialState(targetScore = 50): FullHalliState {
     score0: 0,
     score1: 0,
     targetScore,
-    nextFlipAt: Date.now() + 1000 + Math.floor(Math.random() * 2001),
+    nextFlipAt: startAt + flipDelays[0],
     nextFlipper: 0,
+    flipCursor: 1,
+    flipDelays,
     phase: "playing",
     winner: null,
+    boardVersion: 0,
     lastBell: null,
   };
 }
@@ -112,17 +128,45 @@ export function applyAutoFlip(state: FullHalliState): FullHalliState {
     discard = [...discard, card];
   }
 
+  const nextDelay = getUpcomingDelay(state);
+
   return {
     ...state,
     [deckKey]: deck,
     [discardKey]: discard,
     nextFlipper: (1 - who) as 0 | 1,
-    nextFlipAt: Date.now() + 1000 + Math.floor(Math.random() * 2001),
+    nextFlipAt: state.nextFlipAt + nextDelay,
+    flipCursor: state.flipCursor + 1,
+    boardVersion: state.boardVersion + 1,
     lastBell: null,
   };
 }
 
-export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState {
+export function advanceStateToTime(
+  state: FullHalliState,
+  hostNowMs: number,
+  safetyMarginMs = 18,
+): FullHalliState {
+  let nextState = state;
+  let steps = 0;
+
+  while (
+    nextState.phase === "playing" &&
+    nextState.nextFlipAt <= hostNowMs - safetyMarginMs &&
+    steps < AUTO_FLIP_CATCH_UP_LIMIT
+  ) {
+    nextState = applyAutoFlip(nextState);
+    steps += 1;
+  }
+
+  return nextState;
+}
+
+export function applyBell(
+  state: FullHalliState,
+  ringer: 0 | 1,
+  resolvedAt = Date.now(),
+): FullHalliState {
   if (state.phase !== "playing") return state;
   const valid = isBellValid(state);
   const cards = visibleCards(state);
@@ -147,6 +191,7 @@ export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState 
 
   const isOver = score0 >= state.targetScore || score1 >= state.targetScore;
   const winner = isOver ? (score0 >= state.targetScore ? 0 : 1) : null;
+  const nextDelay = getUpcomingDelay(state);
 
   return {
     ...state,
@@ -154,8 +199,11 @@ export function applyBell(state: FullHalliState, ringer: 0 | 1): FullHalliState 
     deck0, deck1,
     discard0: [],
     discard1: [],
+    nextFlipAt: resolvedAt + nextDelay,
+    flipCursor: state.flipCursor + 1,
     phase: isOver ? "game_over" : "playing",
     winner,
+    boardVersion: state.boardVersion + 1,
     lastBell: { valid, ringer },
   };
 }
@@ -176,6 +224,7 @@ export function createView(state: FullHalliState, playerIndex: 0 | 1): HalliView
     oppScore: iAm0 ? state.score1 : state.score0,
     targetScore: state.targetScore,
     nextFlipAt: state.nextFlipAt,
+    boardVersion: state.boardVersion,
     phase: state.phase,
     iWon: state.winner === null ? null : state.winner === playerIndex,
     lastBell: state.lastBell === null ? null : {
@@ -184,4 +233,3 @@ export function createView(state: FullHalliState, playerIndex: 0 | 1): HalliView
     },
   };
 }
-

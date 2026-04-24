@@ -46,6 +46,12 @@ function getConfig(title: string): GameConfig {
       glow: "rgba(6,182,212,0.22)",
       bg: "linear-gradient(135deg, #011825 0%, #022030 60%, #010e18 100%)",
     };
+  if (t.includes("pulse") || t.includes("duel"))
+    return {
+      accent: "#ef4444",
+      glow: "rgba(239,68,68,0.2)",
+      bg: "linear-gradient(135deg, #170707 0%, #120b0b 48%, #061519 100%)",
+    };
   if (t.includes("halli"))
     return {
       accent: "#eab308",
@@ -467,6 +473,106 @@ function FlashCountVisual() {
   );
 }
 
+// ── Pulse Duel: mirrored rails + action core ─────────────────────
+
+function PulseDuelVisual() {
+  const actions = [
+    { label: "STRIKE", color: "#ef4444" },
+    { label: "GUARD", color: "#06b6d4" },
+    { label: "BREAK", color: "#f59e0b" },
+  ];
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ fontSize: 12, letterSpacing: "0.18em", color: "rgba(255,255,255,0.48)" }}>OPPONENT</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: 28,
+                height: 10,
+                borderRadius: 3,
+                background: i < 3 ? "#ef4444" : "rgba(255,255,255,0.08)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          width: 220,
+          padding: "16px 18px",
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "linear-gradient(90deg, rgba(239,68,68,0.12) 0%, rgba(245,158,11,0.08) 50%, rgba(6,182,212,0.12) 100%)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div
+          style={{
+            height: 10,
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.08)",
+            overflow: "hidden",
+            display: "flex",
+          }}
+        >
+          <div
+            style={{
+              width: "64%",
+              height: "100%",
+              borderRadius: 999,
+              background: "linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)",
+            }}
+          />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {actions.map((action) => (
+            <div
+              key={action.label}
+              style={{
+                flex: 1,
+                borderRadius: 10,
+                border: `1px solid ${action.color}66`,
+                background: `${action.color}18`,
+                color: action.color,
+                padding: "10px 8px",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textAlign: "center",
+              }}
+            >
+              {action.label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
+        <div style={{ fontSize: 12, letterSpacing: "0.18em", color: "rgba(255,255,255,0.48)" }}>YOU</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: 28,
+                height: 10,
+                borderRadius: 3,
+                background: i < 4 ? "#06b6d4" : "rgba(255,255,255,0.08)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Halli Galli: fruit cards + bell ───────────────────────────────
 
 const HG_CARDS = [
@@ -709,6 +815,7 @@ function renderVisual(title: string) {
   if (t.includes("maze")) return <MazeVisual />;
   if (t.includes("math")) return <MathSprintVisual />;
   if (t.includes("flash")) return <FlashCountVisual />;
+  if (t.includes("pulse") || t.includes("duel")) return <PulseDuelVisual />;
   if (t.includes("halli")) return <HalliGalliVisual />;
   if (t.includes("sudoku")) return <SudokuVisual />;
   if (t.includes("chat") || t.includes("p2p")) return <P2PChatVisual />;
