@@ -6,7 +6,7 @@ import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
-import type { GameMode, GameStatus, GridSize, SchultePacket } from "../types";
+import { GRID_SIZES, type GameMode, type GameStatus, type GridSize, type SchultePacket } from "../types";
 
 const WRONG_FLASH_MS = 500;
 const WRONG_PENALTY_MS = 1000;
@@ -70,7 +70,7 @@ export function useSchulteGame() {
   const wrongClickTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const [bestTimes, setBestTimes] = useState<Record<GridSize, number | null>>({
-    3: null, 4: null, 5: null,
+    3: null, 4: null, 5: null, 6: null, 7: null, 8: null, 9: null, 10: null,
   });
   const [isNewBest, setIsNewBest] = useState(false);
 
@@ -103,11 +103,12 @@ export function useSchulteGame() {
 
   // Load best times on mount
   useEffect(() => {
-    setBestTimes({
-      3: loadBestTime(3),
-      4: loadBestTime(4),
-      5: loadBestTime(5),
-    });
+    setBestTimes(
+      GRID_SIZES.reduce(
+        (acc, sz) => ({ ...acc, [sz]: loadBestTime(sz) }),
+        {} as Record<GridSize, number | null>,
+      ),
+    );
   }, []);
 
   // Timer — elapsed includes penalty

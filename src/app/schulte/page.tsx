@@ -10,12 +10,17 @@ import Confetti from "../components/Confetti";
 import { ReconnectingOverlay } from "@/features/p2p/components/ReconnectingOverlay";
 import { useSchulteGame, formatTime } from "./hooks/useSchulteGame";
 import { SchulteGrid } from "./components/SchulteGrid";
-import type { GridSize } from "./types";
+import { GRID_SIZES, type GridSize } from "./types";
 
 const SIZE_LABELS: Record<GridSize, string> = {
   3: "3×3",
   4: "4×4",
   5: "5×5",
+  6: "6×6",
+  7: "7×7",
+  8: "8×8",
+  9: "9×9",
+  10: "10×10",
 };
 
 const CONNECTION_DESCRIPTION = [
@@ -159,16 +164,16 @@ export default function SchultePage() {
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
                   <h3 className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent)]">SOLO</h3>
                   <p className="mb-4 font-mono text-[10px] text-[var(--pixel-muted)]">&gt; Best times recorded per size</p>
-                  <div className="flex flex-col gap-2">
-                    {([3, 4, 5] as GridSize[]).map(sz => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {GRID_SIZES.map(sz => (
                       <button
                         key={sz}
                         onClick={() => startSolo(sz)}
-                        className="group flex items-center justify-between w-full rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                        className="group flex flex-col items-start rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-3 py-2.5 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                       >
-                        <span>{SIZE_LABELS[sz]}</span>
-                        <span className="font-mono text-[10px] text-[var(--pixel-muted)] group-hover:text-[var(--pixel-accent)]">
-                          {bestTimes[sz] !== null ? `BEST: ${formatTime(bestTimes[sz]!)}` : "NO RECORD"}
+                        <span className="text-sm">{SIZE_LABELS[sz]}</span>
+                        <span className="font-mono text-[9px] text-[var(--pixel-muted)] group-hover:text-[var(--pixel-accent)]">
+                          {bestTimes[sz] !== null ? formatTime(bestTimes[sz]!) : "— — —"}
                         </span>
                       </button>
                     ))}
@@ -179,12 +184,12 @@ export default function SchultePage() {
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
                   <h3 className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent-2)]">P2P RACE</h3>
                   <p className="mb-4 font-mono text-[10px] text-[var(--pixel-muted)]">&gt; Select size, then connect to a friend</p>
-                  <div className="mb-3 flex gap-2">
-                    {([3, 4, 5] as GridSize[]).map(sz => (
+                  <div className="mb-3 grid grid-cols-4 gap-1.5">
+                    {GRID_SIZES.map(sz => (
                       <button
                         key={sz}
                         onClick={() => setSize(sz)}
-                        className={`flex-1 rounded-xl border px-2 py-2 font-sans font-semibold text-[10px] transition-[transform,background-color] duration-150 hover:scale-[1.02] ${
+                        className={`rounded-xl border px-2 py-2 font-sans font-semibold text-[10px] transition-[transform,background-color] duration-150 hover:scale-[1.02] ${
                           size === sz
                             ? "border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_15%,transparent)] text-[var(--pixel-accent-2)]"
                             : "border-[var(--pixel-border)] bg-transparent text-[var(--pixel-muted)] hover:border-[var(--pixel-accent-2)] hover:text-[var(--pixel-accent-2)]"
@@ -363,8 +368,8 @@ export default function SchultePage() {
                 {gameMode === "solo" && (
                   <div className="w-full max-w-xl rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-3">
                     <h3 className="mb-2 font-sans font-semibold text-[10px] text-[var(--pixel-accent)]">BEST TIMES</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {([3, 4, 5] as GridSize[]).map(sz => (
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {GRID_SIZES.map(sz => (
                         <div
                           key={sz}
                           className={`rounded-lg border px-2 py-1.5 text-center font-mono ${
@@ -374,7 +379,7 @@ export default function SchultePage() {
                           }`}
                         >
                           <div className="text-[9px] text-[var(--pixel-muted)]">{SIZE_LABELS[sz]}</div>
-                          <div className={`text-xs font-bold ${sz === size ? "text-[var(--pixel-accent)]" : "text-[var(--pixel-text)]"}`}>
+                          <div className={`text-[11px] font-bold ${sz === size ? "text-[var(--pixel-accent)]" : "text-[var(--pixel-text)]"}`}>
                             {bestTimes[sz] !== null ? formatTime(bestTimes[sz]!) : "--:--"}
                           </div>
                         </div>
