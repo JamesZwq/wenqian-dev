@@ -8,8 +8,9 @@ import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import {
   FALSE_START_PENALTY_MS,
-  MAX_DELAY_MS,
-  MIN_DELAY_MS,
+  LIGHT_INTERVAL_MS,
+  MAX_HOLD_MS,
+  MIN_HOLD_MS,
   TOTAL_ROUNDS,
   type GameMode,
   type ReactionPacket,
@@ -19,12 +20,12 @@ import {
 const BEST_SINGLE_KEY = "reaction_best_single";
 const BEST_AVG_KEY = "reaction_best_avg";
 
-export function randomDelay(): number {
-  return Math.floor(MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
+export function randomHold(): number {
+  return Math.floor(MIN_HOLD_MS + Math.random() * (MAX_HOLD_MS - MIN_HOLD_MS));
 }
 
-export function generateDelays(count = TOTAL_ROUNDS): number[] {
-  return Array.from({ length: count }, () => randomDelay());
+export function generateHolds(count = TOTAL_ROUNDS): number[] {
+  return Array.from({ length: count }, () => randomHold());
 }
 
 export function formatMs(ms: number | null | undefined): string {
@@ -97,10 +98,11 @@ export function useReactionGame() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const [myIndex, setMyIndex] = useState<0 | 1 | null>(null);
 
-  const [delays, setDelays] = useState<number[]>([]);
+  // `holds[i]` = how long all 5 lights stay lit before extinguishing on round i
+  const [holds, setHolds] = useState<number[]>([]);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundStatus, setRoundStatus] = useState<RoundStatus>("idle");
-  const [goTimestamp, setGoTimestamp] = useState<number | null>(null);
+  const [litCount, setLitCount] = useState(0);
   const [lastReaction, setLastReaction] = useState<number | null>(null);
   const [lastWasFalseStart, setLastWasFalseStart] = useState(false);
 
@@ -112,25 +114,27 @@ export function useReactionGame() {
   const [isNewBestSingle, setIsNewBestSingle] = useState(false);
   const [isNewBestAverage, setIsNewBestAverage] = useState(false);
 
-  const lightsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // High-resolution timestamp (performance.now()) of when lights actually went off ON SCREEN
+  const goPerfRef = useRef<number | null>(null);
+
+  // All scheduled timeouts during the F1 sequence (so we can cancel cleanly)
+  const sequenceTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const startScheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs for stale closures
   const gameModeRef = useRef(gameMode);
   const myIndexRef = useRef(myIndex);
-  const delaysRef = useRef<number[]>([]);
+  const holdsRef = useRef<number[]>([]);
   const roundIndexRef = useRef(0);
   const roundStatusRef = useRef<RoundStatus>("idle");
-  const goTimestampRef = useRef<number | null>(null);
   const myReactionsRef = useRef<(number | null)[]>(emptyReactions());
   const sendRef = useRef<((p: ReactionPacket) => boolean) | null>(null);
 
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
-  useEffect(() => { delaysRef.current = delays; }, [delays]);
+  useEffect(() => { holdsRef.current = holds; }, [holds]);
   useEffect(() => { roundIndexRef.current = roundIndex; }, [roundIndex]);
   useEffect(() => { roundStatusRef.current = roundStatus; }, [roundStatus]);
-  useEffect(() => { goTimestampRef.current = goTimestamp; }, [goTimestamp]);
   useEffect(() => { myReactionsRef.current = myReactions; }, [myReactions]);
 
   const joinPeerId = useJoinParam();
@@ -143,26 +147,24 @@ export function useReactionGame() {
   }, []);
 
   const clearTimers = useCallback(() => {
-    if (lightsTimerRef.current) {
-      clearTimeout(lightsTimerRef.current);
-      lightsTimerRef.current = null;
-    }
+    for (const t of sequenceTimersRef.current) clearTimeout(t);
+    sequenceTimersRef.current = [];
     if (startScheduleTimerRef.current) {
       clearTimeout(startScheduleTimerRef.current);
       startScheduleTimerRef.current = null;
     }
   }, []);
 
-  const resetSession = useCallback((newDelays: number[]) => {
+  const resetSession = useCallback((newHolds: number[]) => {
     clearTimers();
-    setDelays(newDelays);
-    delaysRef.current = newDelays;
+    setHolds(newHolds);
+    holdsRef.current = newHolds;
     setRoundIndex(0);
     roundIndexRef.current = 0;
     setRoundStatus("idle");
     roundStatusRef.current = "idle";
-    setGoTimestamp(null);
-    goTimestampRef.current = null;
+    setLitCount(0);
+    goPerfRef.current = null;
     setLastReaction(null);
     setLastWasFalseStart(false);
     setMyReactions(emptyReactions());
@@ -172,36 +174,64 @@ export function useReactionGame() {
     setIsNewBestAverage(false);
   }, [clearTimers]);
 
-  // ── Internal: actually start the red-lights phase for current round ──
-  const beginRoundFromDelay = useCallback((delayMs: number) => {
+  // Schedule a timeout and track it for cleanup
+  const schedule = useCallback((fn: () => void, ms: number) => {
+    const t = setTimeout(() => {
+      // Remove from list when fired
+      sequenceTimersRef.current = sequenceTimersRef.current.filter(x => x !== t);
+      fn();
+    }, ms);
+    sequenceTimersRef.current.push(t);
+    return t;
+  }, []);
+
+  // Run the F1 light sequence: lights 1..5 turn on at 1s intervals,
+  // then after `holdMs`, all lights extinguish — that's the GO signal.
+  const beginRoundSequence = useCallback((holdMs: number) => {
     clearTimers();
     setRoundStatus("waiting");
     roundStatusRef.current = "waiting";
-    setGoTimestamp(null);
-    goTimestampRef.current = null;
+    setLitCount(0);
+    goPerfRef.current = null;
     setLastReaction(null);
     setLastWasFalseStart(false);
 
-    lightsTimerRef.current = setTimeout(() => {
-      // If user already false-started, bail (status would have changed to result)
+    // Lights 1..5 turn on one at a time, every LIGHT_INTERVAL_MS
+    for (let i = 1; i <= 5; i++) {
+      schedule(() => {
+        if (roundStatusRef.current !== "waiting") return;
+        setLitCount(i);
+      }, i * LIGHT_INTERVAL_MS);
+    }
+
+    // After all 5 are on (5 * LIGHT_INTERVAL_MS) + random hold, extinguish
+    const totalDelay = 5 * LIGHT_INTERVAL_MS + holdMs;
+    schedule(() => {
       if (roundStatusRef.current !== "waiting") return;
-      const now = Date.now();
-      setGoTimestamp(now);
-      goTimestampRef.current = now;
+      // Lights off → React state update will cause the visual change in the next paint.
+      setLitCount(0);
       setRoundStatus("go");
       roundStatusRef.current = "go";
-    }, delayMs);
-  }, [clearTimers]);
+      // Record the timestamp AFTER the browser commits the paint, so the
+      // measured reaction time reflects actual visual perception, not the
+      // moment we called setState (which paints ~16ms later).
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          goPerfRef.current = performance.now();
+        });
+      });
+    }, totalDelay);
+  }, [clearTimers, schedule]);
 
-  // ── Begin round (host-driven in P2P, immediate in solo) ──
+  // Begin round (host-driven in P2P, immediate in solo)
   const startRound = useCallback(() => {
     const idx = roundIndexRef.current;
-    const ds = delaysRef.current;
-    if (idx >= TOTAL_ROUNDS || ds.length === 0) return;
-    const delayMs = ds[idx] ?? randomDelay();
+    const hs = holdsRef.current;
+    if (idx >= TOTAL_ROUNDS || hs.length === 0) return;
+    const holdMs = hs[idx] ?? randomHold();
 
     if (gameModeRef.current === "p2p" && myIndexRef.current === 0) {
-      // Host: announce round_start to keep both clients in sync
+      // Host: announce round_start so guests start their sequence at the same wall-clock instant
       const startAt = Date.now() + 200; // small buffer for network latency
       sendRef.current?.({
         type: "round_start",
@@ -210,13 +240,13 @@ export function useReactionGame() {
         timestamp: Date.now(),
       });
       const wait = Math.max(0, startAt - Date.now());
-      startScheduleTimerRef.current = setTimeout(() => beginRoundFromDelay(delayMs), wait);
+      startScheduleTimerRef.current = setTimeout(() => beginRoundSequence(holdMs), wait);
     } else {
-      beginRoundFromDelay(delayMs);
+      beginRoundSequence(holdMs);
     }
-  }, [beginRoundFromDelay]);
+  }, [beginRoundSequence]);
 
-  // ── Finalize per-round result + persist + advance ──
+  // Finalize per-round result + persist + advance
   const recordReaction = useCallback((ms: number, falseStart: boolean) => {
     const idx = roundIndexRef.current;
     const next = [...myReactionsRef.current];
@@ -228,7 +258,6 @@ export function useReactionGame() {
     setRoundStatus("result");
     roundStatusRef.current = "result";
 
-    // If this was the final round → finalize stats
     if (idx >= TOTAL_ROUNDS - 1) {
       const avg = avgOf(next);
       const best = bestOf(next);
@@ -256,16 +285,15 @@ export function useReactionGame() {
     }
   }, []);
 
-  // ── User clicks the light strip ──
+  // User clicks the light strip
   const handleClick = useCallback(() => {
     const status = roundStatusRef.current;
     if (status === "idle" || status === "result") return;
 
     if (status === "waiting") {
-      // False start — penalty 1000 ms
+      // False start — penalty 1000 ms, kill the in-flight sequence
       clearTimers();
       const ms = FALSE_START_PENALTY_MS;
-      // Send reaction time to opponent
       if (gameModeRef.current === "p2p") {
         sendRef.current?.({
           type: "reaction_time",
@@ -279,9 +307,14 @@ export function useReactionGame() {
     }
 
     if (status === "go") {
-      const now = Date.now();
-      const start = goTimestampRef.current ?? now;
-      const ms = Math.max(0, now - start);
+      const start = goPerfRef.current;
+      if (start === null) {
+        // Click happened in the same frame the lights went off, before paint.
+        // This is essentially impossible unless the user is bot-fast; record minimum.
+        recordReaction(0, false);
+        return;
+      }
+      const ms = Math.max(0, performance.now() - start);
       if (gameModeRef.current === "p2p") {
         sendRef.current?.({
           type: "reaction_time",
@@ -294,17 +327,17 @@ export function useReactionGame() {
     }
   }, [clearTimers, recordReaction]);
 
-  // ── Advance to next round (button) ──
+  // Advance to next round (button)
   const advanceRound = useCallback(() => {
     const idx = roundIndexRef.current;
     if (idx >= TOTAL_ROUNDS - 1) return;
     const nextIdx = idx + 1;
     setRoundIndex(nextIdx);
     roundIndexRef.current = nextIdx;
-    // In P2P, only host triggers round_start. Guests wait.
     if (gameModeRef.current === "p2p" && myIndexRef.current !== 0) {
       setRoundStatus("idle");
       roundStatusRef.current = "idle";
+      setLitCount(0);
       setLastReaction(null);
       setLastWasFalseStart(false);
       return;
@@ -312,39 +345,36 @@ export function useReactionGame() {
     startRound();
   }, [startRound]);
 
-  // ── Solo entry ──
+  // Solo entry
   const startSolo = useCallback(() => {
     setGameMode("solo");
     gameModeRef.current = "solo";
     setMyIndex(null);
     myIndexRef.current = null;
-    const ds = generateDelays();
-    resetSession(ds);
-    // Schedule the first round shortly after mount/animation
+    const hs = generateHolds();
+    resetSession(hs);
     startScheduleTimerRef.current = setTimeout(() => {
-      beginRoundFromDelay(ds[0]);
+      beginRoundSequence(hs[0]);
     }, 600);
-  }, [beginRoundFromDelay, resetSession]);
+  }, [beginRoundSequence, resetSession]);
 
-  // ── New game (solo or P2P host) ──
+  // New game (solo or P2P host)
   const requestNewGame = useCallback(() => {
     if (gameModeRef.current === "solo") {
-      const ds = generateDelays();
-      resetSession(ds);
-      startScheduleTimerRef.current = setTimeout(() => beginRoundFromDelay(ds[0]), 600);
+      const hs = generateHolds();
+      resetSession(hs);
+      startScheduleTimerRef.current = setTimeout(() => beginRoundSequence(hs[0]), 600);
     } else if (gameModeRef.current === "p2p") {
       if (myIndexRef.current === 0) {
-        const ds = generateDelays();
-        resetSession(ds);
-        sendRef.current?.({ type: "puzzle_sync", delays: ds, timestamp: Date.now() });
-        // Schedule first round
+        const hs = generateHolds();
+        resetSession(hs);
+        sendRef.current?.({ type: "puzzle_sync", delays: hs, timestamp: Date.now() });
         startScheduleTimerRef.current = setTimeout(() => startRound(), 600);
       } else {
-        // guest: ask host for a new game
         sendRef.current?.({ type: "new_game", timestamp: Date.now() });
       }
     }
-  }, [beginRoundFromDelay, resetSession, startRound]);
+  }, [beginRoundSequence, resetSession, startRound]);
 
   const exitToMenu = useCallback(() => {
     clearTimers();
@@ -352,14 +382,14 @@ export function useReactionGame() {
     gameModeRef.current = "menu";
     setMyIndex(null);
     myIndexRef.current = null;
-    setDelays([]);
-    delaysRef.current = [];
+    setHolds([]);
+    holdsRef.current = [];
     setRoundIndex(0);
     roundIndexRef.current = 0;
     setRoundStatus("idle");
     roundStatusRef.current = "idle";
-    setGoTimestamp(null);
-    goTimestampRef.current = null;
+    setLitCount(0);
+    goPerfRef.current = null;
     setLastReaction(null);
     setLastWasFalseStart(false);
     setMyReactions(emptyReactions());
@@ -369,42 +399,40 @@ export function useReactionGame() {
     setIsNewBestAverage(false);
   }, [clearTimers]);
 
-  // ── P2P data handler ──
+  // P2P data handler
   const handleIncomingData = useCallback((packet: ReactionPacket) => {
     if (!packet?.type) return;
 
     if (packet.type === "puzzle_sync") {
-      // Guest receives delays from host
       setMyIndex(1);
       myIndexRef.current = 1;
       setGameMode("p2p");
       gameModeRef.current = "p2p";
       resetSession(packet.delays);
     } else if (packet.type === "round_start") {
-      // Guest aligns with host on round start
       const idx = packet.roundIndex;
       setRoundIndex(idx);
       roundIndexRef.current = idx;
-      const ds = delaysRef.current;
-      const delayMs = ds[idx] ?? randomDelay();
+      const hs = holdsRef.current;
+      const holdMs = hs[idx] ?? randomHold();
       const wait = Math.max(0, packet.startAt - Date.now());
       if (startScheduleTimerRef.current) clearTimeout(startScheduleTimerRef.current);
-      startScheduleTimerRef.current = setTimeout(() => beginRoundFromDelay(delayMs), wait);
+      startScheduleTimerRef.current = setTimeout(() => beginRoundSequence(holdMs), wait);
     } else if (packet.type === "reaction_time") {
       const next = [...oppReactions];
       next[packet.roundIndex] = packet.ms;
       setOppReactions(next);
     } else if (packet.type === "complete") {
-      // No-op; per-round reaction_time already filled in oppReactions
+      // No-op
     } else if (packet.type === "new_game") {
       if (myIndexRef.current === 0) {
-        const ds = generateDelays();
-        resetSession(ds);
-        sendRef.current?.({ type: "puzzle_sync", delays: ds, timestamp: Date.now() });
+        const hs = generateHolds();
+        resetSession(hs);
+        sendRef.current?.({ type: "puzzle_sync", delays: hs, timestamp: Date.now() });
         startScheduleTimerRef.current = setTimeout(() => startRound(), 600);
       }
     }
-  }, [beginRoundFromDelay, oppReactions, resetSession, startRound]);
+  }, [beginRoundSequence, oppReactions, resetSession, startRound]);
 
   const { messages: chatMessages, onChat, addMyMessage } = useP2PChat();
 
@@ -424,11 +452,11 @@ export function useReactionGame() {
       setMyIndex(idx);
       myIndexRef.current = idx;
       if (idx === 0) {
-        const ds = generateDelays();
-        resetSession(ds);
+        const hs = generateHolds();
+        resetSession(hs);
         setGameMode("p2p");
         gameModeRef.current = "p2p";
-        send({ type: "puzzle_sync", delays: ds, timestamp: Date.now() });
+        send({ type: "puzzle_sync", delays: hs, timestamp: Date.now() });
         startScheduleTimerRef.current = setTimeout(() => startRound(), 700);
       }
     },
@@ -442,7 +470,6 @@ export function useReactionGame() {
 
   useRoomUrl(roomCode, phase);
 
-  // Cleanup on unmount
   useEffect(() => () => clearTimers(), [clearTimers]);
 
   // Derived
@@ -451,14 +478,17 @@ export function useReactionGame() {
   const myBest = bestOf(myReactions);
   const oppAverage = avgOf(oppReactions);
   const oppBest = bestOf(oppReactions);
+  const isGoSignal = roundStatus === "go" || roundStatus === "result";
 
   return {
     // State
     gameMode, setGameMode,
     myIndex,
-    delays,
+    holds,
     roundIndex,
     roundStatus,
+    litCount,
+    isGoSignal,
     lastReaction,
     lastWasFalseStart,
     myReactions, oppReactions,

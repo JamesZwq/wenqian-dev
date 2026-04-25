@@ -25,6 +25,7 @@ export default function ReactionPage() {
     gameMode, setGameMode,
     myIndex,
     roundIndex, roundStatus,
+    litCount, isGoSignal,
     lastReaction, lastWasFalseStart,
     myReactions, oppReactions,
     bestSingle, bestAverage,
@@ -42,8 +43,6 @@ export default function ReactionPage() {
   const isHost = myIndex === 0;
   const isGuest = myIndex === 1;
 
-  // Lights are lit only during the "waiting" phase
-  const lightsLit = roundStatus === "waiting";
   const lightsDisabled = roundStatus === "idle" || roundStatus === "result";
 
   // P2P winner determination — both players done all 5 rounds
@@ -59,10 +58,13 @@ export default function ReactionPage() {
 
   const statusText = (() => {
     if (roundStatus === "idle") return "Get ready...";
-    if (roundStatus === "waiting") return "Wait for green...";
+    if (roundStatus === "waiting") {
+      if (litCount < 5) return `Lights ${litCount} / 5...`;
+      return "Wait for lights to go out...";
+    }
     if (roundStatus === "go") return "GO! Click now!";
     if (roundStatus === "result") {
-      if (lastWasFalseStart) return `JUMP START! (+${lastReaction} ms)`;
+      if (lastWasFalseStart) return `JUMP START! (+${lastReaction} ms penalty)`;
       return formatMs(lastReaction);
     }
     return "";
@@ -295,7 +297,8 @@ export default function ReactionPage() {
 
                 {/* Light strip */}
                 <LightStrip
-                  lit={lightsLit}
+                  litCount={litCount}
+                  isGoSignal={isGoSignal && !lastWasFalseStart}
                   onClickArea={handleClick}
                   disabled={lightsDisabled}
                 />
