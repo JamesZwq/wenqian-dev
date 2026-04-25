@@ -25,6 +25,9 @@ const GAMES: Game[] = [
   { href: "/poker",       name: "Texas Hold'em", desc: "P2P poker",              badge: "Poker",  accent: "#ef4444", glow: "rgba(239,68,68,0.5)",   iconFile: "clovers-poker-svgrepo-com.svg" },
   { href: "/sudoku",      name: "Sudoku",        desc: "Solo or P2P race",       badge: "Puzzle", accent: "#8b5cf6", glow: "rgba(139,92,246,0.5)",  iconFile: "sudoku-svgrepo-com.svg"     },
   { href: "/schulte",     name: "Schulte",       desc: "Reaction speed test",    badge: "Speed",  accent: "#ec4899", glow: "rgba(236,72,153,0.5)"  },
+  { href: "/trail",       name: "Trail Making",  desc: "1, A, 2, B sequence",    badge: "Focus",  accent: "#22d3ee", glow: "rgba(34,211,238,0.5)"  },
+  { href: "/reaction",    name: "Reaction",      desc: "F1-style reaction test", badge: "Reflex", accent: "#84cc16", glow: "rgba(132,204,22,0.5)"  },
+  { href: "/pattern",     name: "Pattern",       desc: "Simon Says memory",      badge: "Memory", accent: "#a855f7", glow: "rgba(168,85,247,0.5)"  },
   { href: "/halli-galli", name: "Halli Galli",   desc: "Ring at 5 fruits",       badge: "Party",  accent: "#f59e0b", glow: "rgba(245,158,11,0.5)",  iconFile: "bell-svgrepo-com.svg"       },
   { href: "/chat",        name: "P2P Chat",      desc: "Encrypted, no server",   badge: "Chat",   accent: "#14b8a6", glow: "rgba(20,184,166,0.5)",  iconFile: "chat-round-dots-svgrepo-com.svg" },
 ];
@@ -77,6 +80,55 @@ function SchulteIcon() {
       <text x="6" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">8</text>
       <text x="12" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">4</text>
       <text x="18" y="20" fontSize="5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">6</text>
+    </svg>
+  );
+}
+
+// ── Trail Making custom inline SVG (numbers + letters mixed) ──
+function TrailIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="white" strokeWidth="1.2" fill="none" opacity="0.4"/>
+      <line x1="9" y1="3" x2="9" y2="21" stroke="white" strokeWidth="0.8" opacity="0.4"/>
+      <line x1="15" y1="3" x2="15" y2="21" stroke="white" strokeWidth="0.8" opacity="0.4"/>
+      <line x1="3" y1="9" x2="21" y2="9" stroke="white" strokeWidth="0.8" opacity="0.4"/>
+      <line x1="3" y1="15" x2="21" y2="15" stroke="white" strokeWidth="0.8" opacity="0.4"/>
+      <text x="6"  y="6.5"  fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">1</text>
+      <text x="12" y="6.5"  fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">B</text>
+      <text x="18" y="6.5"  fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">3</text>
+      <text x="6"  y="12"   fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">A</text>
+      <text x="12" y="12"   fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">2</text>
+      <text x="18" y="12"   fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">D</text>
+      <text x="6"  y="17.5" fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">C</text>
+      <text x="12" y="17.5" fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">4</text>
+      <text x="18" y="17.5" fontSize="4.5" fill="white" fontWeight="700" textAnchor="middle" dominantBaseline="central">5</text>
+    </svg>
+  );
+}
+
+// ── Reaction Light custom inline SVG (5 horizontal lights) ───
+function ReactionIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      <circle cx="3.5"  cy="10" r="1.7" fill="white" opacity="0.95"/>
+      <circle cx="8.25" cy="10" r="1.7" fill="white" opacity="0.95"/>
+      <circle cx="13"   cy="10" r="1.7" fill="white" opacity="0.95"/>
+      <circle cx="17.75" cy="10" r="1.7" fill="white" opacity="0.55"/>
+      <circle cx="22.5" cy="10" r="1.7" fill="none" stroke="white" strokeWidth="0.8" opacity="0.5"/>
+      <path d="M5 17 L19 17" stroke="white" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/>
+      <path d="M16 14.5 L19 17 L16 19.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" fill="none"/>
+    </svg>
+  );
+}
+
+// ── Pattern Memory custom inline SVG (2x2 quadrants) ─────────
+function PatternIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+      <rect x="3"  y="3"  width="8" height="8" rx="1.6" fill="white" opacity="0.95"/>
+      <rect x="13" y="3"  width="8" height="8" rx="1.6" fill="white" opacity="0.4"/>
+      <rect x="3"  y="13" width="8" height="8" rx="1.6" fill="white" opacity="0.4"/>
+      <rect x="13" y="13" width="8" height="8" rx="1.6" fill="white" opacity="0.95"/>
     </svg>
   );
 }
@@ -166,6 +218,12 @@ function CardVisual({ game }: { game: Game }) {
             />
           ) : game.name === "Schulte" ? (
             <SchulteIcon />
+          ) : game.name === "Trail Making" ? (
+            <TrailIcon />
+          ) : game.name === "Reaction" ? (
+            <ReactionIcon />
+          ) : game.name === "Pattern" ? (
+            <PatternIcon />
           ) : (
             <GomokuIcon />
           )}

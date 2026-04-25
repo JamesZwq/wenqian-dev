@@ -14,6 +14,9 @@ const menuItems = [
   { href: "/poker", label: "Texas Hold'em", icon: "♠️", color: "var(--pixel-warn)", description: "Heads-up P2P poker, blinds escalate" },
   { href: "/sudoku", label: "Sudoku", icon: "🔢", color: "var(--pixel-accent)", description: "Solo or P2P race — same puzzle, fastest wins" },
   { href: "/schulte", label: "Schulte", icon: "⚡", color: "var(--pixel-warn)", description: "Reaction speed test — click numbers in order" },
+  { href: "/trail", label: "Trail Making", icon: "🔀", color: "var(--pixel-accent-2)", description: "Click 1, A, 2, B... alternating sequence" },
+  { href: "/reaction", label: "Reaction", icon: "🚦", color: "var(--pixel-accent)", description: "F1-style starting-light reaction time test" },
+  { href: "/pattern", label: "Pattern", icon: "🎨", color: "var(--pixel-accent-2)", description: "Simon Says — repeat the color sequence" },
   { href: "/halli-galli", label: "Halli Galli", icon: "🔔", color: "var(--pixel-warn)", description: "Ring the bell when any fruit totals exactly 5!" },
 ];
 
