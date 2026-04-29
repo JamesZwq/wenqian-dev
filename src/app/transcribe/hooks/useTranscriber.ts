@@ -90,7 +90,9 @@ export function useTranscriber() {
         setProgressLabel("Decoding audio...");
 
         // Decode audio (resample to 16 kHz mono).
-        const audio = await decodeAudioFile(file);
+        const audio = await decodeAudioFile(file, {
+          onStage: (stage) => setProgressLabel(stage),
+        });
         setAudioDuration(audio.length / 16000);
 
         // Ensure model loaded.
