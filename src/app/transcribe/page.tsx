@@ -50,6 +50,7 @@ export default function TranscribePage() {
     error,
     audioFile,
     audioDuration,
+    playbackUrl,
     elapsed,
     transcribe,
     reset,
@@ -86,16 +87,10 @@ export default function TranscribePage() {
     };
   }, []);
 
-  // Build a stable object URL for audio playback.
-  const audioObjectUrl = useMemo(() => {
-    if (!audioFile) return null;
-    return URL.createObjectURL(audioFile);
-  }, [audioFile]);
-
-  useEffect(() => {
-    if (!audioObjectUrl) return;
-    return () => URL.revokeObjectURL(audioObjectUrl);
-  }, [audioObjectUrl]);
+  // Playback URL: derived 16k mono WAV from the decoded audio (always plays).
+  // The hook revokes/replaces this blob URL on each transcribe + reset, so we
+  // don't need a separate cleanup effect here.
+  const audioObjectUrl = playbackUrl;
 
   const baseFilename = useMemo(() => {
     if (!audioFile) return "transcript";

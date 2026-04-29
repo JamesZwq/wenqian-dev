@@ -8,7 +8,7 @@ import type {
   WorkerInbound,
   WorkerOutbound,
 } from "../types";
-import { decodeAudioFile } from "../utils/audio";
+import { decodeAudioFile, float32ToWavBlob } from "../utils/audio";
 
 export function useTranscriber() {
   const [status, setStatus] = useState<Status>("idle");
@@ -21,6 +21,10 @@ export function useTranscriber() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
+  // WAV blob URL derived from the decoded 16k mono samples — guaranteed to
+  // play in <audio>, even when the original upload was an unsupported codec
+  // (M4A/ALAC, Opus, video, etc.).
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
   const startedAtRef = useRef<number | null>(null);
@@ -71,6 +75,10 @@ export function useTranscriber() {
     setError(null);
     setElapsed(null);
     startedAtRef.current = null;
+    setPlaybackUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, []);
 
   const transcribe = useCallback(
@@ -94,6 +102,14 @@ export function useTranscriber() {
           onStage: (stage) => setProgressLabel(stage),
         });
         setAudioDuration(audio.length / 16000);
+
+        // Build a WAV playback URL from the decoded samples. <audio> can't
+        // be relied on to play the original (M4A/ALAC, video, etc. silently
+        // fail), so we always derive a known-good 16k mono PCM WAV.
+        setPlaybackUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(float32ToWavBlob(audio, 16000));
+        });
 
         // Ensure model loaded.
         const worker = ensureWorker();
@@ -147,6 +163,7 @@ export function useTranscriber() {
     audioFile,
     audioDuration,
     elapsed,
+    playbackUrl,
     transcribe,
     reset,
   };

@@ -109,6 +109,50 @@ export interface DecodeOptions {
   onStage?: (stage: string) => void;
 }
 
+/**
+ * Encode a 16 kHz mono Float32Array back to a WAV Blob for playback.
+ * `<audio>` can always play WAV, so this avoids "silent failure" when the
+ * uploaded file is in a container the browser's media element can't decode
+ * (M4A/ALAC from iOS Voice Memos, Opus, AMR, video files, etc.).
+ */
+export function float32ToWavBlob(samples: Float32Array, sampleRate = TARGET_SAMPLE_RATE): Blob {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const dataSize = samples.length * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  let offset = 0;
+  const writeStr = (s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i));
+  };
+  const writeU32 = (n: number) => { view.setUint32(offset, n, true); offset += 4; };
+  const writeU16 = (n: number) => { view.setUint16(offset, n, true); offset += 2; };
+
+  writeStr("RIFF");
+  writeU32(36 + dataSize);
+  writeStr("WAVE");
+  writeStr("fmt ");
+  writeU32(16);                  // PCM fmt chunk size
+  writeU16(1);                   // PCM format
+  writeU16(numChannels);
+  writeU32(sampleRate);
+  writeU32(byteRate);
+  writeU16(blockAlign);
+  writeU16(bitsPerSample);
+  writeStr("data");
+  writeU32(dataSize);
+
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    offset += 2;
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
 export async function decodeAudioFile(
   file: File,
   opts: DecodeOptions = {},
