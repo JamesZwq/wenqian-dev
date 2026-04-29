@@ -36,14 +36,17 @@ self.addEventListener("message", async (e: MessageEvent<WorkerInbound>) => {
         pipe = null;
 
         const created = (await pipeline("automatic-speech-recognition", data.model, {
-          // q8 is well-tested for Whisper on transformers.js.
-          // The default q4 has a known broken scale tensor for Xenova/whisper-*
-          // (`TransposeDQWeightsForMatMulNBits Missing required scale` error),
-          // and fp32 doubles the download size.
-          dtype: {
-            encoder_model: "fp32",
-            decoder_model_merged: "q8",
-          },
+          // fp32 unquantized is the only Whisper variant that consistently
+          // works across browsers / ONNX Runtime web versions. The q4 path
+          // has a broken scale tensor (`TransposeDQWeightsForMatMulNBits
+          // Missing required scale`) and per-component dtype overrides are
+          // silently ignored on some setups.
+          // Bigger download (~80 MB tiny / ~200 MB base) but bullet-proof.
+          dtype: "fp32",
+          // Force WASM. WebGPU only saves time once the model loads, and
+          // pulling MatMulNBits / DequantizeLinear paths into the Web Worker
+          // is what triggers the scale-missing error on Chrome.
+          device: "wasm",
           progress_callback: (p: unknown) => {
             const info = p as { status?: string; progress?: number; file?: string };
             send({
@@ -52,8 +55,6 @@ self.addEventListener("message", async (e: MessageEvent<WorkerInbound>) => {
               status: info.status ?? "loading",
             });
           },
-          // device: omitted — transformers.js auto-selects WebGPU when available
-          // and falls back to WASM. Forcing WebGPU breaks Safari < 18 etc.
         })) as unknown as AsrPipeline;
 
         pipe = created;

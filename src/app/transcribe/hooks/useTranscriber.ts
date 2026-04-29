@@ -12,7 +12,7 @@ import { decodeAudioFile } from "../utils/audio";
 
 export function useTranscriber() {
   const [status, setStatus] = useState<Status>("idle");
-  const [model, setModel] = useState<ModelId>("Xenova/whisper-base");
+  const [model, setModel] = useState<ModelId>("Xenova/whisper-tiny");
   const [language, setLanguage] = useState<string | null>(null); // null = autodetect
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState<string>("");
