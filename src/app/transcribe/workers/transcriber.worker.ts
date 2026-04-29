@@ -36,6 +36,14 @@ self.addEventListener("message", async (e: MessageEvent<WorkerInbound>) => {
         pipe = null;
 
         const created = (await pipeline("automatic-speech-recognition", data.model, {
+          // q8 is well-tested for Whisper on transformers.js.
+          // The default q4 has a known broken scale tensor for Xenova/whisper-*
+          // (`TransposeDQWeightsForMatMulNBits Missing required scale` error),
+          // and fp32 doubles the download size.
+          dtype: {
+            encoder_model: "fp32",
+            decoder_model_merged: "q8",
+          },
           progress_callback: (p: unknown) => {
             const info = p as { status?: string; progress?: number; file?: string };
             send({
@@ -44,7 +52,8 @@ self.addEventListener("message", async (e: MessageEvent<WorkerInbound>) => {
               status: info.status ?? "loading",
             });
           },
-          // device: "webgpu" — transformers.js will auto-select if available.
+          // device: omitted — transformers.js auto-selects WebGPU when available
+          // and falls back to WASM. Forcing WebGPU breaks Safari < 18 etc.
         })) as unknown as AsrPipeline;
 
         pipe = created;
