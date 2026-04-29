@@ -286,8 +286,8 @@ export default function TranscribePage() {
                 </div>
 
                 {error && (
-                  <div className="rounded-xl border border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] px-4 py-3 font-mono text-xs text-[var(--pixel-warn)]">
-                    Error: {error}
+                  <div className="rounded-xl border border-[var(--pixel-warn)] bg-[color-mix(in_oklab,var(--pixel-warn)_10%,transparent)] px-4 py-3 font-mono text-xs text-[var(--pixel-warn)] whitespace-pre-wrap break-words">
+                    {error}
                   </div>
                 )}
 
