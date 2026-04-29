@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-const menuItems = [
+const gamesItems = [
   { href: "/chat", label: "P2P Chat", icon: "💬", color: "var(--pixel-warn)", description: "Encrypted peer-to-peer messaging" },
   { href: "/gomoku", label: "Gomoku", icon: "⚫", color: "var(--pixel-accent)", description: "Five in a Row multiplayer game" },
   { href: "/maze", label: "Maze Runner", icon: "🏃", color: "var(--pixel-accent-2)", description: "P2P maze race with items & power-ups" },
@@ -18,6 +18,10 @@ const menuItems = [
   { href: "/reaction", label: "Reaction", icon: "🚦", color: "var(--pixel-accent)", description: "F1-style starting-light reaction time test" },
   { href: "/pattern", label: "Pattern", icon: "🎨", color: "var(--pixel-accent-2)", description: "Simon Says — repeat the color sequence" },
   { href: "/halli-galli", label: "Halli Galli", icon: "🔔", color: "var(--pixel-warn)", description: "Ring the bell when any fruit totals exactly 5!" },
+];
+
+const toolsItems = [
+  { href: "/transcribe", label: "Transcribe", icon: "🎙️", color: "var(--pixel-accent)", description: "Audio → subtitles, runs in your browser" },
 ];
 
 /* -- Framer Motion variants for staggered children -- */
@@ -91,13 +95,49 @@ export default function FloatingNav() {
             {/* Header */}
             <div className="shrink-0 border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 rounded-t-2xl">
               <h3 className="font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)]">
-                P2P Applications
+                Apps &amp; Tools
               </h3>
             </div>
 
             {/* Scrollable items */}
             <div className="overflow-y-auto overscroll-contain p-2 [scrollbar-width:thin] [scrollbar-color:var(--pixel-accent)_transparent]">
-              {menuItems.map((item) => (
+              {/* Games / P2P apps */}
+              <div className="px-2 pt-1 pb-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--pixel-muted)]">
+                P2P Games
+              </div>
+              {gamesItems.map((item) => (
+                <motion.div key={item.href} variants={itemVariants}>
+                  <Link
+                    href={item.href}
+                    onClick={close}
+                    className="group relative block rounded-xl border border-transparent p-3.5 transition-colors duration-150 hover:border-[var(--pixel-border)] hover:bg-[var(--pixel-bg-alt)]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl transition-transform duration-200 group-hover:scale-110">
+                        {item.icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="mb-0.5 font-sans text-sm font-semibold tracking-tight" style={{ color: item.color }}>
+                          {item.label}
+                        </div>
+                        <div className="font-mono text-xs text-[var(--pixel-muted)]">
+                          {item.description}
+                        </div>
+                      </div>
+                      <span className="text-[var(--pixel-accent)] opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-1">
+                        →
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+
+              {/* Tools */}
+              <div className="mt-2 mb-1 mx-2 border-t border-[var(--pixel-border)]" />
+              <div className="px-2 pt-1 pb-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--pixel-muted)]">
+                Tools
+              </div>
+              {toolsItems.map((item) => (
                 <motion.div key={item.href} variants={itemVariants}>
                   <Link
                     href={item.href}
