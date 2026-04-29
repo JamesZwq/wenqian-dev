@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "@types/papaparse": "^5.5.2",
     "find-hanzi": "^1.0.11",
     "framer-motion": "^12.34.3",
