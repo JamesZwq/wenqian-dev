@@ -67,12 +67,26 @@ self.addEventListener("message", async (e: MessageEvent<WorkerInbound>) => {
         return;
       }
 
+      // Belt-and-suspenders for `task: "transcribe"`:
+      // transformers.js v4 routes Whisper generation params through different
+      // paths depending on model + version. Some respect top-level `task`,
+      // others only respect `generate_kwargs.task`, and `whisper-large-v3-turbo`
+      // in particular has been observed to default to *translate* (output
+      // English) when `task` isn't surfaced via generate_kwargs.
+      const lang = data.language ?? undefined;
       const result = await pipe(data.audio, {
-        language: data.language ?? undefined,
+        language: lang,
         task: "transcribe",
         return_timestamps: true,
         chunk_length_s: 30,
         stride_length_s: 5,
+        // Explicit decoder prompt — overrides any baked-in default that
+        // might force translate mode on certain Whisper checkpoints.
+        forced_decoder_ids: null,
+        generate_kwargs: {
+          language: lang,
+          task: "transcribe",
+        },
       });
 
       send({
