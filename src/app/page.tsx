@@ -83,7 +83,8 @@ export default function Home() {
           <main className="relative min-h-screen selection:bg-[color-mix(in_oklab,var(--pixel-accent)_30%,transparent)] selection:text-[var(--pixel-bg)]">
             <CursorPet />
             <PetBedToggle />
-            <BgSpeedControl />
+            {/* BgSpeedControl removed — bottom-right corner crowded.
+                Speed cycling is now bound to the `B` key (PixelKeyboardHandler). */}
             <FpsCounter />
             <FloatingNav />
             <div className="fixed top-[96px] right-4 z-[130]">
