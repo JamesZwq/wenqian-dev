@@ -32,10 +32,12 @@
     },
     "production": {
       "name": "wenqian-dev",
-      "routes": [
-        { "pattern": "wenqian.dev", "custom_domain": true },
-        { "pattern": "www.wenqian.dev", "custom_domain": true }
-      ],
+      // Custom domain (wenqian.dev) is attached via Cloudflare Dashboard at
+      // cutover time, NOT here. Declaring it via `routes` would force wrangler
+      // to provision the DNS record at deploy time — which conflicts as long
+      // as the domain is still routed to the legacy Pages project.
+      // Once the DNS is moved to this Worker via Dashboard, we can optionally
+      // re-add the routes block to keep the domain version-controlled.
       "d1_databases": [
         {
           "binding": "DB",
