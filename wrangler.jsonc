@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wenqian-dev",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-04-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": { "enabled": true },
+  "env": {
+    "preview": {
+      "name": "wenqian-dev-preview"
+    },
+    "production": {
+      "name": "wenqian-dev",
+      "routes": [
+        { "pattern": "wenqian.dev", "custom_domain": true },
+        { "pattern": "www.wenqian.dev", "custom_domain": true }
+      ]
+    }
+  }
+}
