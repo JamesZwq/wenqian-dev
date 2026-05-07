@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       "Classic Schulte Table — click numbers in order. Solo or P2P race, browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Schulte&subtitle=Click%20numbers%20in%20order%20%E2%80%94%20solo%20or%20P2P%20race&tag=game",
+        url: "/og/schulte.png",
         width: 1200,
         height: 630,
         alt: "Schulte",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "Schulte | Wenqian Zhang",
     description: "Classic Schulte Table — click numbers in order. Solo or P2P race!",
     images: [
-      "/api/og?title=Schulte&subtitle=Click%20numbers%20in%20order%20%E2%80%94%20solo%20or%20P2P%20race&tag=game",
+      "/og/schulte.png",
     ],
   },
 };

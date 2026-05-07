@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Ring the bell when any fruit totals 5! P2P card game — no signup, direct browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Halli%20Galli&subtitle=Ring%20the%20bell%20when%20any%20fruit%20totals%205!&tag=game",
+        url: "/og/halli-galli.png",
         width: 1200,
         height: 630,
         alt: "Halli Galli",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Halli Galli | Wenqian Zhang",
     description: "Ring the bell when any fruit totals 5! P2P card game online.",
     images: [
-      "/api/og?title=Halli%20Galli&subtitle=Ring%20the%20bell%20when%20any%20fruit%20totals%205!&tag=game",
+      "/og/halli-galli.png",
     ],
   },
 };

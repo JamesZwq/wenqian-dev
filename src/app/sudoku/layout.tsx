@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Sudoku solo or P2P race — same puzzle, fastest wins. No signup, browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Sudoku&subtitle=Solo%20or%20P2P%20race%20%E2%80%94%20same%20puzzle%2C%20fastest%20wins&tag=game",
+        url: "/og/sudoku.png",
         width: 1200,
         height: 630,
         alt: "Sudoku",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Sudoku | Wenqian Zhang",
     description: "Sudoku solo or P2P race — same puzzle, fastest solver wins!",
     images: [
-      "/api/og?title=Sudoku&subtitle=Solo%20or%20P2P%20race%20%E2%80%94%20same%20puzzle%2C%20fastest%20wins&tag=game",
+      "/og/sudoku.png",
     ],
   },
 };

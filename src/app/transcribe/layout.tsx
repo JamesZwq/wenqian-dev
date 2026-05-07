@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Audio → timestamped subtitles, runs entirely in your browser. Whisper in WebGPU. Export SRT / VTT / LRC / TXT / JSON.",
     images: [
       {
-        url: "/api/og?title=Transcribe&subtitle=Audio%20%E2%86%92%20subtitles%2C%20runs%20entirely%20in%20your%20browser&tag=tool",
+        url: "/og/transcribe.png",
         width: 1200,
         height: 630,
         alt: "Transcribe",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     description:
       "Audio → timestamped subtitles, runs entirely in your browser. Whisper in WebGPU.",
     images: [
-      "/api/og?title=Transcribe&subtitle=Audio%20%E2%86%92%20subtitles%2C%20runs%20entirely%20in%20your%20browser&tag=tool",
+      "/og/transcribe.png",
     ],
   },
 };

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "E2E encrypted peer-to-peer chat. Browser-to-browser messaging with RSA key exchange — no signup, no server.",
     images: [
       {
-        url: "/api/og?title=P2P%20Chat&subtitle=End-to-end%20encrypted%20browser-to-browser%20messaging&tag=chat",
+        url: "/og/chat.png",
         width: 1200,
         height: 630,
         alt: "P2P Chat",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "P2P Chat | Wenqian Zhang",
     description: "E2E encrypted browser-to-browser chat. No server, no signup.",
     images: [
-      "/api/og?title=P2P%20Chat&subtitle=End-to-end%20encrypted%20browser-to-browser%20messaging&tag=chat",
+      "/og/chat.png",
     ],
   },
 };

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Heads-up No-Limit Texas Hold'em via P2P. Browser-to-browser, no signup.",
     images: [
       {
-        url: "/api/og?title=Texas%20Hold'em&subtitle=Heads-up%20No-Limit%20Poker%20%E2%80%94%20P2P%20online&tag=game",
+        url: "/og/poker.png",
         width: 1200,
         height: 630,
         alt: "Texas Hold'em Poker",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Texas Hold'em | Wenqian Zhang",
     description: "Heads-up P2P poker — challenge a friend directly in your browser!",
     images: [
-      "/api/og?title=Texas%20Hold'em&subtitle=Heads-up%20No-Limit%20Poker%20%E2%80%94%20P2P%20online&tag=game",
+      "/og/poker.png",
     ],
   },
 };

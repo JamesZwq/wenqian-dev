@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       "F1-style reaction test — 5 rounds, fastest wins. Solo or P2P race, browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Reaction&subtitle=F1-style%20reaction%20test%20%E2%80%94%205%20rounds%2C%20fastest%20wins&tag=game",
+        url: "/og/reaction.png",
         width: 1200,
         height: 630,
         alt: "Reaction",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "Reaction | Wenqian Zhang",
     description: "F1-style reaction test — 5 rounds, fastest wins. Solo or P2P race!",
     images: [
-      "/api/og?title=Reaction&subtitle=F1-style%20reaction%20test%20%E2%80%94%205%20rounds%2C%20fastest%20wins&tag=game",
+      "/og/reaction.png",
     ],
   },
 };

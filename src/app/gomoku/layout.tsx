@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Play Five in a Row against AI (easy/medium/hard) or a friend online via P2P. Browser-to-browser, no signup.",
     images: [
       {
-        url: "/api/og?title=Gomoku&subtitle=Five%20in%20a%20Row%20%E2%80%94%20vs%20AI%20or%20P2P%20online&tag=game",
+        url: "/og/gomoku.png",
         width: 1200,
         height: 630,
         alt: "Gomoku — Five in a Row",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Gomoku | Wenqian Zhang",
     description: "Five in a Row — play vs AI or challenge a friend via P2P!",
     images: [
-      "/api/og?title=Gomoku&subtitle=Five%20in%20a%20Row%20%E2%80%94%20vs%20AI%20or%20P2P%20online&tag=game",
+      "/og/gomoku.png",
     ],
   },
 };

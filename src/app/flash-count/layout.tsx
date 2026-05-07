@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Count isometric 3D blocks before they disappear! A visual memory challenge — solo sprint or P2P versus mode.",
     images: [
       {
-        url: "/api/og?title=Flash%20Count&subtitle=Count%203D%20blocks%20before%20they%20vanish%20%E2%80%94%20visual%20memory&tag=game",
+        url: "/og/flash-count.png",
         width: 1200,
         height: 630,
         alt: "Flash Count",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Flash Count | Wenqian Zhang",
     description: "Count 3D isometric blocks before they vanish — visual memory challenge!",
     images: [
-      "/api/og?title=Flash%20Count&subtitle=Count%203D%20blocks%20before%20they%20vanish%20%E2%80%94%20visual%20memory&tag=game",
+      "/og/flash-count.png",
     ],
   },
 };

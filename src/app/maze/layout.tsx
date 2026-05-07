@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "Race through procedurally generated mazes. Solo, vs AI, local co-op, or P2P online with power-ups and bombs.",
     images: [
       {
-        url: "/api/og?title=Maze%20Runner&subtitle=Procedural%20mazes%20with%20power-ups%20%E2%80%94%20solo%20or%20P2P&tag=game",
+        url: "/og/maze.png",
         width: 1200,
         height: 630,
         alt: "Maze Runner",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Maze Runner | Wenqian Zhang",
     description: "Race through procedural mazes — solo, vs AI, local or P2P!",
     images: [
-      "/api/og?title=Maze%20Runner&subtitle=Procedural%20mazes%20with%20power-ups%20%E2%80%94%20solo%20or%20P2P&tag=game",
+      "/og/maze.png",
     ],
   },
 };

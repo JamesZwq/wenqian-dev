@@ -31,8 +31,9 @@ function resolveMetaOgImage() {
       window.location.hostname === "127.0.0.1" ||
       window.location.hostname === "[::1]";
 
-    // When metadataBase points at production, local dev still needs the local OG route.
-    if (isLocalDev && resolved.origin !== window.location.origin && resolved.pathname === "/api/og") {
+    // When metadataBase points at production, local dev still needs to resolve
+    // OG asset paths against localhost so the preview works without DNS.
+    if (isLocalDev && resolved.origin !== window.location.origin && resolved.pathname.startsWith("/og/")) {
       return `${window.location.origin}${resolved.pathname}${resolved.search}`;
     }
 
@@ -142,7 +143,7 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
   const resolvedOgImage = resolveMetaOgImage();
-  const fallbackOgImage = `/api/og?title=${encodeURIComponent(title)}`;
+  const fallbackOgImage = "/og/default.png";
 
   const getShareUrl = useCallback(() => {
     return url ?? (typeof window !== "undefined" ? window.location.href : "");

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       "Memory test — watch the color sequence, then repeat. Solo or P2P race, browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Pattern&subtitle=Watch%20the%20sequence%2C%20then%20repeat&tag=game",
+        url: "/og/pattern.png",
         width: 1200,
         height: 630,
         alt: "Pattern",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "Pattern | Wenqian Zhang",
     description: "Memory test — watch the color sequence, then repeat. Solo or P2P race!",
     images: [
-      "/api/og?title=Pattern&subtitle=Watch%20the%20sequence%2C%20then%20repeat&tag=game",
+      "/og/pattern.png",
     ],
   },
 };

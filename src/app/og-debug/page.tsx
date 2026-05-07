@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-// ── Card data — mirrors exactly what each layout.tsx passes to /api/og ─────
+// ── Card data — mirrors what each layout.tsx points at in /public/og/ ─────
 
 type OgCard = {
   label: string;
@@ -15,55 +15,55 @@ const CARDS: OgCard[] = [
   {
     label: "Home",
     route: "/",
-    ogUrl: "/api/og",
+    ogUrl: "/og/default.png",
     hasVisual: false,
   },
   {
     label: "Gomoku",
     route: "/gomoku",
-    ogUrl: "/api/og?title=Gomoku&subtitle=Five%20in%20a%20Row%20%E2%80%94%20vs%20AI%20or%20P2P%20online&tag=game",
+    ogUrl: "/og/gomoku.png",
     hasVisual: true,
   },
   {
     label: "Texas Hold'em",
     route: "/poker",
-    ogUrl: "/api/og?title=Texas%20Hold'em&subtitle=Heads-up%20No-Limit%20Poker%20%E2%80%94%20P2P%20online&tag=game",
+    ogUrl: "/og/poker.png",
     hasVisual: true,
   },
   {
     label: "Maze Runner",
     route: "/maze",
-    ogUrl: "/api/og?title=Maze%20Runner&subtitle=Procedural%20mazes%20with%20power-ups%20%E2%80%94%20solo%20or%20P2P&tag=game",
+    ogUrl: "/og/maze.png",
     hasVisual: true,
   },
   {
     label: "Math Sprint",
     route: "/math",
-    ogUrl: "/api/og?title=Math%20Sprint&subtitle=Speed%20arithmetic%20challenge%20%E2%80%94%20solo%20or%20P2P%20race&tag=game",
+    ogUrl: "/og/math.png",
     hasVisual: true,
   },
   {
     label: "Flash Count",
     route: "/flash-count",
-    ogUrl: "/api/og?title=Flash%20Count&subtitle=Count%203D%20blocks%20before%20they%20vanish%20%E2%80%94%20visual%20memory&tag=game",
+    ogUrl: "/og/flash-count.png",
     hasVisual: true,
   },
   {
     label: "Halli Galli",
     route: "/halli-galli",
-    ogUrl: "/api/og?title=Halli%20Galli&subtitle=Ring%20the%20bell%20when%20any%20fruit%20totals%205!&tag=game",
+    ogUrl: "/og/halli-galli.png",
     hasVisual: true,
   },
   {
     label: "Sudoku",
     route: "/sudoku",
-    ogUrl: "/api/og?title=Sudoku&subtitle=Solo%20or%20P2P%20race%20%E2%80%94%20same%20puzzle%2C%20fastest%20wins&tag=game",
+    ogUrl: "/og/sudoku.png",
     hasVisual: true,
   },
   {
     label: "P2P Chat",
     route: "/chat",
-    ogUrl: "/api/og?title=P2P%20Chat&subtitle=End-to-end%20encrypted%20browser-to-browser%20messaging&tag=chat",
+    ogUrl: "/og/chat.png",
     hasVisual: true,
   },
 ];

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
       "A fast two-player P2P duel built on shared-clock action locks and lag-compensated round resolution.",
     images: [
       {
-        url: "/api/og?title=Pulse%20Duel&subtitle=Shared-clock%20P2P%20duel%20%E2%80%94%20charge,%20strike,%20guard,%20break&tag=game",
+        url: "/og/pulse-duel.png",
         width: 1200,
         height: 630,
         alt: "Pulse Duel",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "Pulse Duel | Wenqian Zhang",
     description: "Shared-clock P2P duel — charge, strike, guard, break.",
     images: [
-      "/api/og?title=Pulse%20Duel&subtitle=Shared-clock%20P2P%20duel%20%E2%80%94%20charge,%20strike,%20guard,%20break&tag=game",
+      "/og/pulse-duel.png",
     ],
   },
 };

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
       "Trail Making test — click 1, A, 2, B... in alternating order. Solo or P2P race, browser-to-browser.",
     images: [
       {
-        url: "/api/og?title=Trail&subtitle=Click%201%2C%20A%2C%202%2C%20B...%20%E2%80%94%20alternating%20sequence&tag=game",
+        url: "/og/trail.png",
         width: 1200,
         height: 630,
         alt: "Trail",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "Trail | Wenqian Zhang",
     description: "Trail Making test — click 1, A, 2, B... in alternating order. Solo or P2P race!",
     images: [
-      "/api/og?title=Trail&subtitle=Click%201%2C%20A%2C%202%2C%20B...%20%E2%80%94%20alternating%20sequence&tag=game",
+      "/og/trail.png",
     ],
   },
 };
