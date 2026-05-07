@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import PageTransition from "./PageTransition";
 import { ReactNode } from "react";
 
 const Background = dynamic(() => import("../background/background"), {
@@ -21,10 +22,14 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <>
       <Background />
       <ParticleField />
-      {/* DEBUG: PageTransition removed temporarily to diagnose flicker bug.
-          If this fixes the user's flicker on /sign-in, PageTransition (the
-          site-wide motion.div fade-in wrapper) is the culprit. */}
-      {children}
+      {/* relative + z-10 ensures the page content sits above the fixed
+          Background (z-0) and ParticleField canvas (z-3). PageTransition's
+          motion.div used to provide this implicitly via its transform-induced
+          stacking context, but explicit z-index here is what makes content
+          visible regardless of whether motion is present. */}
+      <div className="relative z-10">
+        <PageTransition>{children}</PageTransition>
+      </div>
     </>
   );
 }
