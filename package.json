@@ -11,7 +11,13 @@
     "deploy:preview": "opennextjs-cloudflare build && wrangler deploy --env preview",
     "deploy:production": "opennextjs-cloudflare build && wrangler deploy --env production",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "types:cf": "wrangler types --env preview --include-runtime=false",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply wenqian-dev-preview --local",
+    "db:migrate:preview": "wrangler d1 migrations apply wenqian-dev-preview --remote",
+    "db:migrate:production": "wrangler d1 migrations apply wenqian-dev --remote",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
@@ -31,6 +37,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260507.1",
     "@opennextjs/cloudflare": "^1.19.7",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
