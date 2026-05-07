@@ -1,15 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { PasswordField } from "@/components/auth/PasswordField";
 
 export default function SignInPage() {
   const router = useRouter();
-  const search = useSearchParams();
-  const next = search.get("next") || "/profile";
+  // Read ?next=… on mount instead of useSearchParams() to avoid the Suspense
+  // / SSR-bail-out behaviour observed on auth pages.
+  const [next, setNext] = useState("/profile");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const n = sp.get("next");
+      if (n) setNext(n);
+    }
+  }, []);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);

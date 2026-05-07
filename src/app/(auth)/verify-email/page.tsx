@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/auth/AuthCard";
 
 /**
@@ -11,15 +10,25 @@ import { AuthCard } from "@/components/auth/AuthCard";
  *     "check your inbox" copy.
  *  2. Arrived from the verification email's link with ?token=… → call
  *     Better-Auth's verify endpoint, then route to /profile on success.
+ *
+ * Reads token from window.location.search on mount instead of useSearchParams()
+ * to avoid Suspense/SSR-bailout issue.
  */
 export default function VerifyEmailPage() {
   const router = useRouter();
-  const search = useSearchParams();
-  const token = search.get("token");
-  const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">(
-    token ? "verifying" : "idle",
-  );
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenChecked, setTokenChecked] = useState(false);
+  const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const t = sp.get("token");
+    setToken(t);
+    if (t) setStatus("verifying");
+    setTokenChecked(true);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -47,7 +56,10 @@ export default function VerifyEmailPage() {
     };
   }, [token, router]);
 
-  if (token) {
+  // Until we've inspected window.location.search on mount we don't know
+  // which view to show. Render the splash card optimistically — if a token
+  // turns out to be present the JSX below replaces it.
+  if (tokenChecked && token) {
     return (
       <AuthCard title="Verifying email…">
         {status === "verifying" && (
