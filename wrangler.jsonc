@@ -25,6 +25,9 @@
       ],
       "r2_buckets": [
         { "binding": "BUCKET", "bucket_name": "wenqian-dev-preview" }
+      ],
+      "analytics_engine_datasets": [
+        { "binding": "ANALYTICS", "dataset": "wenqian_dev_events_preview" }
       ]
     },
     "production": {
@@ -46,6 +49,9 @@
       ],
       "r2_buckets": [
         { "binding": "BUCKET", "bucket_name": "wenqian-dev" }
+      ],
+      "analytics_engine_datasets": [
+        { "binding": "ANALYTICS", "dataset": "wenqian_dev_events" }
       ]
     }
   }
