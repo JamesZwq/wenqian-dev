@@ -12,6 +12,9 @@ export type AnalyticsEvent =
   | { name: "auth.login"; provider: "email" | "google" | "github" }
   | { name: "auth.logout" }
   | { name: "auth.email_verified" }
+  | { name: "user.avatar_set" }
+  | { name: "user.avatar_removed" }
+  | { name: "user.deleted" }
   | { name: "game.start"; game: string }
   | { name: "game.end"; game: string; durationMs: number };
 
