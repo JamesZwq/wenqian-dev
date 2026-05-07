@@ -10,6 +10,8 @@
     "start": "next start",
     "deploy:preview": "opennextjs-cloudflare build && wrangler deploy --env preview",
     "deploy:production": "opennextjs-cloudflare build && wrangler deploy --env production",
+    "deploy:backup-preview": "wrangler deploy --config scripts/backup-worker/wrangler.jsonc --env preview",
+    "deploy:backup-production": "wrangler deploy --config scripts/backup-worker/wrangler.jsonc --env production",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "types:cf": "wrangler types --env preview --include-runtime=false",
