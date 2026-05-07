@@ -8,6 +8,13 @@
       "when": 1778125559744,
       "tag": "0000_fixed_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778159672180,
+      "tag": "0001_handy_frank_castle",
+      "breakpoints": true
     }
   ]
 }
