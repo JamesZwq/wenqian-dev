@@ -1,0 +1,30 @@
+# Local development secrets template.
+# Copy to .dev.vars (which is gitignored) and fill in real values.
+# These are read by `wrangler dev`. Do NOT commit .dev.vars.
+#
+# Production / preview secrets are set separately via:
+#   wrangler secret put <NAME> --env preview
+#   wrangler secret put <NAME> --env production
+
+# Better-Auth — generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:8787
+
+# Resend — https://resend.com/api-keys
+RESEND_API_KEY=
+# When wenqian.dev is verified on Resend, set this to noreply@wenqian.dev
+# Until then, use onboarding@resend.dev (Resend's sandbox sender — only works
+# for sending TO the email tied to your Resend account)
+RESEND_FROM=onboarding@resend.dev
+
+# OAuth — preview values for local dev (keep production values out of .dev.vars)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Sentry server DSN (filled in Phase 5)
+SENTRY_DSN_SERVER=
+
+# Cron Trigger shared secret (filled in Phase 8)
+CRON_SECRET=
