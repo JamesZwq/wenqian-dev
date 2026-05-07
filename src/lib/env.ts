@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace, R2Bucket } from "@cloudflare/workers-types";
 
 // Augment opennextjs's global CloudflareEnv with our project-specific bindings.
 // Each phase adds its own bindings here. We `import type` instead of letting
@@ -9,7 +9,7 @@ declare global {
   interface CloudflareEnv {
     DB: D1Database;
     CACHE: KVNamespace;
-    // BUCKET: R2Bucket         (added in Phase 4 once R2 is enabled in dashboard)
+    BUCKET: R2Bucket;
     // ANALYTICS: AnalyticsEngineDataset  (added in Phase 5)
   }
 }

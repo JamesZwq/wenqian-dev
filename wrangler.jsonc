@@ -22,6 +22,9 @@
       ],
       "kv_namespaces": [
         { "binding": "CACHE", "id": "92432ca674894a768aa72f96ebb6ed0d" }
+      ],
+      "r2_buckets": [
+        { "binding": "BUCKET", "bucket_name": "wenqian-dev-preview" }
       ]
     },
     "production": {
@@ -40,6 +43,9 @@
       ],
       "kv_namespaces": [
         { "binding": "CACHE", "id": "fa6175e09488460282fd0c222162ed32" }
+      ],
+      "r2_buckets": [
+        { "binding": "BUCKET", "bucket_name": "wenqian-dev" }
       ]
     }
   }
