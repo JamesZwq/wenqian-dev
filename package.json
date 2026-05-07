@@ -14,9 +14,9 @@
     "typecheck": "tsc --noEmit",
     "types:cf": "wrangler types --env preview --include-runtime=false",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply wenqian-dev-preview --local",
-    "db:migrate:preview": "wrangler d1 migrations apply wenqian-dev-preview --remote",
-    "db:migrate:production": "wrangler d1 migrations apply wenqian-dev --remote",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --env preview",
+    "db:migrate:preview": "wrangler d1 migrations apply DB --remote --env preview",
+    "db:migrate:production": "wrangler d1 migrations apply DB --remote --env production",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
