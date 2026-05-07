@@ -23,6 +23,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@huggingface/transformers": "^4.2.0",
+    "@sentry/nextjs": "^10.51.0",
     "@types/papaparse": "^5.5.2",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",
