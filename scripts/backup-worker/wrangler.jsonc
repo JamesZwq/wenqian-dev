@@ -8,6 +8,17 @@
   "triggers": {
     "crons": ["0 17 * * *"]
   },
+  // Top-level = production. env.preview is the only named env.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wenqian-dev",
+      "database_id": "f6f6cded-1744-4437-af1d-cb036685b7ad"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "wenqian-dev" }
+  ],
   "env": {
     "preview": {
       "name": "wenqian-dev-cron-backup-preview",
@@ -20,19 +31,6 @@
       ],
       "r2_buckets": [
         { "binding": "BUCKET", "bucket_name": "wenqian-dev-preview" }
-      ]
-    },
-    "production": {
-      "name": "wenqian-dev-cron-backup",
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "wenqian-dev",
-          "database_id": "f6f6cded-1744-4437-af1d-cb036685b7ad"
-        }
-      ],
-      "r2_buckets": [
-        { "binding": "BUCKET", "bucket_name": "wenqian-dev" }
       ]
     }
   }
