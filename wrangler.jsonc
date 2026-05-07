@@ -11,13 +11,29 @@
   "observability": { "enabled": true },
   "env": {
     "preview": {
-      "name": "wenqian-dev-preview"
+      "name": "wenqian-dev-preview",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "wenqian-dev-preview",
+          "database_id": "64c3f8c2-6e49-4f2d-aa72-9d88a2aff10e",
+          "migrations_dir": "src/db/migrations"
+        }
+      ]
     },
     "production": {
       "name": "wenqian-dev",
       "routes": [
         { "pattern": "wenqian.dev", "custom_domain": true },
         { "pattern": "www.wenqian.dev", "custom_domain": true }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "wenqian-dev",
+          "database_id": "f6f6cded-1744-4437-af1d-cb036685b7ad",
+          "migrations_dir": "src/db/migrations"
+        }
       ]
     }
   }
