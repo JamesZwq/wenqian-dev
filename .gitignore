@@ -41,6 +41,11 @@ yarn-error.log*
 .wrangler/
 .dev.vars
 
+# test artifacts
+/test-results/
+/playwright-report/
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
