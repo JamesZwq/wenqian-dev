@@ -1,21 +1,21 @@
-"use client";
-import { motion } from "framer-motion";
-import { cardEntry } from "./animation-variants";
-
 interface Props {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
 }
 
-/** Centered pixel-themed card used by every (auth)/* page. */
+/**
+ * Centered pixel-themed card used by every (auth)/* page.
+ *
+ * No motion here. The site-wide <PageTransition> already wraps every page in
+ * a fade+rise motion.div; nesting another framer-motion variants div inside
+ * was causing the SSR'd \`opacity:0\` initial state to never animate to
+ * visible (hydration mismatch left the card invisible). Keep the visual
+ * styling, drop the redundant motion.
+ */
 export function AuthCard({ title, subtitle, children }: Props) {
   return (
-    <motion.div
-      variants={cardEntry}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
+    <div
       className="w-full max-w-md rounded-2xl border-2 p-6 md:p-8 shadow-xl"
       style={{
         background: "var(--pixel-card-bg)",
@@ -39,6 +39,6 @@ export function AuthCard({ title, subtitle, children }: Props) {
         </p>
       )}
       {children}
-    </motion.div>
+    </div>
   );
 }
