@@ -20,6 +20,8 @@ export default defineConfig({
   ],
   test: {
     setupFiles: ["./tests/setup.ts"],
+    // Playwright specs live under tests/e2e and are run by `npm run test:e2e`.
+    exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
   },
   resolve: {
     alias: {
