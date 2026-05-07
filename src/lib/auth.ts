@@ -57,7 +57,7 @@ function createAuth() {
           console.warn("[auth] RESEND_API_KEY not set — skipping verification email send");
           return;
         }
-        await resend.emails.send({
+        const result = await resend.emails.send({
           from: `wenqian.dev <${fromAddress}>`,
           to: user.email,
           subject: "Verify your email",
@@ -65,6 +65,13 @@ function createAuth() {
 <p><a href="${url}">${url}</a></p>
 <p>If you didn't sign up, ignore this message.</p>`,
         });
+        // Resend SDK does NOT throw on API errors — it returns { data, error }.
+        // Surface the failure so signups don't silently land without an email.
+        if (result.error) {
+          console.error("[auth] Resend send failed:", result.error);
+          throw new Error(`Resend error: ${result.error.message ?? result.error.name ?? "unknown"}`);
+        }
+        console.info(`[auth] verification email sent to ${user.email}, id=${result.data?.id}`);
       },
     },
     socialProviders,
