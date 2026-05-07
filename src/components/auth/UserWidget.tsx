@@ -32,7 +32,7 @@ export function UserWidget({ isAdmin }: Props) {
       <motion.div
         initial={{ opacity: 0, x: 16 }}
         animate={{ opacity: 1, x: 0 }}
-        className={`fixed right-4 top-4 z-50 md:right-6 md:top-6 ${visibilityClass}`}
+        className={`fixed top-4 right-[110px] z-[139] md:top-6 md:right-[120px] ${visibilityClass}`}
       >
         <Link
           href={`/sign-in?next=${encodeURIComponent(pathname || "/")}`}
