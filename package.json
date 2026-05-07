@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:worker": "opennextjs-cloudflare build && wrangler dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
     "start": "next start",
-    "lint": "eslint"
+    "deploy:preview": "opennextjs-cloudflare build && wrangler deploy --env preview",
+    "deploy:production": "opennextjs-cloudflare build && wrangler deploy --env production",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
