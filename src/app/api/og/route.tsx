@@ -1,14 +1,20 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+let cachedFonts: { regular: ArrayBuffer; bold: ArrayBuffer } | null = null;
 
-const interRegularPromise = fetch(
-  new URL("./Inter-Regular.ttf", import.meta.url)
-).then((r) => r.arrayBuffer());
-
-const interBoldPromise = fetch(
-  new URL("./Inter-Bold.ttf", import.meta.url)
-).then((r) => r.arrayBuffer());
+async function loadFonts(origin: string) {
+  if (cachedFonts) return cachedFonts;
+  const [regularRes, boldRes] = await Promise.all([
+    fetch(new URL("/fonts/Inter-Regular.ttf", origin)),
+    fetch(new URL("/fonts/Inter-Bold.ttf", origin)),
+  ]);
+  const [regular, bold] = await Promise.all([
+    regularRes.arrayBuffer(),
+    boldRes.arrayBuffer(),
+  ]);
+  cachedFonts = { regular, bold };
+  return cachedFonts;
+}
 
 // ── Per-game visual config ─────────────────────────────────────────
 
@@ -831,10 +837,7 @@ export async function GET(request: Request) {
     searchParams.get("subtitle") ?? "UNSW CS Ph.D. · Graph Systems · P2P Web Apps";
   const tag = searchParams.get("tag") ?? null;
 
-  const [interRegular, interBold] = await Promise.all([
-    interRegularPromise,
-    interBoldPromise,
-  ]);
+  const { regular: interRegular, bold: interBold } = await loadFonts(request.url);
 
   const { accent, glow, bg } = getConfig(title);
   const visual = renderVisual(title);
