@@ -6,6 +6,7 @@
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { username } from "better-auth/plugins/username";
 
 export const auth = betterAuth({
   database: drizzleAdapter({}, { provider: "sqlite" }),
@@ -14,9 +15,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 100,
   },
   socialProviders: {
     google: { clientId: "stub", clientSecret: "stub" },
     github: { clientId: "stub", clientSecret: "stub" },
   },
+  plugins: [
+    username({ minUsernameLength: 3, maxUsernameLength: 20 }),
+  ],
 });

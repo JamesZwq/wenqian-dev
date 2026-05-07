@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { username } from "better-auth/plugins/username";
 import { Resend } from "resend";
 import { getDb } from "@/db/client";
 import { env } from "@/lib/env";
+import { validateUsername } from "@/lib/username";
 
 interface AuthEnv {
   BETTER_AUTH_SECRET: string;
@@ -13,6 +15,7 @@ interface AuthEnv {
   GOOGLE_CLIENT_SECRET?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  ADMIN_EMAIL?: string;
 }
 
 // Better-Auth instance is created lazily and memoised per Worker isolate.
@@ -48,6 +51,8 @@ function createAuth() {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 100,
     },
     emailVerification: {
       sendOnSignUp: true,
@@ -75,6 +80,15 @@ function createAuth() {
       },
     },
     socialProviders,
+    plugins: [
+      username({
+        minUsernameLength: 3,
+        maxUsernameLength: 20,
+        // Default validator allows only alphanumeric + underscore. We also
+        // permit hyphens. Reserved words / chars enforced by validateUsername().
+        usernameValidator: (u) => validateUsername(u).ok,
+      }),
+    ],
   });
 }
 
