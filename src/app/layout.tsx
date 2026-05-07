@@ -5,6 +5,7 @@ import ThemeProvider from "./components/ThemeProvider";
 import ThemeToggle from "./components/ThemeToggle";
 import ClientLayout from "./components/ClientLayout";
 import AnimatedFavicon from "./components/AnimatedFavicon";
+import { UserWidgetMount } from "@/components/auth/UserWidgetMount";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -113,6 +114,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AnimatedFavicon />
           <ThemeToggle />
+          <UserWidgetMount />
           <ClientLayout>{children}</ClientLayout>
         </ThemeProvider>
       </body>
