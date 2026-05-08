@@ -15,6 +15,13 @@
       "when": 1778159672180,
       "tag": "0001_handy_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778218879826,
+      "tag": "0002_lively_shocker",
+      "breakpoints": true
     }
   ]
 }

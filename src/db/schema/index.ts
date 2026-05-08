@@ -5,3 +5,4 @@
 // from this file.
 
 export * from "./auth";
+export * from "./leaderboards";
