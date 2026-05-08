@@ -1,4 +1,6 @@
-export const runtime = "edge";
+// NO `runtime = "edge"` — see src/app/meeting/page.tsx for the same note.
+// Under @opennextjs/cloudflare the edge-runtime annotation makes the module
+// fail to load (Cannot read properties of undefined reading 'default').
 
 import { NextResponse } from "next/server";
 import {

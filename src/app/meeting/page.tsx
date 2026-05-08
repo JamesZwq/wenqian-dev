@@ -9,7 +9,10 @@ import {
 } from "@/lib/meeting/sheets";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
+// Note: NO `runtime = "edge"` — under @opennextjs/cloudflare it triggers a
+// bundling path that fails to load the route module (TypeError: Cannot read
+// properties of undefined (reading 'default')). The Worker runtime handles
+// everything by default.
 
 type Payload = {
   headers: string[];
