@@ -168,6 +168,11 @@ function DropdownLink({
       <Link
         href={href}
         onClick={onSelect}
+        // prefetch=false: dropdown links lead to authed routes whose RSC
+        // prefetch trips Better-Auth ("No request state found"). The user
+        // will only navigate when they click anyway — prefetch is overhead
+        // here, not value.
+        prefetch={false}
         className="block rounded-md px-2 py-2 font-mono text-xs hover:bg-[var(--pixel-bg-alt)]"
         style={{ color: "var(--pixel-text)" }}
         role="menuitem"
