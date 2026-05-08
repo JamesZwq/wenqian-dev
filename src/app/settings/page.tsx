@@ -2,7 +2,12 @@ import { getSession } from "@/lib/session";
 import { SettingsClient } from "./SettingsClient";
 
 export default async function SettingsPage() {
-  const session = (await getSession())!; // guaranteed non-null by layout
+  // Layout already guards unauthed access via redirect, but Next.js may render
+  // layout and page in parallel — handle null defensively here too.
+  const session = await getSession();
+  if (!session?.user) {
+    return null;
+  }
   return (
     <SettingsClient
       user={{

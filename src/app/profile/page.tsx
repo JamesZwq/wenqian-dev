@@ -11,7 +11,12 @@ function maskEmail(email: string): string {
 }
 
 export default async function ProfilePage() {
-  const session = (await getSession())!; // guaranteed non-null by layout guard
+  // Layout already guards unauthed access via redirect, but Next.js may render
+  // layout and page in parallel — so handle null defensively here too.
+  const session = await getSession();
+  if (!session?.user) {
+    return null;
+  }
   const u = session.user as typeof session.user & {
     username?: string | null;
     displayUsername?: string | null;
