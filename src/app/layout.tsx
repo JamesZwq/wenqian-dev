@@ -18,6 +18,13 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+// Every page mounts UserWidgetMount (server component) which calls
+// getSession() → headers() → makes the page dynamic anyway. Make that explicit
+// so Next 16 doesn't try to statically prerender /_not-found (which fails
+// because env()/getCloudflareContext() throws outside a request context, and
+// build caches only hid this on prior successful CF Workers Builds runs).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://wenqian.dev"
