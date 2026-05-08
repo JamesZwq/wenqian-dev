@@ -6,6 +6,7 @@ import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
+import { submitScore } from "@/lib/leaderboards/submit";
 import {
   GRID_SIZES,
   targetSequence,
@@ -281,6 +282,10 @@ export function useTrailGame() {
             ...prev,
             [sizeRef.current]: Math.min(elapsed, prev[sizeRef.current] ?? Infinity),
           }));
+          // Leaderboard: 5x5 only (canonical size).
+          if (sizeRef.current === 5) {
+            submitScore({ game: "trail", mode: "solo", metric: "time_ms", value: elapsed });
+          }
         } else {
           sendRef.current?.({ type: "game_complete", time: elapsed, timestamp: Date.now() });
         }

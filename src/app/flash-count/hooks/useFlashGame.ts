@@ -8,6 +8,7 @@ import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { getBestSpeed, saveBestSpeed } from "../bestSpeed";
+import { submitScore } from "@/lib/leaderboards/submit";
 import type { FlashPacket, GameMode, GamePhase, GameResult, QuestionResult, SoloResult } from "../types";
 
 /** All game state and logic for Flash Count, extracted from the page component. */
@@ -334,6 +335,10 @@ export function useFlashGame() {
       setSoloResult({ totalTime, speed: spd, totalQuestions: puzzles.length });
       setIsNewRecord(nr);
       setBestSpeed(getBestSpeed(resultDiff, resultCount));
+      // Leaderboard: canonical solo config only (medium difficulty, 10 puzzles).
+      if (gameMode === "solo" && resultDiff === "medium" && resultCount === 10) {
+        submitScore({ game: "flash-count", mode: "solo", metric: "score", value: Math.round(spd) });
+      }
     } else {
       startFlash(puzzles[nextIndex]);
     }

@@ -8,6 +8,7 @@ import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { generatePuzzle } from "../sudokuGenerator";
 import type { CellPos, Difficulty, GameMode, GameStatus, SudokuPacket } from "../types";
+import { submitScore } from "@/lib/leaderboards/submit";
 
 function loadBestTime(difficulty: Difficulty): number | null {
   try {
@@ -259,6 +260,10 @@ export function useSudokuGame() {
               ...prev,
               [difficultyRef.current]: Math.min(elapsed, prev[difficultyRef.current] ?? Infinity),
             }));
+            // Leaderboard: medium difficulty only (canonical solo).
+            if (difficultyRef.current === "medium") {
+              submitScore({ game: "sudoku", mode: "solo", metric: "time_ms", value: elapsed });
+            }
           } else {
             sendRef.current?.({ type: "game_complete", time: elapsed, timestamp: Date.now() });
           }

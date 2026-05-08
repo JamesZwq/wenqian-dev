@@ -8,6 +8,7 @@ import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { getBestSpeed, saveBestSpeed } from "../bestSpeed";
+import { submitScore } from "@/lib/leaderboards/submit";
 import type { GameMode, GameResult, MathPacket } from "../types";
 
 export function useMathGame() {
@@ -177,6 +178,17 @@ export function useMathGame() {
           setIsNewRecord(nr);
           setBestSpeed(getBestSpeed(resultOps, resultCount));
           if (gameMode === "p2p") send({ type: "finished", totalTime, timestamp: Date.now() });
+          // Leaderboard: canonical config (20 questions, add+sub) only — mixed
+          // configs aren't comparable on a single board.
+          const isCanonical =
+            gameMode === "solo" &&
+            resultCount === 20 &&
+            resultOps.length === 2 &&
+            resultOps.includes("add") &&
+            resultOps.includes("sub");
+          if (isCanonical) {
+            submitScore({ game: "math", mode: "solo", metric: "score", value: Math.round(spd) });
+          }
         } else {
           inputRef.current?.focus();
         }

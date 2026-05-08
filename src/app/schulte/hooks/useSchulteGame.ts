@@ -7,6 +7,7 @@ import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { GRID_SIZES, type GameMode, type GameStatus, type GridSize, type SchultePacket } from "../types";
+import { submitScore } from "@/lib/leaderboards/submit";
 
 const WRONG_FLASH_MS = 500;
 const WRONG_PENALTY_MS = 1000;
@@ -263,6 +264,11 @@ export function useSchulteGame() {
             ...prev,
             [sizeRef.current]: Math.min(elapsed, prev[sizeRef.current] ?? Infinity),
           }));
+          // Leaderboard: submit only 5x5 (the canonical size) so all rows are
+          // comparable. 3x3 / 4x4 are practice modes.
+          if (sizeRef.current === 5) {
+            submitScore({ game: "schulte", mode: "solo", metric: "time_ms", value: elapsed });
+          }
         } else {
           sendRef.current?.({ type: "game_complete", time: elapsed, timestamp: Date.now() });
         }

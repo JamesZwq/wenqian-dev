@@ -7,6 +7,7 @@ import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { COLORS, COLOR_HZ, type Color, type GameMode, type GameStatus, type PatternPacket } from "../types";
+import { submitScore } from "@/lib/leaderboards/submit";
 
 const SHOW_DURATION_MS = 500;
 const SHOW_GAP_MS = 200;
@@ -301,6 +302,7 @@ export function usePatternGame() {
             const isNew = saveBestRound(r);
             setIsNewBest(isNew);
             setBestRound(prev => (prev === null ? r : Math.max(prev, r)));
+            submitScore({ game: "pattern", mode: "solo", metric: "score", value: r });
           } else {
             sendRef.current?.({ type: "game_over", finalRound: r, timestamp: Date.now() });
           }
@@ -335,6 +337,7 @@ export function usePatternGame() {
           const isNew = saveBestRound(finalRound);
           setIsNewBest(isNew);
           setBestRound(prev => (prev === null ? finalRound : Math.max(prev, finalRound)));
+          submitScore({ game: "pattern", mode: "solo", metric: "score", value: finalRound });
         }
       } else {
         sendRef.current?.({ type: "game_over", finalRound: Math.max(0, finalRound), timestamp: Date.now() });

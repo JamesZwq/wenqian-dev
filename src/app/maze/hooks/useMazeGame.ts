@@ -15,6 +15,7 @@ import {
 } from "../items";
 import type { Position, Trail, RevealCell, Direction, QueueMove, GameMode, MazePacket } from "../types";
 import { MOVE_UNLOCK_MS, INPUT_QUEUE_LIMIT, formatTime } from "../types";
+import { submitScore } from "@/lib/leaderboards/submit";
 
 export function useMazeGame() {
   const [cellSize, setCellSize] = useState(30);
@@ -1175,6 +1176,11 @@ export function useMazeGame() {
           elapsedTime: finalElapsed,
           timestamp: finishedAt,
         });
+      }
+
+      // Leaderboard: solo single-player completion only.
+      if (modeRef.current === "single") {
+        submitScore({ game: "maze", mode: "solo", metric: "time_ms", value: finalElapsed });
       }
 
       return;

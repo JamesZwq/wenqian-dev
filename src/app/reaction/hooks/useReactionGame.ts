@@ -6,6 +6,7 @@ import { useP2PChat } from "../../../features/p2p/hooks/useP2PChat";
 import { useJoinParam } from "../../../features/p2p/hooks/useJoinParam";
 import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
+import { submitScore } from "@/lib/leaderboards/submit";
 import {
   FALSE_START_PENALTY_MS,
   LIGHT_INTERVAL_MS,
@@ -273,6 +274,7 @@ export function useReactionGame() {
           setIsNewBestAverage(isNewA);
           if (isNewA) setBestAverage(avg);
           else setBestAverage(prev => (prev === null ? avg : Math.min(prev, avg)));
+          submitScore({ game: "reaction", mode: "solo", metric: "time_ms", value: Math.round(avg) });
         }
       } else if (gameModeRef.current === "p2p") {
         sendRef.current?.({
