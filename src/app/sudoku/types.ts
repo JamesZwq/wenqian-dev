@@ -6,7 +6,8 @@ export type SudokuPacket =
   | { type: "puzzle_sync"; puzzle: number[][]; solution: number[][]; difficulty: Difficulty; timestamp: number }
   | { type: "progress"; correct: number; timestamp: number }
   | { type: "game_complete"; time: number; timestamp: number }
-  | { type: "new_game"; timestamp: number };
+  | { type: "new_game"; timestamp: number }
+  | { type: "id_exchange"; userId: string };
 
 export type CellPos = { row: number; col: number };
 

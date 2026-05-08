@@ -8,7 +8,8 @@ import { P2P_CONNECT_TIMEOUT_MS } from "../../../features/p2p/config";
 import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { generatePuzzle } from "../sudokuGenerator";
 import type { CellPos, Difficulty, GameMode, GameStatus, SudokuPacket } from "../types";
-import { submitScore } from "@/lib/leaderboards/submit";
+import { submitScore, submitMatch } from "@/lib/leaderboards/submit";
+import { useSession } from "@/lib/auth-client";
 
 function loadBestTime(difficulty: Difficulty): number | null {
   try {
@@ -68,6 +69,16 @@ export function useSudokuGame() {
   const [opponentCorrect, setOpponentCorrect] = useState(0);
   const [opponentComplete, setOpponentComplete] = useState(false);
   const [opponentTime, setOpponentTime] = useState<number | null>(null);
+
+  // Leaderboard plumbing
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const myUserIdRef = useRef<string | null>(null);
+  const opponentUserIdRef = useRef<string | null>(null);
+  const roomCodeRef = useRef<string | null>(null);
+  const raceNumberRef = useRef<number>(0);
+  const reportedRaceRef = useRef<number>(-1);
+  useEffect(() => { myUserIdRef.current = myUserId; }, [myUserId]);
 
   // Refs to avoid stale closures in callbacks
   const difficultyRef = useRef(difficulty);
@@ -153,6 +164,10 @@ export function useSudokuGame() {
       setGameMode("p2p");
       gameModeRef.current = "p2p";
       initGame(packet.puzzle, packet.solution, packet.difficulty);
+      raceNumberRef.current += 1;
+      reportedRaceRef.current = -1;
+    } else if (packet.type === "id_exchange") {
+      opponentUserIdRef.current = packet.userId;
     } else if (packet.type === "progress") {
       setOpponentCorrect(packet.correct);
     } else if (packet.type === "game_complete") {
@@ -163,6 +178,8 @@ export function useSudokuGame() {
         const diff = difficultyRef.current;
         const { puzzle: puzz, solution: sol } = generatePuzzle(diff);
         initGame(puzz, sol, diff);
+        raceNumberRef.current += 1;
+        reportedRaceRef.current = -1;
         sendRef.current?.({ type: "puzzle_sync", puzzle: puzz, solution: sol, difficulty: diff, timestamp: Date.now() });
       }
     }
@@ -195,10 +212,45 @@ export function useSudokuGame() {
       onDisconnected: () => {
         setMyIndex(null);
         myIndexRef.current = null;
+        opponentUserIdRef.current = null;
+        reportedRaceRef.current = -1;
+        raceNumberRef.current = 0;
       },
     });
 
   useEffect(() => { sendRef.current = send; }, [send]);
+  useEffect(() => { roomCodeRef.current = roomCode; }, [roomCode]);
+
+  // Send my user id once connected and authed (P2P only).
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    sendRef.current?.({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      sendRef.current?.({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId]);
+
+  // Submit P2P sudoku race result. Loser submits when receiving opponent's
+  // game_complete packet; winner submits when their own completion fires (in
+  // handleCellInput's complete branch — see below).
+  useEffect(() => {
+    if (!opponentComplete) return;
+    if (statusRef.current === "complete") return;
+    if (!roomCode || !myUserId || !opponentUserIdRef.current) return;
+    if (reportedRaceRef.current === raceNumberRef.current) return;
+    reportedRaceRef.current = raceNumberRef.current;
+    submitMatch({
+      matchId: `${roomCode}:race-${raceNumberRef.current}`,
+      game: "sudoku",
+      playerAId: myUserId,
+      playerBId: opponentUserIdRef.current,
+      wasTie: false,
+      winnerId: opponentUserIdRef.current,
+    });
+  }, [opponentComplete, roomCode, myUserId]);
 
   const handleCellInput = useCallback((row: number, col: number, value: number) => {
     if (statusRef.current !== "playing") return;
@@ -266,6 +318,23 @@ export function useSudokuGame() {
             }
           } else {
             sendRef.current?.({ type: "game_complete", time: elapsed, timestamp: Date.now() });
+            // P2P winner path — opponent will report on receiving our packet.
+            if (
+              roomCodeRef.current &&
+              myUserIdRef.current &&
+              opponentUserIdRef.current &&
+              reportedRaceRef.current !== raceNumberRef.current
+            ) {
+              reportedRaceRef.current = raceNumberRef.current;
+              submitMatch({
+                matchId: `${roomCodeRef.current}:race-${raceNumberRef.current}`,
+                game: "sudoku",
+                playerAId: myUserIdRef.current,
+                playerBId: opponentUserIdRef.current,
+                wasTie: false,
+                winnerId: myUserIdRef.current,
+              });
+            }
           }
         }
       }

@@ -66,7 +66,8 @@ export type DuelPacket =
     }
   | { type: "rematch"; sentAt: number }
   | { type: "ping"; sentAt: number; senderNow: number }
-  | { type: "pong"; echoSentAt: number; responderNow: number };
+  | { type: "pong"; echoSentAt: number; responderNow: number }
+  | { type: "id_exchange"; userId: string };
 
 export const ACTION_LABEL: Record<DuelAction, string> = {
   idle: "IDLE",

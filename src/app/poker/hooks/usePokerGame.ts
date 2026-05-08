@@ -8,6 +8,8 @@ import { useRoomUrl } from "@/features/p2p/hooks/useRoomUrl";
 import { P2P_CONNECT_TIMEOUT_MS } from "@/features/p2p/config";
 import type { ActionType, FullGameState, GameMode, PlayerView, PokerPacket } from "../types";
 import { createNewHand, processAction, createPlayerView } from "../utils";
+import { useSession } from "@/lib/auth-client";
+import { submitMatch } from "@/lib/leaderboards/submit";
 
 export function usePokerGame() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
@@ -25,6 +27,12 @@ export function usePokerGame() {
   const fullStateRef = useRef<FullGameState | null>(null);
   const sendRef = useRef<(p: PokerPacket) => boolean>(() => false);
   const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Leaderboard plumbing — exchanged via id_exchange packet on connect.
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const opponentUserIdRef = useRef<string | null>(null);
+  const lastReportedHandRef = useRef<number>(-1);
 
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
   useEffect(() => { fullStateRef.current = fullState; }, [fullState]);
@@ -76,6 +84,10 @@ export function usePokerGame() {
     }
     if (payload.type === "pong") {
       setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
+      return;
+    }
+    if (payload.type === "id_exchange") {
+      opponentUserIdRef.current = payload.userId;
       return;
     }
     const idx = myIndexRef.current;
@@ -155,6 +167,8 @@ export function usePokerGame() {
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       pingIntervalRef.current = undefined;
       setLatencyMs(null);
+      opponentUserIdRef.current = null;
+      lastReportedHandRef.current = -1;
       return;
     }
     pingIntervalRef.current = setInterval(() => {
@@ -165,6 +179,40 @@ export function usePokerGame() {
       pingIntervalRef.current = undefined;
     };
   }, [isConnected]);
+
+  // Send my user id once we're connected and authed. Send periodically until
+  // we receive theirs (covers the case where one side connects before login).
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    sendRef.current({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      sendRef.current({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId]);
+
+  // Report match to leaderboard when a hand completes (showdown with result).
+  // Both clients call submitMatch independently — server's KV-backed join
+  // window dedupes. Skip if we don't have both user ids yet.
+  useEffect(() => {
+    if (!displayView?.result || !roomCode) return;
+    if (lastReportedHandRef.current === displayView.handNumber) return;
+    if (!myUserId || !opponentUserIdRef.current) return;
+    lastReportedHandRef.current = displayView.handNumber;
+    const iWon = displayView.result.iWon;
+    const wasTie = iWon === null;
+    const winnerId = wasTie ? undefined : iWon ? myUserId : opponentUserIdRef.current;
+    submitMatch({
+      matchId: `${roomCode}:hand-${displayView.handNumber}`,
+      game: "poker",
+      playerAId: myUserId,
+      playerBId: opponentUserIdRef.current,
+      wasTie,
+      winnerId: winnerId ?? undefined,
+    });
+  }, [displayView, roomCode, myUserId]);
 
   const doAction = useCallback((action: ActionType, amount: number = 0) => {
     if (myIndexRef.current === 0) doProcessAction(0, action, amount);

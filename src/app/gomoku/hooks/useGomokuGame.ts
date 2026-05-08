@@ -11,6 +11,8 @@ import {
   BOARD_SIZE, BOARD_PADDING, createEmptyBoard,
   type AIDifficulty, type CellState, type GameMode, type GamePacket, type GameState, type Player, type Stats,
 } from "../types";
+import { useSession } from "@/lib/auth-client";
+import { submitMatch } from "@/lib/leaderboards/submit";
 
 export function useGomokuGame() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
@@ -41,6 +43,13 @@ export function useGomokuGame() {
   const sendRef = useRef<(p: GamePacket) => boolean>(() => false);
   const gameStateRef = useRef(gameState);
   const gameModeRef = useRef(gameMode);
+
+  // Leaderboard plumbing
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const opponentUserIdRef = useRef<string | null>(null);
+  const reportedGameRef = useRef<string>("");
+  const gameNumberRef = useRef<number>(0);
 
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
@@ -135,6 +144,10 @@ export function useGomokuGame() {
       setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
       return;
     }
+    if (payload.type === "id_exchange") {
+      opponentUserIdRef.current = payload.userId;
+      return;
+    }
     if (payload.type === "move") {
       setGameState(prev => {
         if (prev.status !== "playing" || prev.board[payload.row][payload.col] !== null) return prev;
@@ -173,10 +186,46 @@ export function useGomokuGame() {
         setGameState(prev => ({ ...prev, status: "waiting" }));
         setLatencyMs(null);
         setLastRemoteMessageAt(null);
+        opponentUserIdRef.current = null;
+        reportedGameRef.current = "";
+        gameNumberRef.current = 0;
       },
     });
 
   useEffect(() => { sendRef.current = send; }, [send]);
+
+  // Send my user id once connected and authed (P2P only).
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    sendRef.current({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      sendRef.current({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId]);
+
+  // Submit match outcome on win/draw (P2P only — AI games don't count).
+  useEffect(() => {
+    if (gameMode !== "p2p") return;
+    if (gameState.status !== "won" && gameState.status !== "draw") return;
+    if (!roomCode || !myUserId || !opponentUserIdRef.current || !myColor) return;
+    const matchKey = `${roomCode}:${gameState.status}-${gameState.winner ?? "draw"}-${gameNumberRef.current}`;
+    if (reportedGameRef.current === matchKey) return;
+    reportedGameRef.current = matchKey;
+    gameNumberRef.current += 1;
+    const wasTie = gameState.status === "draw";
+    const iWon = gameState.winner !== null && gameState.winner === myColor;
+    submitMatch({
+      matchId: `${roomCode}:game-${gameNumberRef.current}`,
+      game: "gomoku",
+      playerAId: myUserId,
+      playerBId: opponentUserIdRef.current,
+      wasTie,
+      winnerId: wasTie ? undefined : iWon ? myUserId : opponentUserIdRef.current,
+    });
+  }, [gameState.status, gameState.winner, gameMode, roomCode, myUserId, myColor]);
 
   useEffect(() => {
     if (!isConnected) {

@@ -26,7 +26,8 @@ export type MazePacket =
   | { type: "item_spawn"; item: MazeItem; timestamp: number }
   | { type: "item_pickup"; itemId: string; playerId: 1 | 2; timestamp: number }
   | { type: "item_use"; playerId: 1 | 2; itemType: ItemType; timestamp: number }
-  | { type: "item_effect"; effect: ActiveEffect; timestamp: number };
+  | { type: "item_effect"; effect: ActiveEffect; timestamp: number }
+  | { type: "id_exchange"; userId: string };
 
 export const MOVE_DURATION = 0.07;
 export const MOVE_UNLOCK_MS = 50;

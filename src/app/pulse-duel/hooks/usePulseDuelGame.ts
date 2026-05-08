@@ -15,6 +15,8 @@ import {
 } from "@/features/p2p/lib/clockSync";
 import type { DuelAction, DuelPacket, DuelView, FullDuelState, GameMode } from "../types";
 import { createInitialState, createView, lockAction, resolveRound, startNextRound } from "../gameLogic";
+import { useSession } from "@/lib/auth-client";
+import { submitMatch } from "@/lib/leaderboards/submit";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -40,6 +42,13 @@ export function usePulseDuelGame() {
   const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const phaseTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const clockSyncRef = useRef<ClockSyncEstimate | null>(null);
+
+  // Leaderboard plumbing
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const opponentUserIdRef = useRef<string | null>(null);
+  const reportedDuelRef = useRef<number>(-1);
+  const duelNumberRef = useRef<number>(0);
 
   useEffect(() => { myIndexRef.current = myIndex; }, [myIndex]);
   useEffect(() => { fullStateRef.current = fullState; }, [fullState]);
@@ -93,6 +102,11 @@ export function usePulseDuelGame() {
     if (payload.type === "pong") {
       const sample = createClockSyncSample(payload.echoSentAt, Date.now(), payload.responderNow);
       updateClockSync(mergeClockSyncEstimate(clockSyncRef.current, sample));
+      return;
+    }
+
+    if (payload.type === "id_exchange") {
+      opponentUserIdRef.current = payload.userId;
       return;
     }
 
@@ -176,10 +190,46 @@ export function usePulseDuelGame() {
       updateClockSync(null);
       if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
       phaseTimerRef.current = undefined;
+      opponentUserIdRef.current = null;
+      reportedDuelRef.current = -1;
+      duelNumberRef.current = 0;
     },
   });
 
   useEffect(() => { sendRef.current = send; }, [send]);
+
+  // Send my user id once connected and authed.
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    sendRef.current({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      sendRef.current({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId]);
+
+  // Submit duel result when the duel ends.
+  useEffect(() => {
+    if (!fullState || fullState.phase !== "game_over" || !roomCode) return;
+    if (!myUserId || !opponentUserIdRef.current) return;
+    if (reportedDuelRef.current === fullState.roundNumber) return;
+    reportedDuelRef.current = fullState.roundNumber;
+    duelNumberRef.current += 1;
+    const idx = myIndexRef.current;
+    if (idx === null || fullState.winner === null) return;
+    const wasTie = fullState.winner === "draw";
+    const iWon = fullState.winner === idx;
+    submitMatch({
+      matchId: `${roomCode}:duel-${duelNumberRef.current}`,
+      game: "pulse-duel",
+      playerAId: myUserId,
+      playerBId: opponentUserIdRef.current,
+      wasTie,
+      winnerId: wasTie ? undefined : iWon ? myUserId : opponentUserIdRef.current,
+    });
+  }, [fullState, roomCode, myUserId]);
 
   useEffect(() => {
     if (!isConnected) {

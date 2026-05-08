@@ -15,7 +15,8 @@ import {
 } from "../items";
 import type { Position, Trail, RevealCell, Direction, QueueMove, GameMode, MazePacket } from "../types";
 import { MOVE_UNLOCK_MS, INPUT_QUEUE_LIMIT, formatTime } from "../types";
-import { submitScore } from "@/lib/leaderboards/submit";
+import { submitScore, submitMatch } from "@/lib/leaderboards/submit";
+import { useSession } from "@/lib/auth-client";
 
 export function useMazeGame() {
   const [cellSize, setCellSize] = useState(30);
@@ -149,6 +150,16 @@ export function useMazeGame() {
   const myRemotePlayerIdRef = useRef<1 | 2 | null>(null);
   const sendRef = useRef<((payload: MazePacket) => void) | null>(null);
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS);
+
+  // Leaderboard plumbing (P2P only)
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const myUserIdRef = useRef<string | null>(null);
+  const opponentUserIdRef = useRef<string | null>(null);
+  const roomCodeRef = useRef<string | null>(null);
+  const raceNumberRef = useRef<number>(0);
+  const reportedRaceRef = useRef<number>(-1);
+  useEffect(() => { myUserIdRef.current = myUserId; }, [myUserId]);
   const fieldItemsRef = useRef<MazeItem[]>([]);
   const p1InventoryRef = useRef<InventorySlot[]>([null, null]);
   const p2InventoryRef = useRef<InventorySlot[]>([null, null]);
@@ -696,6 +707,8 @@ export function useMazeGame() {
           settingsRef.current = payload.settings;
         }
         runBuildAnimation(payload.maze, "remote", true, payload.goalPos);
+        raceNumberRef.current += 1;
+        reportedRaceRef.current = -1;
         return;
       }
 
@@ -756,6 +769,27 @@ export function useMazeGame() {
         setWinner(payload.winner);
         inputQueueRef.current = [];
         setInputQueueVersion((v) => v + 1);
+
+        // Loser path — winner already submitted from their move-resolution branch.
+        if (
+          modeRef.current === "remote" &&
+          roomCodeRef.current &&
+          myUserIdRef.current &&
+          opponentUserIdRef.current &&
+          myRemotePlayerIdRef.current !== null &&
+          reportedRaceRef.current !== raceNumberRef.current
+        ) {
+          reportedRaceRef.current = raceNumberRef.current;
+          const iWon = payload.winner === myRemotePlayerIdRef.current;
+          submitMatch({
+            matchId: `${roomCodeRef.current}:race-${raceNumberRef.current}`,
+            game: "maze",
+            playerAId: myUserIdRef.current,
+            playerBId: opponentUserIdRef.current,
+            wasTie: false,
+            winnerId: iWon ? myUserIdRef.current : opponentUserIdRef.current,
+          });
+        }
         return;
       }
 
@@ -769,6 +803,11 @@ export function useMazeGame() {
 
       if (payload.type === "pong") {
         setLatencyMs(Math.max(0, Date.now() - payload.sentAt));
+        return;
+      }
+
+      if (payload.type === "id_exchange") {
+        opponentUserIdRef.current = payload.userId;
         return;
       }
 
@@ -879,6 +918,8 @@ export function useMazeGame() {
           timestamp: Date.now(),
         });
       }
+      raceNumberRef.current += 1;
+      reportedRaceRef.current = -1;
     },
     onDisconnected: () => {
       setMyRemotePlayerId(null);
@@ -887,6 +928,9 @@ export function useMazeGame() {
       setLastRemoteMessageAt(null);
       setTrail([]);
       setXrayPath([]);
+      opponentUserIdRef.current = null;
+      raceNumberRef.current = 0;
+      reportedRaceRef.current = -1;
       if (modeRef.current === "remote") {
         setMode("menu");
       }
@@ -896,6 +940,19 @@ export function useMazeGame() {
   useEffect(() => {
     sendRef.current = send;
   }, [send]);
+  useEffect(() => { roomCodeRef.current = roomCode; }, [roomCode]);
+
+  // Send my user id once connected and authed (P2P only).
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    send({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      send({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId, send]);
 
   useEffect(() => {
     if (!isConnected) {
@@ -1181,6 +1238,32 @@ export function useMazeGame() {
       // Leaderboard: solo single-player completion only.
       if (modeRef.current === "single") {
         submitScore({ game: "maze", mode: "solo", metric: "time_ms", value: finalElapsed });
+      }
+
+      // P2P match: only the locally-triggered branch (source === "local" via own
+      // goal reach OR receipt of game_over packet from opponent — both happen
+      // through this same code path because game_over triggers a state update,
+      // not this exact branch). Submit only if local trigger or via game_over
+      // handler (lower in the file).
+      if (
+        modeRef.current === "remote" &&
+        nextMove.source === "local" &&
+        roomCodeRef.current &&
+        myUserIdRef.current &&
+        opponentUserIdRef.current &&
+        myRemotePlayerIdRef.current !== null &&
+        reportedRaceRef.current !== raceNumberRef.current
+      ) {
+        reportedRaceRef.current = raceNumberRef.current;
+        const iWon = nextMove.playerId === myRemotePlayerIdRef.current;
+        submitMatch({
+          matchId: `${roomCodeRef.current}:race-${raceNumberRef.current}`,
+          game: "maze",
+          playerAId: myUserIdRef.current,
+          playerBId: opponentUserIdRef.current,
+          wasTie: false,
+          winnerId: iWon ? myUserIdRef.current : opponentUserIdRef.current,
+        });
       }
 
       return;

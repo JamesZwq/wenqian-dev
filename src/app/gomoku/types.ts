@@ -8,7 +8,8 @@ export type GamePacket =
   | { type: "move"; row: number; col: number; timestamp: number }
   | { type: "reset"; timestamp: number }
   | { type: "ping"; sentAt: number }
-  | { type: "pong"; sentAt: number };
+  | { type: "pong"; sentAt: number }
+  | { type: "id_exchange"; userId: string };
 
 export type GameState = {
   board: CellState[][];

@@ -15,6 +15,8 @@ import {
 } from "@/features/p2p/lib/clockSync";
 import type { FullHalliState, GameMode, HalliPacket, HalliView } from "../types";
 import { advanceStateToTime, applyBell, createInitialState, createView } from "../gameLogic";
+import { useSession } from "@/lib/auth-client";
+import { submitMatch } from "@/lib/leaderboards/submit";
 
 type BellClaim = {
   player: 0 | 1;
@@ -48,6 +50,13 @@ export function useHalliGalliGame() {
   const fullStateRef = useRef<FullHalliState | null>(null);
   const sendRef = useRef<(p: HalliPacket) => boolean>(() => false);
   const pingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Leaderboard plumbing
+  const { data: session } = useSession();
+  const myUserId = session?.user?.id ?? null;
+  const opponentUserIdRef = useRef<string | null>(null);
+  const reportedGameRef = useRef<number>(-1);
+  const gameNumberRef = useRef<number>(0);
   const autoFlipRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const bellResolveRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const bellContestRef = useRef<BellContest | null>(null);
@@ -169,6 +178,11 @@ export function useHalliGalliGame() {
       return;
     }
 
+    if (payload.type === "id_exchange") {
+      opponentUserIdRef.current = payload.userId;
+      return;
+    }
+
     if (payload.type === "sync") {
       clearBellContest();
       updateFullState(payload.state);
@@ -256,10 +270,45 @@ export function useHalliGalliGame() {
       clearBellContest();
       if (autoFlipRef.current) clearTimeout(autoFlipRef.current);
       autoFlipRef.current = undefined;
+      opponentUserIdRef.current = null;
+      reportedGameRef.current = -1;
+      gameNumberRef.current = 0;
     },
   });
 
   useEffect(() => { sendRef.current = send; }, [send]);
+
+  // Send my user id once connected and authed.
+  useEffect(() => {
+    if (!isConnected || !myUserId) return;
+    sendRef.current({ type: "id_exchange", userId: myUserId });
+    if (opponentUserIdRef.current) return;
+    const t = setInterval(() => {
+      if (opponentUserIdRef.current) return;
+      sendRef.current({ type: "id_exchange", userId: myUserId });
+    }, 2000);
+    return () => clearInterval(t);
+  }, [isConnected, myUserId]);
+
+  // Submit match result when phase transitions to game_over.
+  useEffect(() => {
+    if (!fullState || fullState.phase !== "game_over" || !roomCode) return;
+    if (!myUserId || !opponentUserIdRef.current) return;
+    if (reportedGameRef.current === fullState.boardVersion) return;
+    reportedGameRef.current = fullState.boardVersion;
+    gameNumberRef.current += 1;
+    const idx = myIndexRef.current;
+    if (idx === null || fullState.winner === null) return;
+    const iWon = fullState.winner === idx;
+    submitMatch({
+      matchId: `${roomCode}:game-${gameNumberRef.current}`,
+      game: "halli-galli",
+      playerAId: myUserId,
+      playerBId: opponentUserIdRef.current,
+      wasTie: false,
+      winnerId: iWon ? myUserId : opponentUserIdRef.current,
+    });
+  }, [fullState, roomCode, myUserId]);
 
   useEffect(() => {
     if (!isConnected) {

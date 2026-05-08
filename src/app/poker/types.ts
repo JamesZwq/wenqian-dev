@@ -64,4 +64,5 @@ export type PokerPacket =
   | { type: "next_hand"; timestamp: number }
   | { type: "rematch"; timestamp: number }
   | { type: "ping"; sentAt: number }
-  | { type: "pong"; sentAt: number };
+  | { type: "pong"; sentAt: number }
+  | { type: "id_exchange"; userId: string };
