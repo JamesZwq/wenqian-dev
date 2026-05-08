@@ -16,7 +16,12 @@ export type AnalyticsEvent =
   | { name: "user.avatar_removed" }
   | { name: "user.deleted" }
   | { name: "game.start"; game: string }
-  | { name: "game.end"; game: string; durationMs: number };
+  | { name: "game.end"; game: string; durationMs: number }
+  | { name: "score.submit"; game: string; mode: "solo" | "p2p" }
+  | { name: "score.rejected"; game: string; reason: "bounds" | "rate-limit" }
+  | { name: "match.confirmed"; game: string }
+  | { name: "match.dropped"; game: string; reason: "mismatch" | "timeout" }
+  | { name: "leaderboard.view"; game: string; slice: string };
 
 /**
  * Fire-and-forget event tracker. Never throws — analytics failures must not
