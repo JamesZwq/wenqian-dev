@@ -31,14 +31,14 @@ export function useSchulteRoomGame(roomCode: string) {
   );
   const room = useRoom({ game: "schulte", myPeerId });
 
-  // Auto-join on mount once we know we're authed but not yet in a room.
+  // Auto-attach on mount: GET the room and infer role from hostUserId.
+  // If we're not yet a member, attachRoom falls through to joinRoom.
   const joinAttemptedRef = useRef(false);
   useEffect(() => {
     if (!myUserId || joinAttemptedRef.current) return;
     if (room.room) return;
     joinAttemptedRef.current = true;
-    // Try to join — will silently fail if we're already the host (404 → idempotent).
-    room.joinRoom(roomCode);
+    room.attachRoom(roomCode);
   }, [myUserId, room, roomCode]);
 
   const isHost = room.role === "host";
