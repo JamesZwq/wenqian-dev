@@ -21,7 +21,13 @@ export type AnalyticsEvent =
   | { name: "score.rejected"; game: string; reason: "bounds" | "rate-limit" }
   | { name: "match.confirmed"; game: string }
   | { name: "match.dropped"; game: string; reason: "mismatch" | "timeout" }
-  | { name: "leaderboard.view"; game: string; slice: string };
+  | { name: "leaderboard.view"; game: string; slice: string }
+  | { name: "room.created"; game: string; visibility: "public" | "private" }
+  | { name: "room.joined"; game: string }
+  | { name: "room.left"; game: string; reason: "voluntary" | "disconnect" | "host_gone" }
+  | { name: "room.host_promoted"; game: string }
+  | { name: "room.match_complete"; game: string; n: number }
+  | { name: "match.bulk_dropped"; game: string; reason: "mismatch" | "timeout" | "size" };
 
 /**
  * Fire-and-forget event tracker. Never throws — analytics failures must not
