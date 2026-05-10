@@ -3,6 +3,27 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import type { GameId } from "@/db/schema/leaderboards";
 
+// Stash a freshly-created room snap so /play/<game>?room=<code> can hydrate
+// before its first KV-backed GET returns. Workers KV is eventually consistent
+// (writes can take seconds to propagate even within the same edge POP), so a
+// GET right after a POST may 404. Local-stash hydration sidesteps that for the
+// host's create→play handoff.
+const SNAP_PREFIX = "wq-room-snap:";
+function stashSnap(code: string, snap: RoomSnapshot) {
+  try {
+    sessionStorage.setItem(SNAP_PREFIX + code, JSON.stringify(snap));
+  } catch { /* private mode etc. */ }
+}
+function readSnap(code: string): RoomSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(SNAP_PREFIX + code);
+    return raw ? (JSON.parse(raw) as RoomSnapshot) : null;
+  } catch { return null; }
+}
+function clearSnap(code: string) {
+  try { sessionStorage.removeItem(SNAP_PREFIX + code); } catch {}
+}
+
 export interface RoomMember {
   userId: string;
   peerId: string;
@@ -93,6 +114,8 @@ export function useRoom({ game, myPeerId }: UseRoomOptions): UseRoomApi {
   const createRoom = useCallback(async (opts: { visibility: "public" | "private"; capacity: number }) => {
     if (!myUserId) { setError("not_signed_in"); return null; }
     setError(null);
+    const displayUsername =
+      ((session?.user as { displayUsername?: string | null } | undefined)?.displayUsername ?? null);
     const r = await fetch("/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,12 +123,24 @@ export function useRoom({ game, myPeerId }: UseRoomOptions): UseRoomApi {
     });
     if (!r.ok) { setError(await r.text()); return null; }
     const j = (await r.json()) as { code: string; role: "host" };
+    // Construct the snap locally so we don't depend on KV being globally consistent yet.
+    const snap: RoomSnapshot = {
+      code: j.code,
+      game,
+      visibility: opts.visibility,
+      capacity: opts.capacity,
+      hostUserId: myUserId,
+      hostPeerId: myPeerId,
+      members: [{ userId: myUserId, peerId: myPeerId, displayUsername, joinedAt: Date.now() }],
+      promotionGen: 0,
+    };
     codeRef.current = j.code;
+    setRoom(snap);
     setRole("host");
-    await refresh();
+    stashSnap(j.code, snap);
     startTimers("host");
     return j.code;
-  }, [game, myPeerId, myUserId, refresh, startTimers]);
+  }, [game, myPeerId, myUserId, session?.user, startTimers]);
 
   const joinRoom = useCallback(async (code: string) => {
     if (!myUserId) { setError("not_signed_in"); return false; }
@@ -124,30 +159,53 @@ export function useRoom({ game, myPeerId }: UseRoomOptions): UseRoomApi {
   }, [myPeerId, myUserId, refresh, startTimers]);
 
   /**
-   * Attach to an existing room: GET state first, infer role from hostUserId.
-   * - If already a host: adopt host role (start heartbeat).
-   * - If already a guest: adopt guest role.
-   * - If not yet a member: fall through to joinRoom (POST).
-   *
-   * Use this when a page lands on /play/<game>?room=<code> after navigating
-   * from /rooms/<game> — the host has already created the room, so a blind
-   * joinRoom() would mis-flag them as a guest.
+   * Attach to an existing room: try sessionStorage handoff first (host's
+   * create→play case), then GET with retry (handles KV propagation lag for
+   * guests joining via lobby/code-share). Adopt role from hostUserId.
+   * Falls through to joinRoom if we're not a member.
    */
   const attachRoom = useCallback(async (code: string) => {
     if (!myUserId) { setError("not_signed_in"); return false; }
     setError(null);
-    const r = await fetch(`/api/rooms/${code}`);
-    if (!r.ok) {
-      if (r.status === 404) { setError("Room not found"); return false; }
-      setError(await r.text());
+
+    // 1. Local snap stashed by createRoom — instant hydration.
+    const stashed = readSnap(code);
+    if (stashed && stashed.members.some((m) => m.userId === myUserId)) {
+      codeRef.current = code;
+      setRoom(stashed);
+      const amHost = stashed.hostUserId === myUserId;
+      setRole(amHost ? "host" : "guest");
+      startTimers(amHost ? "host" : "guest");
+      // Background refresh — best-effort, ignore failures here. The first
+      // successful refresh poll will reconcile.
+      void fetch(`/api/rooms/${code}`).then((r) => r.ok ? r.json() : null).then((j) => {
+        if (j) setRoom(j as RoomSnapshot);
+      }).catch(() => {});
+      return true;
+    }
+
+    // 2. GET with retry — first attempt + 4 retries, ~6s budget total.
+    const delays = [0, 300, 700, 1500, 3000];
+    let snap: RoomSnapshot | null = null;
+    let lastStatus = 0;
+    for (const delay of delays) {
+      if (delay > 0) await new Promise((res) => setTimeout(res, delay));
+      const resp = await fetch(`/api/rooms/${code}`);
+      lastStatus = resp.status;
+      if (resp.ok) { snap = (await resp.json()) as RoomSnapshot; break; }
+      if (resp.status !== 404) {
+        setError(await resp.text());
+        return false;
+      }
+    }
+    if (!snap) {
+      setError(lastStatus === 404 ? "Room not found" : `HTTP ${lastStatus}`);
       return false;
     }
-    const snap = (await r.json()) as RoomSnapshot;
+
     const isMember = snap.members.some((m) => m.userId === myUserId);
-    if (!isMember) {
-      // Not yet a member — go through the normal join path.
-      return joinRoom(code);
-    }
+    if (!isMember) return joinRoom(code);
+
     codeRef.current = code;
     setRoom(snap);
     const amHost = snap.hostUserId === myUserId;
@@ -165,6 +223,7 @@ export function useRoom({ game, myPeerId }: UseRoomOptions): UseRoomApi {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: "voluntary", game }),
     }).catch(() => {});
+    clearSnap(code);
     codeRef.current = null;
     setRoom(null);
     setRole(null);
