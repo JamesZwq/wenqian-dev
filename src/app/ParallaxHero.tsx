@@ -218,7 +218,9 @@ export default function ParallaxHero() {
           [ VIEW_PUBS ]
         </motion.a>
         <motion.a
-          href="#"
+          href="/resume.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
           initial={{ opacity: 0, y: 12, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{

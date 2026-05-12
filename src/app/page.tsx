@@ -47,7 +47,7 @@ function HeroSection() {
           Publications
         </a>
         <a
-          href="/cv.pdf"
+          href="/resume.pdf"
           target="_blank"
           rel="noopener noreferrer"
           className="group min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 rounded-xl border border-[var(--pixel-accent-2)] bg-[color-mix(in_oklab,var(--pixel-accent-2)_10%,transparent)] text-[var(--pixel-accent-2)] font-sans text-sm font-semibold tracking-tight hover:bg-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] hover:shadow-lg hover:shadow-[color-mix(in_oklab,var(--pixel-accent-2)_20%,transparent)] transition-[background-color,box-shadow] duration-200 touch-manipulation"
