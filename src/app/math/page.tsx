@@ -147,11 +147,18 @@ export default function MathSprintPage() {
                 >
                   SOLO
                 </button>
+                <Link
+                  href="/rooms/math"
+                  prefetch={false}
+                  className="block w-full text-center rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                >
+                  ROOMS · UP TO 6
+                </Link>
                 <button
                   onClick={() => setGameMode("p2p")}
                   className="w-full rounded-xl border border-[var(--pixel-accent-2)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent-2)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
                 >
-                  P2P ONLINE
+                  P2P 2-PLAYER (LEGACY)
                 </button>
               </motion.div>
             )}
