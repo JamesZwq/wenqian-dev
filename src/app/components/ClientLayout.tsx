@@ -50,18 +50,10 @@ function StaticBackground() {
 }
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
-  const lightVisuals = useLightVisualEffects();
-
   return (
     <>
-      {lightVisuals ? (
-        <StaticBackground />
-      ) : (
-        <>
-          <Background />
-          <ParticleField />
-        </>
-      )}
+      <Background />
+      <ParticleField />
       {/* relative + z-10 ensures the page content sits above the fixed
           Background (z-0) and ParticleField canvas (z-3). PageTransition's
           motion.div used to provide this implicitly via its transform-induced

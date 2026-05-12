@@ -531,6 +531,54 @@ const VFS_CONTENTS: Record<string, string> = {
 };
 
 // ------------------------------------------------------------
+// Mobile: lightweight word-by-word CSS animation, no physics
+// ------------------------------------------------------------
+
+function MobileTerminalContent({ history }: { history: string[] }) {
+  const displayLines = history.slice(-14);
+
+  const lineWordOffsets = displayLines.map((_, lineIdx) =>
+    displayLines
+      .slice(0, lineIdx)
+      .reduce((sum, l) => sum + (l ? l.split(" ").length : 1), 0)
+  );
+
+  return (
+    <div className="h-full overflow-hidden font-[family-name:var(--font-jetbrains)] text-[12px] sm:text-[13px] leading-[1.75] px-4 py-4 sm:px-6 sm:py-5">
+      <style>{`
+        @keyframes mobileWordIn {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      {displayLines.map((line, lineIdx) => {
+        const isCmd = line.startsWith("wenqian@unsw:");
+        const words = line ? line.split(" ") : [""];
+        const base = lineWordOffsets[lineIdx];
+        return (
+          <div key={lineIdx}>
+            {words.map((word, wi) => (
+              <span
+                key={wi}
+                style={{
+                  display: "inline",
+                  color: isCmd ? "var(--pixel-accent-2)" : "var(--pixel-accent)",
+                  opacity: 0,
+                  animation: `mobileWordIn 0.26s ease-out ${(base + wi) * 55}ms forwards`,
+                }}
+              >
+                {wi > 0 ? " " : ""}
+                {word}
+              </span>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------
 // React Component
 // ------------------------------------------------------------
 
@@ -615,6 +663,8 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     const cvs = canvasRef.current;
     if (!el || !cvs) return;
 
+    if (isMobile) return;
+
     const ro = new ResizeObserver(() => {
       paletteRef.current = readPalette(el);
       fontFamilyRef.current = getComputedStyle(el).fontFamily || FALLBACK_FONT_FAMILY;
@@ -663,6 +713,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   }, [touchOptimized]);
 
   useEffect(() => {
+    if (isMobile) return;
     const world = worldRef.current;
     if (!world) return;
     const isSm = world.w >= 640;
@@ -806,6 +857,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   // 物理渲染主循环
   useEffect(() => {
+    if (isMobile) return;
     let raf = 0; let last = nowMs(); let acc = 0;
     const FIXED_DT = 1 / 60; const SPRING_MAX_STEP = 1 / 120; const MAX_BOX_V = 6000;
     const FRAME_INTERVAL_MS = touchOptimized ? 1000 / 30 : 0;
@@ -1108,7 +1160,11 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
               ref={contentRef}
               className="liquid-terminal-content relative p-4 sm:p-6 md:p-8 h-[340px] sm:h-[420px] md:h-[480px] font-[family-name:var(--font-jetbrains)] overflow-hidden"
             >
-              <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+              {isMobile ? (
+                <MobileTerminalContent history={history} />
+              ) : (
+                <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+              )}
 
               {/* 手机端不显示输入提示框 */}
               {!touchOptimized && (
