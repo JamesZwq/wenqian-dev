@@ -10,8 +10,8 @@ interface SessionLike {
  * configured (fail-closed).
  */
 export function isAdmin(session: SessionLike | null | undefined): boolean {
+  if (!session?.user?.email) return false;
   const adminEmail = (env() as unknown as { ADMIN_EMAIL?: string }).ADMIN_EMAIL;
   if (!adminEmail) return false;
-  if (!session?.user?.email) return false;
   return session.user.email === adminEmail;
 }

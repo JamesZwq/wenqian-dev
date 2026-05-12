@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 // ========== Animated Models ==========
+
+type ResearchContentTopic = "Core Decomposition" | "Hypergraph Analytics" | "Distributed Systems";
 
 const KCoreModel = () => (
   <div className="w-full aspect-square max-w-[320px] mx-auto">
@@ -119,6 +123,56 @@ const DistributedModel = () => (
 
 // ========== Modal Content Types ==========
 
+const StaticResearchModel = ({ topic }: { topic: ResearchContentTopic }) => {
+  const accent =
+    topic === "Core Decomposition"
+      ? "#6366f1"
+      : topic === "Hypergraph Analytics"
+        ? "#8b5cf6"
+        : "#f59e0b";
+
+  return (
+    <div className="w-full aspect-square max-w-[320px] mx-auto">
+      <svg viewBox="0 0 200 200" className="w-full h-full" aria-hidden="true">
+        <circle cx="100" cy="100" r="72" fill="none" stroke={accent} strokeWidth="2" strokeOpacity="0.35" strokeDasharray="8 5" />
+        {topic === "Distributed Systems" ? (
+          <>
+            <rect x="76" y="76" width="48" height="48" rx="14" fill={accent} fillOpacity="0.9" />
+            {[
+              [42, 42],
+              [158, 42],
+              [42, 158],
+              [158, 158],
+            ].map(([cx, cy]) => (
+              <g key={`${cx}-${cy}`}>
+                <line x1="100" y1="100" x2={cx} y2={cy} stroke={accent} strokeWidth="2" strokeOpacity="0.45" />
+                <rect x={cx - 18} y={cy - 12} width="36" height="24" rx="8" fill={accent} fillOpacity="0.72" />
+              </g>
+            ))}
+          </>
+        ) : (
+          <>
+            {[
+              [100, 50],
+              [70, 100],
+              [130, 100],
+              [100, 150],
+            ].map(([cx, cy], index) => (
+              <g key={`${cx}-${cy}`}>
+                {index > 0 && <line x1="100" y1="100" x2={cx} y2={cy} stroke={accent} strokeWidth="2" strokeOpacity="0.42" />}
+                <circle cx={cx} cy={cy} r={topic === "Hypergraph Analytics" ? 14 : 12} fill={accent} fillOpacity="0.85" />
+              </g>
+            ))}
+            {topic === "Hypergraph Analytics" && (
+              <ellipse cx="100" cy="100" rx="60" ry="44" fill={accent} fillOpacity="0.12" stroke={accent} strokeWidth="2" />
+            )}
+          </>
+        )}
+      </svg>
+    </div>
+  );
+};
+
 const researchContent = {
   "Core Decomposition": {
     model: <KCoreModel />,
@@ -167,8 +221,10 @@ export default function ResearchDetailModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  topic: keyof typeof researchContent | null;
+  topic: ResearchContentTopic | null;
 }) {
+  const isTouchLike = useIsTouchLikeContext();
+
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
@@ -187,7 +243,7 @@ export default function ResearchDetailModal({
 
   const content = topic ? researchContent[topic] : null;
 
-  return (
+  const modal = (
     <AnimatePresence>
       {isOpen && content && (
         <>
@@ -198,7 +254,7 @@ export default function ResearchDetailModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm"
+            className={`fixed inset-0 z-[200] bg-black/70 ${isTouchLike ? "" : "backdrop-blur-sm"}`}
           />
 
           {/* Slide Panel */}
@@ -206,9 +262,13 @@ export default function ResearchDetailModal({
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            transition={
+              isTouchLike
+                ? { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const }
+                : { type: "spring", damping: 30, stiffness: 300 }
+            }
             className="fixed top-0 right-0 bottom-0 w-full max-w-lg z-[201] bg-[var(--pixel-bg)] border-l border-[var(--pixel-border)] overflow-y-auto rounded-l-2xl"
-            style={{ boxShadow: "-10px 0 40px var(--pixel-glow)" }}
+            style={{ boxShadow: isTouchLike ? "-6px 0 22px var(--pixel-glow)" : "-10px 0 40px var(--pixel-glow)" }}
           >
             <div className="sticky top-0 z-10 flex justify-between items-center p-4 bg-[var(--pixel-bg)] border-b border-[var(--pixel-border)] rounded-tl-2xl">
               <h2 className="font-sans text-base font-bold text-[var(--pixel-accent)]">
@@ -216,8 +276,8 @@ export default function ResearchDetailModal({
               </h2>
               <motion.button
                 onClick={onClose}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={isTouchLike ? undefined : { scale: 1.1 }}
+                whileTap={isTouchLike ? undefined : { scale: 0.9 }}
                 className="p-2 rounded-xl border border-[var(--pixel-border)] text-[var(--pixel-accent)] hover:bg-[color-mix(in_oklab,var(--pixel-accent)_20%,transparent)]"
               >
                 <X size={20} />
@@ -227,19 +287,19 @@ export default function ResearchDetailModal({
             <div className="p-6 space-y-6 font-mono">
               {/* Animated Model */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={isTouchLike ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm text-[var(--pixel-text)]"
+                transition={isTouchLike ? { duration: 0.12 } : { delay: 0.2 }}
+                className={`p-4 rounded-xl border border-[color-mix(in_oklab,var(--pixel-border)_50%,transparent)] bg-[var(--pixel-card-bg)] text-[var(--pixel-text)] ${isTouchLike ? "research-modal-light-model" : "backdrop-blur-sm"}`}
               >
-                {content.model}
+                {isTouchLike && topic ? <StaticResearchModel topic={topic} /> : content.model}
               </motion.div>
 
               {/* Title & Description */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={isTouchLike ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+                transition={isTouchLike ? { duration: 0.12 } : { delay: 0.3 }}
               >
                 <h3 className="text-base font-bold text-[var(--pixel-accent-2)] mb-2">
                   {content.title}
@@ -251,27 +311,27 @@ export default function ResearchDetailModal({
 
               {/* Formula / Key Concept */}
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
+                initial={isTouchLike ? false : { opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="p-4 rounded-xl border-l-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] backdrop-blur-sm font-mono text-sm text-[var(--pixel-accent)]"
+                transition={isTouchLike ? { duration: 0.12 } : { delay: 0.4 }}
+                className={`p-4 rounded-xl border-l-2 border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] font-mono text-sm text-[var(--pixel-accent)] ${isTouchLike ? "" : "backdrop-blur-sm"}`}
               >
                 {content.formula}
               </motion.div>
 
               {/* Bullet Points */}
               <motion.ul
-                initial={{ opacity: 0 }}
+                initial={isTouchLike ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
+                transition={isTouchLike ? { duration: 0.12 } : { delay: 0.5 }}
                 className="space-y-3"
               >
                 {content.bullets.map((bullet, i) => (
                   <motion.li
                     key={i}
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={isTouchLike ? false : { opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + i * 0.1 }}
+                    transition={isTouchLike ? { duration: 0.12 } : { delay: 0.6 + i * 0.1 }}
                     className="flex items-start gap-3"
                   >
                     <span className="mt-1.5 w-2 h-2 rounded-full bg-[var(--pixel-accent)] flex-shrink-0" />
@@ -287,4 +347,7 @@ export default function ResearchDetailModal({
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(modal, document.body);
 }

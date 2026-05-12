@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 interface ShareButtonProps {
   title: string;
@@ -136,6 +137,7 @@ function CheckIcon() {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ShareButton({ title, text, url, ogImage, className = "" }: ShareButtonProps) {
+  const lightVisuals = useIsTouchLikeContext();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
@@ -214,10 +216,10 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={lightVisuals ? undefined : { scale: 1.05 }}
+        whileTap={lightVisuals ? undefined : { scale: 0.95 }}
         aria-label="Share this page"
-        className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-md transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs"
+        className={`inline-flex items-center gap-1.5 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-3 py-2 font-sans font-semibold text-[10px] tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] transition-colors hover:bg-[var(--pixel-bg-alt)] md:text-xs ${lightVisuals ? "" : "backdrop-blur-md"}`}
       >
         <ShareIcon />
         <span className="hidden sm:inline">SHARE</span>
@@ -228,11 +230,11 @@ export default function ShareButton({ title, text, url, ogImage, className = "" 
         {open && (
           <motion.div
             ref={popoverRef}
-            initial={{ opacity: 0, scale: 0.92, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -8, transition: { duration: 0.12 } }}
-            transition={{ type: "spring", stiffness: 420, damping: 28 }}
-            className="absolute right-0 top-full z-[200] mt-2 w-72 origin-top-right rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] backdrop-blur-xl overflow-hidden"
+            initial={lightVisuals ? { opacity: 0, y: -4 } : { opacity: 0, scale: 0.92, y: -8 }}
+            animate={lightVisuals ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={lightVisuals ? { opacity: 0, y: -4, transition: { duration: 0.1 } } : { opacity: 0, scale: 0.92, y: -8, transition: { duration: 0.12 } }}
+            transition={lightVisuals ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 28 }}
+            className={`absolute right-0 top-full z-[200] mt-2 w-72 origin-top-right rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] overflow-hidden ${lightVisuals ? "" : "backdrop-blur-xl"}`}
           >
             {/* Header */}
             <div className="border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-2.5 flex items-center justify-between">

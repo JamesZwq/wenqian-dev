@@ -5,9 +5,12 @@ import ResumeSections from "./ResumeSections";
 import ExtraSections from "./ExtraSections";
 import MouseProvider from "./components/MouseProvider";
 import { ScrollLagProvider } from "./components/ScrollLagContext";
-import { IsMobileProvider, useIsMobileContext } from "./components/IsMobileContext";
+import {
+  IsMobileProvider,
+  useIsMobileContext,
+  useIsTouchLikeContext,
+} from "./components/IsMobileContext";
 import PetBedToggle from "./components/PetBedToggle";
-import BgSpeedControl from "./components/BgSpeedControl";
 import FpsCounter from "./components/FpsCounter";
 import FloatingNav from "./components/FloatingNav";
 import ShareButton from "./components/ShareButton";
@@ -24,6 +27,7 @@ const CursorPet = dynamic(
 
 function HeroSection() {
   const isMobile = useIsMobileContext();
+  const lightVisuals = useIsTouchLikeContext();
   return (
     <section className={`relative min-h-screen w-full overflow-hidden flex flex-col ${isMobile ? "" : "justify-center"}`}>
       {/* 手机端：终端居中于"按钮之上"的区域，底部预留按钮高度，不顶到最上 */}
@@ -61,7 +65,7 @@ function HeroSection() {
       </div>
 
       {/* Scroll 提示 - 手机端不显示 */}
-      {!isMobile && (
+      {!isMobile && !lightVisuals && (
         <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1 animate-bounce">
           <span className="text-[color-mix(in_oklab,var(--pixel-accent)_50%,transparent)] font-mono text-[10px] tracking-[0.2em] uppercase">
             scroll

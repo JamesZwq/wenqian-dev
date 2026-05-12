@@ -1,17 +1,25 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 export default function FpsCounter() {
+  const lightVisuals = useIsTouchLikeContext();
   const [fps, setFps] = useState<number | null>(null);
   const framesRef = useRef(0);
-  const lastTimeRef = useRef<number>(
-    typeof performance !== "undefined" ? performance.now() : Date.now()
-  );
+  const lastTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const prevFpsRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (lightVisuals) {
+      return;
+    }
+
+    framesRef.current = 0;
+    lastTimeRef.current = typeof performance !== "undefined" ? performance.now() : Date.now();
+    prevFpsRef.current = null;
+
     const loop = () => {
       // Skip counting when tab is hidden
       if (document.hidden) {
@@ -42,9 +50,9 @@ export default function FpsCounter() {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, []);
+  }, [lightVisuals]);
 
-  if (fps === null) return null;
+  if (lightVisuals || fps === null) return null;
 
   let colorClass = "text-[var(--pixel-accent)]";
   if (fps < 30) {

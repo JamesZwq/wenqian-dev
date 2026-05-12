@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 const gamesItems = [
   { href: "/chat", label: "P2P Chat", icon: "💬", color: "var(--pixel-warn)", description: "Encrypted peer-to-peer messaging" },
@@ -45,22 +46,37 @@ const itemVariants = {
 
 export default function FloatingNav() {
   const [isOpen, setIsOpen] = useState(false);
+  const lightVisuals = useIsTouchLikeContext();
   const close = useCallback(() => setIsOpen(false), []);
+  const activeDropdownVariants = lightVisuals
+    ? {
+        hidden: { opacity: 0, y: -4 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.12 } },
+        exit: { opacity: 0, y: -4, transition: { duration: 0.1 } },
+      }
+    : dropdownVariants;
+  const activeItemVariants = lightVisuals
+    ? {
+        hidden: { opacity: 1, x: 0 },
+        visible: { opacity: 1, x: 0 },
+        exit: { opacity: 1, x: 0 },
+      }
+    : itemVariants;
 
   return (
     <div className="fixed top-6 left-6 z-50">
       {/* Main button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center gap-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] backdrop-blur-sm transition-shadow hover:shadow-2xl"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+        className={`relative flex items-center gap-2 rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] px-4 py-3 font-sans text-sm font-semibold tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] transition-shadow ${lightVisuals ? "" : "backdrop-blur-sm hover:shadow-2xl"}`}
+        whileHover={lightVisuals ? undefined : { scale: 1.05 }}
+        whileTap={lightVisuals ? undefined : { scale: 0.95 }}
+        transition={lightVisuals ? { duration: 0.12 } : { type: "spring", stiffness: 500, damping: 25 }}
       >
         <motion.span
           className="text-base inline-flex items-center justify-center leading-none -translate-y-px"
           animate={{ rotate: isOpen ? 90 : 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          transition={lightVisuals ? { duration: 0.12 } : { type: "spring", stiffness: 300, damping: 20 }}
         >
           {isOpen ? "✕" : "☰"}
         </motion.span>
@@ -76,7 +92,7 @@ export default function FloatingNav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 -z-10 bg-black/20 backdrop-blur-[2px]"
+            className={`fixed inset-0 -z-10 bg-black/20 ${lightVisuals ? "" : "backdrop-blur-[2px]"}`}
             onClick={close}
           />
         )}
@@ -86,11 +102,11 @@ export default function FloatingNav() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            variants={dropdownVariants}
+            variants={activeDropdownVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="absolute left-0 top-full mt-3 w-80 max-h-[calc(100dvh-100px)] flex flex-col rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] backdrop-blur-md will-change-transform"
+            className={`absolute left-0 top-full mt-3 w-80 max-h-[calc(100dvh-100px)] flex flex-col rounded-2xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] shadow-2xl shadow-[var(--pixel-glow)] ${lightVisuals ? "" : "backdrop-blur-md will-change-transform"}`}
           >
             {/* Header */}
             <div className="shrink-0 border-b border-[var(--pixel-border)] bg-[var(--pixel-bg-alt)] px-4 py-3 rounded-t-2xl">
@@ -106,7 +122,7 @@ export default function FloatingNav() {
                 P2P Games
               </div>
               {gamesItems.map((item) => (
-                <motion.div key={item.href} variants={itemVariants}>
+                <motion.div key={item.href} variants={activeItemVariants}>
                   <Link
                     href={item.href}
                     onClick={close}
@@ -138,7 +154,7 @@ export default function FloatingNav() {
                 Tools
               </div>
               {toolsItems.map((item) => (
-                <motion.div key={item.href} variants={itemVariants}>
+                <motion.div key={item.href} variants={activeItemVariants}>
                   <Link
                     href={item.href}
                     onClick={close}

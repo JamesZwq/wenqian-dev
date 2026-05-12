@@ -2,8 +2,17 @@
 
 import { motion, useSpring, useMotionValue } from "framer-motion";
 import { useScrollLag } from "./ScrollLagContext";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 export default function ScrollProgress() {
+  const lightVisuals = useIsTouchLikeContext();
+
+  if (lightVisuals) return null;
+
+  return <ScrollProgressInner />;
+}
+
+function ScrollProgressInner() {
   const scrollLag = useScrollLag();
   const zeroProgress = useMotionValue(0);
   const scrollYProgress = scrollLag?.scrollYProgress ?? zeroProgress;

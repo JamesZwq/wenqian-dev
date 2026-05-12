@@ -2,11 +2,23 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { motion, useAnimationFrame, useMotionValue } from "framer-motion";
+import { useIsTouchLikeContext } from "./IsMobileContext";
+
+function getInitialPetEnabled() {
+  if (typeof window === "undefined") return false;
+
+  const isTouch = window.matchMedia("(pointer: coarse)").matches;
+  try {
+    const stored = window.localStorage.getItem("cursorPetEnabled");
+    if (stored !== null) return stored === "true";
+  } catch {}
+
+  return !isTouch;
+}
 
 export default function CursorPet() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
+  const lightVisuals = useIsTouchLikeContext();
+  if (lightVisuals) return null;
   return <CursorPetInner />;
 }
 
@@ -18,9 +30,9 @@ const BED_Y_LIE_OFFSET = 36; // 门的垂直位置
 function CursorPetInner() {
   const targetXRef = useRef(0);
   const targetYRef = useRef(0);
-  const lastMoveTimeRef = useRef<number>(performance.now());
+  const lastMoveTimeRef = useRef<number>(0);
   const isTouchRef = useRef(false);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(getInitialPetEnabled);
 
   const enabledRef = useRef(enabled);
   useEffect(() => { enabledRef.current = enabled; }, [enabled]);
@@ -31,16 +43,13 @@ function CursorPetInner() {
   const prevYRef = useRef(0);
 
   useEffect(() => {
+    lastMoveTimeRef.current = performance.now();
     isTouchRef.current = window.matchMedia("(pointer: coarse)").matches;
     try {
-      const stored = window.localStorage.getItem("cursorPetEnabled");
-      if (stored !== null) setEnabled(stored === "true");
-      else {
-        const def = !isTouchRef.current;
-        window.localStorage.setItem("cursorPetEnabled", String(def));
-        setEnabled(def);
+      if (window.localStorage.getItem("cursorPetEnabled") === null) {
+        window.localStorage.setItem("cursorPetEnabled", String(enabledRef.current));
       }
-    } catch { setEnabled(!isTouchRef.current); }
+    } catch {}
 
     const handlePointer = (e: PointerEvent) => {
       if (e.pointerType === "touch") { isTouchRef.current = true; return; }

@@ -36,7 +36,7 @@ export function UserWidget({ isAdmin }: Props) {
       >
         <Link
           href={`/sign-in?next=${encodeURIComponent(pathname || "/")}`}
-          className="rounded-xl border-2 px-3 py-2 font-sans font-semibold text-[11px] tracking-tight backdrop-blur-md"
+          className="rounded-xl border-2 px-3 py-2 font-sans font-semibold text-[11px] tracking-tight"
           style={{
             background: "var(--pixel-card-bg)",
             borderColor: "var(--pixel-accent)",
@@ -99,7 +99,7 @@ export function UserWidget({ isAdmin }: Props) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="absolute right-0 mt-2 w-56 rounded-xl border-2 p-2 shadow-xl backdrop-blur-md"
+            className="absolute right-0 mt-2 w-56 rounded-xl border-2 p-2 shadow-xl"
             style={{
               background: "var(--pixel-card-bg)",
               borderColor: "var(--pixel-border)",

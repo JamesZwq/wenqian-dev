@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useMemo } from "react";
 import { useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 const SCROLL_SPRING = { stiffness: 280, damping: 32 };
 const LAG_STRENGTH = 0.12;
@@ -19,6 +20,20 @@ export function useScrollLag(): ScrollLagValue | null {
 }
 
 export function ScrollLagProvider({ children }: { children: React.ReactNode }) {
+  const lightVisuals = useIsTouchLikeContext();
+
+  if (lightVisuals) {
+    return (
+      <ScrollLagContext.Provider value={null}>
+        {children}
+      </ScrollLagContext.Provider>
+    );
+  }
+
+  return <ScrollLagProviderInner>{children}</ScrollLagProviderInner>;
+}
+
+function ScrollLagProviderInner({ children }: { children: React.ReactNode }) {
   const { scrollY, scrollX, scrollYProgress } = useScroll();
   const smoothY = useSpring(scrollY, SCROLL_SPRING);
   const smoothX = useSpring(scrollX, SCROLL_SPRING);

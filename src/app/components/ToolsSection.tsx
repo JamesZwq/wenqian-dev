@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { Wrench } from "lucide-react";
+import { useIsTouchLikeContext } from "./IsMobileContext";
 
 // ── Tool registry ──────────────────────────────────────────
 type Tool = {
@@ -44,16 +45,21 @@ function TranscribeIcon() {
 }
 
 // ── Inner card visual (handles hover) ─────────────────────
-function CardVisual({ tool }: { tool: Tool }) {
+function CardVisual({ tool, lightMotion }: { tool: Tool; lightMotion: boolean }) {
   return (
     <motion.div
-      whileHover={{
-        y: -9,
-        boxShadow: `0 0 20px ${tool.glow}, 0 8px 32px ${tool.glow}`,
-        borderColor: tool.accent,
-      }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 320, damping: 24 }}
+      className="tool-card-visual"
+      whileHover={
+        lightMotion
+          ? undefined
+          : {
+              y: -9,
+              boxShadow: `0 0 20px ${tool.glow}, 0 8px 32px ${tool.glow}`,
+              borderColor: tool.accent,
+            }
+      }
+      whileTap={{ scale: lightMotion ? 0.99 : 0.97 }}
+      transition={lightMotion ? { duration: 0.14, ease: "easeOut" } : { type: "spring", stiffness: 320, damping: 24 }}
       style={{
         width: 152,
         height: 241,
@@ -63,8 +69,8 @@ function CardVisual({ tool }: { tool: Tool }) {
         flexDirection: "column",
         border: `1px solid var(--pixel-border)`,
         background: "var(--pixel-card-bg)",
-        backdropFilter: "blur(12px) saturate(140%)",
-        WebkitBackdropFilter: "blur(12px) saturate(140%)",
+        backdropFilter: lightMotion ? "none" : "blur(12px) saturate(140%)",
+        WebkitBackdropFilter: lightMotion ? "none" : "blur(12px) saturate(140%)",
         position: "relative",
         boxShadow: "none",
       }}
@@ -95,14 +101,14 @@ function CardVisual({ tool }: { tool: Tool }) {
             width: 90, height: 90,
             borderRadius: "50%",
             background: tool.accent,
-            filter: "blur(28px)",
-            opacity: 0.25,
+            filter: lightMotion ? "none" : "blur(28px)",
+            opacity: lightMotion ? 0.08 : 0.25,
             pointerEvents: "none",
           }}
         />
         <motion.div
-          whileHover={{ scale: 1.12, rotate: -5 }}
-          transition={{ type: "spring", stiffness: 320, damping: 20 }}
+          whileHover={lightMotion ? undefined : { scale: 1.12, rotate: -5 }}
+          transition={lightMotion ? { duration: 0.14, ease: "easeOut" } : { type: "spring", stiffness: 320, damping: 20 }}
           style={{
             width: 62, height: 62,
             borderRadius: 16,
@@ -173,11 +179,14 @@ function CardVisual({ tool }: { tool: Tool }) {
 // ── Section ────────────────────────────────────────────────
 export default function ToolsSection() {
   const gridRef = useRef<HTMLDivElement>(null);
+  const isTouchLike = useIsTouchLikeContext();
   const isInView = useInView(gridRef, { once: true, amount: 0.1 });
   const [offsets, setOffsets] = useState<{ x: number; y: number }[] | null>(null);
   const [inFan, setInFan] = useState(true);
 
   useLayoutEffect(() => {
+    if (isTouchLike) return;
+
     const grid = gridRef.current;
     if (!grid) return;
     const rect = grid.getBoundingClientRect();
@@ -194,14 +203,15 @@ export default function ToolsSection() {
         };
       }),
     );
-  }, []);
+  }, [isTouchLike]);
 
   useEffect(() => {
+    if (isTouchLike) return;
     if (isInView && inFan && offsets) {
       const timer = setTimeout(() => setInFan(false), 500);
       return () => clearTimeout(timer);
     }
-  }, [isInView, inFan, offsets]);
+  }, [isInView, inFan, offsets, isTouchLike]);
 
   return (
     <section id="tools" className="mt-16 sm:mt-24 scroll-mt-8">
@@ -221,26 +231,40 @@ export default function ToolsSection() {
         {TOOLS.map((tool, i) => (
           <motion.div
             key={tool.href}
-            animate={{
-              x: inFan && offsets ? offsets[i].x : 0,
-              y: inFan && offsets ? offsets[i].y : 0,
-              rotate: inFan ? getFanAngle(i) : 0,
-              scale: inFan ? 0.82 : 1,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 160,
-              damping: 22,
-              delay: inFan ? 0 : i * 0.06 + 0.08,
-            }}
+            animate={
+              isTouchLike
+                ? {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    rotate: 0,
+                  }
+                : {
+                    x: inFan && offsets ? offsets[i].x : 0,
+                    y: inFan && offsets ? offsets[i].y : 0,
+                    rotate: inFan ? getFanAngle(i) : 0,
+                    scale: inFan ? 0.82 : 1,
+                  }
+            }
+            transition={
+              isTouchLike
+                ? { duration: 0 }
+                : {
+                    type: "spring",
+                    stiffness: 160,
+                    damping: 22,
+                    delay: inFan ? 0 : i * 0.06 + 0.08,
+                  }
+            }
             style={{
               transformOrigin: "center bottom",
-              zIndex: inFan ? i : undefined,
-              visibility: offsets ? "visible" : "hidden",
+              zIndex: !isTouchLike && inFan ? i : undefined,
+              visibility: isTouchLike || offsets ? "visible" : "hidden",
+              willChange: isTouchLike ? "auto" : "transform",
             }}
           >
             <Link href={tool.href} className="block">
-              <CardVisual tool={tool} />
+              <CardVisual tool={tool} lightMotion={isTouchLike} />
             </Link>
           </motion.div>
         ))}

@@ -8,10 +8,18 @@ import {
   useScroll,
 } from "framer-motion";
 import { ArrowUp } from "lucide-react";
-import { useIsMobileContext } from "./IsMobileContext";
+import { useIsMobileContext, useIsTouchLikeContext } from "./IsMobileContext";
 
 export default function BackToTop() {
   const isMobile = useIsMobileContext();
+  const isTouchLike = useIsTouchLikeContext();
+
+  if (isMobile || isTouchLike) return null;
+
+  return <BackToTopInner />;
+}
+
+function BackToTopInner() {
   const { scrollY } = useScroll();
   const [show, setShow] = useState(false);
   const showRef = useRef(false);
@@ -26,8 +34,6 @@ export default function BackToTop() {
 
   const opacity = useTransform(scrollY, [200, 400], [0, 1]);
   const scale = useTransform(scrollY, [200, 400], [0.8, 1]);
-
-  if (isMobile) return null;
 
   return (
     <motion.button

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useIsMobileContext } from "./IsMobileContext";
+import React, { useEffect, useId, useRef, useState, useCallback } from "react";
+import { useIsMobileContext, useIsTouchLikeContext } from "./IsMobileContext";
 
 // ------------------------------------------------------------
 // Tiny hand-rolled 2D physics (circle bodies + spatial hash)
@@ -44,6 +44,7 @@ type World = {
   h: number;
   bodies: Body[];
   nextId: number;
+  quality: "full" | "touch";
 
   axExt: number;
   ayExt: number;
@@ -249,7 +250,7 @@ function stepWorld(world: World, dt: number) {
   const grid = buildSpatialHash(bodies, cell);
   const neighborOffsets = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]] as const;
 
-  const iters = 2;
+  const iters = world.quality === "touch" ? 1 : 2;
   for (let iter = 0; iter < iters; iter++) {
     for (const [key, indices] of grid.entries()) {
       const { cx, cy } = unpackKey(key);
@@ -439,6 +440,15 @@ const FALLBACK_FONT_FAMILY = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Conso
 function hash01(n: number) { return (Math.sin(n * 999.123 + 0.12345) * 43758.5453) % 1; }
 function smoothstep01(u: number) { const x = clamp(u, 0, 1); return x * x * (3 - 2 * x); }
 
+function isWorldSettled(world: World) {
+  for (let i = 0; i < world.bodies.length; i++) {
+    const b = world.bodies[i];
+    if (Math.abs(b.vx) > 0.16 || Math.abs(b.vy) > 0.16) return false;
+    if (Math.abs(b.x - b.hx) > 0.2 || Math.abs(b.y - b.hy) > 0.2) return false;
+  }
+  return true;
+}
+
 function initBootExplosion(world: World) {
   const cx = world.w * 0.5; const cy = world.h * 0.5;
   for (let i = 0; i < world.bodies.length; i++) {
@@ -526,10 +536,14 @@ const VFS_CONTENTS: Record<string, string> = {
 
 export default function PhysicsTerminal({ className, title }: { className?: string; title?: string }) {
   const isMobile = useIsMobileContext();
+  const isTouchLike = useIsTouchLikeContext();
+  const touchOptimized = isMobile || isTouchLike;
+  const glassFilterId = `liquid-glass-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const outerRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasDprRef = useRef(1);
 
   const [uiDragging, setUiDragging] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -571,10 +585,18 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   const paletteRef = useRef<Palette>({ accent: "#818cf8", accent2: "#a78bfa", warn: "#fbbf24", text: "#e8e5f5" });
   const fontFamilyRef = useRef<string>(FALLBACK_FONT_FAMILY);
-  const glassFilterIdRef = useRef(`liquid-glass-${Math.random().toString(36).slice(2, 10)}`);
   const glassPointerRef = useRef({ x: 52, y: 18, tx: 52, ty: 18, vx: 0, vy: 0 });
+  const touchOptimizedRef = useRef(touchOptimized);
+
+  useEffect(() => {
+    touchOptimizedRef.current = touchOptimized;
+    if (worldRef.current) {
+      worldRef.current.quality = touchOptimized ? "touch" : "full";
+    }
+  }, [touchOptimized]);
 
   const updateGlassPointer = useCallback((clientX: number, clientY: number) => {
+    if (touchOptimizedRef.current) return;
     const shell = shellRef.current;
     if (!shell) return;
 
@@ -598,7 +620,9 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       fontFamilyRef.current = getComputedStyle(el).fontFamily || FALLBACK_FONT_FAMILY;
 
       const rect = el.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      const nativeDpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(nativeDpr, touchOptimizedRef.current ? 1.35 : 2);
+      canvasDprRef.current = dpr;
       cvs.width = Math.max(1, Math.floor(rect.width * dpr));
       cvs.height = Math.max(1, Math.floor(rect.height * dpr));
       cvs.style.width = `${rect.width}px`;
@@ -610,7 +634,19 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       const isMd = w >= 768;
       const pad = isMd ? 32 : isSm ? 24 : 16;
 
-      const newWorld: World = { w, h, bodies: [], nextId: 0, axExt: 0, ayExt: 0, gravityOn: false, collisionsOn: false, returnAlpha: 1, isClearing: false };
+      const newWorld: World = {
+        w,
+        h,
+        bodies: [],
+        nextId: 0,
+        quality: touchOptimizedRef.current ? "touch" : "full",
+        axExt: 0,
+        ayExt: 0,
+        gravityOn: false,
+        collisionsOn: false,
+        returnAlpha: 1,
+        isClearing: false,
+      };
       asciiBottomYRef.current = buildAsciiBodies(newWorld, pad, isSm, isMd);
       worldRef.current = newWorld;
 
@@ -624,7 +660,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
     ro.observe(el);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [touchOptimized]);
 
   useEffect(() => {
     const world = worldRef.current;
@@ -772,15 +808,26 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
   useEffect(() => {
     let raf = 0; let last = nowMs(); let acc = 0;
     const FIXED_DT = 1 / 60; const SPRING_MAX_STEP = 1 / 120; const MAX_BOX_V = 6000;
-    const cachedDpr = window.devicePixelRatio || 1;
+    const FRAME_INTERVAL_MS = touchOptimized ? 1000 / 30 : 0;
+    let lastFrameTime = 0;
+    let idleFrozen = false;
+    let lastOuterTransform = "";
+    let lastGlassVars = "";
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
+      const frameNow = nowMs();
+      if (FRAME_INTERVAL_MS > 0 && frameNow - lastFrameTime < FRAME_INTERVAL_MS) return;
+      lastFrameTime = frameNow;
+
       // Skip physics & rendering when tab hidden or scrolled far past hero
       if (document.hidden || window.scrollY > window.innerHeight * 1.3) {
-        last = nowMs(); return;
+        last = frameNow;
+        acc = 0;
+        idleFrozen = false;
+        return;
       }
-      const t = nowMs(); const dt = clamp((t - last) / 1000, 0, 0.033); last = t;
+      const t = frameNow; const dt = clamp((t - last) / 1000, 0, 0.033); last = t;
 
       const world = worldRef.current; const cvs = canvasRef.current;
       if (!world || !cvs) return;
@@ -788,6 +835,18 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       world.isClearing = isClearingRef.current;
 
       const dragging = dragRef.current.active;
+      if (
+        touchOptimized &&
+        idleFrozen &&
+        !dragging &&
+        !world.isClearing &&
+        bootStartRef.current === null &&
+        clearStartRef.current === null
+      ) {
+        return;
+      }
+      idleFrozen = false;
+
       const target = dragging ? boxTargetRef.current : { x: 0, y: 0 };
       boxTargetRef.current = target;
 
@@ -804,8 +863,13 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
         remain -= h;
       }
 
-      if (outerRef.current) outerRef.current.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
-      if (shellRef.current) {
+      const nextOuterTransform = `translate3d(${pos.x.toFixed(2)}px, ${pos.y.toFixed(2)}px, 0)`;
+      if (outerRef.current && nextOuterTransform !== lastOuterTransform) {
+        outerRef.current.style.transform = nextOuterTransform;
+        lastOuterTransform = nextOuterTransform;
+      }
+
+      if (shellRef.current && !touchOptimized) {
         const speed = Math.hypot(vel.x, vel.y);
         const glassPointer = glassPointerRef.current;
         let remainPointer = dt;
@@ -825,13 +889,25 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
           remainPointer -= h;
         }
 
-        shellRef.current.style.setProperty("--liquid-pointer-x", `${glassPointer.x.toFixed(2)}%`);
-        shellRef.current.style.setProperty("--liquid-pointer-y", `${glassPointer.y.toFixed(2)}%`);
-        shellRef.current.style.setProperty("--liquid-drift-x", `${clamp(-vel.x / 220, -16, 16).toFixed(2)}px`);
-        shellRef.current.style.setProperty("--liquid-drift-y", `${clamp(-vel.y / 250, -12, 12).toFixed(2)}px`);
-        shellRef.current.style.setProperty("--liquid-scale", (1 + clamp(speed / 20000, 0, 0.035)).toFixed(4));
-        shellRef.current.style.setProperty("--liquid-caustic-opacity", (0.56 + clamp(speed / 2800, 0, 0.2)).toFixed(3));
-        shellRef.current.style.setProperty("--liquid-highlight-opacity", (0.5 + clamp(speed / 3200, 0, 0.16)).toFixed(3));
+        const pointerX = `${glassPointer.x.toFixed(2)}%`;
+        const pointerY = `${glassPointer.y.toFixed(2)}%`;
+        const driftX = `${clamp(-vel.x / 220, -16, 16).toFixed(2)}px`;
+        const driftY = `${clamp(-vel.y / 250, -12, 12).toFixed(2)}px`;
+        const scale = (1 + clamp(speed / 20000, 0, 0.035)).toFixed(4);
+        const causticOpacity = (0.56 + clamp(speed / 2800, 0, 0.2)).toFixed(3);
+        const highlightOpacity = (0.5 + clamp(speed / 3200, 0, 0.16)).toFixed(3);
+        const nextGlassVars = `${pointerX}|${pointerY}|${driftX}|${driftY}|${scale}|${causticOpacity}|${highlightOpacity}`;
+
+        if (nextGlassVars !== lastGlassVars) {
+          shellRef.current.style.setProperty("--liquid-pointer-x", pointerX);
+          shellRef.current.style.setProperty("--liquid-pointer-y", pointerY);
+          shellRef.current.style.setProperty("--liquid-drift-x", driftX);
+          shellRef.current.style.setProperty("--liquid-drift-y", driftY);
+          shellRef.current.style.setProperty("--liquid-scale", scale);
+          shellRef.current.style.setProperty("--liquid-caustic-opacity", causticOpacity);
+          shellRef.current.style.setProperty("--liquid-highlight-opacity", highlightOpacity);
+          lastGlassVars = nextGlassVars;
+        }
       }
 
       world.axExt = dragging ? -axBox : 0; world.ayExt = dragging ? -ayBox : 0; world.gravityOn = dragging;
@@ -866,7 +942,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
       const ctx = cvs.getContext("2d");
       if (!ctx) return;
-      const dpr = cachedDpr;
+      const dpr = canvasDprRef.current;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cvs.width, cvs.height);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -888,18 +964,40 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       
       ctx.globalAlpha = bootActive ? clamp(bootElapsed / 180, 0, 1) : 1;
 
+      let activeFill = "";
+      let activeFont = "";
       for (let i = 0; i < world.bodies.length; i++) {
         const b = world.bodies[i];
-        ctx.fillStyle = pal[b.ck] ?? pal.accent;
-        ctx.font = `${b.fs}px ${ff}`;
+        const fill = pal[b.ck] ?? pal.accent;
+        const font = `${b.fs}px ${ff}`;
+        if (fill !== activeFill) {
+          ctx.fillStyle = fill;
+          activeFill = fill;
+        }
+        if (font !== activeFont) {
+          ctx.font = font;
+          activeFont = font;
+        }
         ctx.fillText(b.ch, b.x, b.y);
       }
       ctx.globalAlpha = 1;
+
+      if (
+        touchOptimized &&
+        !dragging &&
+        !bootActive &&
+        !clearActive &&
+        !world.isClearing &&
+        world.returnAlpha >= 0.999 &&
+        isWorldSettled(world)
+      ) {
+        idleFrozen = true;
+      }
     };
 
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [touchOptimized]);
 
   const onTerminalPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault(); if (e.button !== 0) return;
@@ -941,7 +1039,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
 
   const glassLayerStyle = {
     borderRadius: "calc(1.75rem - 1px)",
-    filter: `url(#${glassFilterIdRef.current})`,
+    ...(touchOptimized ? {} : { filter: `url(#${glassFilterId})` }),
   } as React.CSSProperties;
 
   return (
@@ -949,7 +1047,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
       <div className={`relative w-full transition-transform duration-150 ease-out ${uiDragging ? "" : "hover:scale-[1.02] active:scale-[0.98]"}`}>
         <div
             ref={shellRef}
-            className="liquid-terminal-shell rounded-[1.75rem] select-none cursor-grab active:cursor-grabbing"
+            className={`liquid-terminal-shell ${touchOptimized ? "liquid-terminal-shell--touch" : ""} rounded-[1.75rem] select-none cursor-grab active:cursor-grabbing`}
             style={glassShellStyle}
             onPointerDownCapture={onTerminalPointerDown}
             onPointerMoveCapture={onTerminalPointerMove}
@@ -957,35 +1055,37 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
             onPointerCancelCapture={endDrag}
             onPointerLeave={onTerminalPointerLeave}
           >
-          <svg className="absolute h-0 w-0 pointer-events-none" aria-hidden="true" focusable="false">
-            <defs>
-              <filter
-                id={glassFilterIdRef.current}
-                x="-20%"
-                y="-20%"
-                width="140%"
-                height="140%"
-                colorInterpolationFilters="sRGB"
-              >
-                <feTurbulence
-                  type="fractalNoise"
-                  baseFrequency={isMobile ? "0.035 0.09" : "0.02 0.06"}
-                  numOctaves="2"
-                  seed="11"
-                  stitchTiles="stitch"
-                  result="noise"
-                />
-                <feGaussianBlur in="noise" stdDeviation={isMobile ? "0.35" : "0.7"} result="softNoise" />
-                <feDisplacementMap
-                  in="SourceGraphic"
-                  in2="softNoise"
-                  scale={isMobile ? "10" : "18"}
-                  xChannelSelector="R"
-                  yChannelSelector="G"
-                />
-              </filter>
-            </defs>
-          </svg>
+          {!touchOptimized && (
+            <svg className="absolute h-0 w-0 pointer-events-none" aria-hidden="true" focusable="false">
+              <defs>
+                <filter
+                  id={glassFilterId}
+                  x="-20%"
+                  y="-20%"
+                  width="140%"
+                  height="140%"
+                  colorInterpolationFilters="sRGB"
+                >
+                  <feTurbulence
+                    type="fractalNoise"
+                    baseFrequency={isMobile ? "0.035 0.09" : "0.02 0.06"}
+                    numOctaves="2"
+                    seed="11"
+                    stitchTiles="stitch"
+                    result="noise"
+                  />
+                  <feGaussianBlur in="noise" stdDeviation={isMobile ? "0.35" : "0.7"} result="softNoise" />
+                  <feDisplacementMap
+                    in="SourceGraphic"
+                    in2="softNoise"
+                    scale={isMobile ? "10" : "18"}
+                    xChannelSelector="R"
+                    yChannelSelector="G"
+                  />
+                </filter>
+              </defs>
+            </svg>
+          )}
 
           <div className="liquid-terminal-underlay pointer-events-none absolute inset-0 rounded-[inherit]" />
           <div className="liquid-terminal-caustics pointer-events-none absolute inset-[1px]" style={glassLayerStyle} />
@@ -1011,7 +1111,7 @@ export default function PhysicsTerminal({ className, title }: { className?: stri
               <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
 
               {/* 手机端不显示输入提示框 */}
-              {!isMobile && (
+              {!touchOptimized && (
                 <div
                   className={`absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-700 ease-in-out ${
                     hasInteracted ? "opacity-0" : "opacity-70 animate-pulse"

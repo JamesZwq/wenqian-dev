@@ -2,22 +2,34 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useIsTouchLikeContext } from "./IsMobileContext";
+
+function getInitialPetEnabled() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const stored = window.localStorage.getItem("cursorPetEnabled");
+    if (stored !== null) return stored === "true";
+  } catch {}
+
+  return !window.matchMedia("(pointer: coarse)").matches;
+}
 
 export default function PetBedToggle() {
-  const [enabled, setEnabled] = useState(false);
+  const lightVisuals = useIsTouchLikeContext();
+  const [enabled, setEnabled] = useState(getInitialPetEnabled);
 
   useEffect(() => {
-    if (typeof window === "undefined") { setEnabled(false); return; }
+    if (lightVisuals) {
+      return;
+    }
+
     try {
-      const stored = window.localStorage.getItem("cursorPetEnabled");
-      if (stored !== null) setEnabled(stored === "true");
-      else {
-        const def = !window.matchMedia("(pointer: coarse)").matches;
-        window.localStorage.setItem("cursorPetEnabled", String(def));
-        setEnabled(def);
+      if (window.localStorage.getItem("cursorPetEnabled") === null) {
+        window.localStorage.setItem("cursorPetEnabled", String(enabled));
       }
-    } catch { setEnabled(false); }
-  }, []);
+    } catch {}
+  }, [enabled, lightVisuals]);
 
   const isAwake = enabled;
 
@@ -34,6 +46,8 @@ export default function PetBedToggle() {
       return next;
     });
   };
+
+  if (lightVisuals) return null;
 
   return (
     <>
