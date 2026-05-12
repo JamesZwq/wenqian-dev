@@ -180,9 +180,22 @@ export default function TrailPage() {
                   </div>
                 </div>
 
+                {/* Rooms (N-player) */}
+                <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
+                  <h3 className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent)]">ROOMS · UP TO 6</h3>
+                  <p className="mb-4 font-mono text-[10px] text-[var(--pixel-muted)]">&gt; Code-share a private room, or join from the public lobby</p>
+                  <Link
+                    href="/rooms/trail"
+                    prefetch={false}
+                    className="block w-full text-center rounded-xl border border-[var(--pixel-accent)] bg-[var(--pixel-card-bg)] px-8 py-4 font-sans font-semibold text-sm tracking-tight text-[var(--pixel-accent)] shadow-xl shadow-[var(--pixel-glow)] transition-[transform,background-color] duration-150 hover:scale-[1.02] hover:bg-[var(--pixel-bg-alt)]"
+                  >
+                    ENTER LOBBY
+                  </Link>
+                </div>
+
                 {/* P2P */}
                 <div className="w-full rounded-xl border border-[var(--pixel-border)] bg-[var(--pixel-card-bg)] p-5">
-                  <h3 className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent-2)]">P2P RACE</h3>
+                  <h3 className="mb-1 font-sans font-semibold text-xs text-[var(--pixel-accent-2)]">P2P RACE (LEGACY 2-PLAYER)</h3>
                   <p className="mb-4 font-mono text-[10px] text-[var(--pixel-muted)]">&gt; Select size, then connect to a friend</p>
                   <div className="mb-3 grid grid-cols-3 gap-1.5">
                     {GRID_SIZES.map(sz => (

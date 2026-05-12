@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SchulteGrid } from "@/app/schulte/components/SchulteGrid";
-import type { GridSize } from "@/app/schulte/types";
+import { TrailGrid } from "@/app/trail/components/TrailGrid";
+import { targetSequence, type GridSize } from "@/app/trail/types";
 import { useRoomRaceRelay } from "@/features/rooms/hooks/useRoomRaceRelay";
 import { RoomRaceShell } from "@/features/rooms/components/RoomRaceShell";
 
-interface SchultePuzzle { numbers: number[]; size: GridSize }
+interface TrailPuzzle { cells: string[]; size: GridSize }
 const SIZE: GridSize = 5;
-const TOTAL = SIZE * SIZE;
+const SEQ = targetSequence(SIZE);
+const TOTAL = SEQ.length;
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -19,14 +20,14 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-export default function SchultePlayPage() {
+export default function TrailPlayPage() {
   const router = useRouter();
   const params = useSearchParams();
   const [code, setCode] = useState<string | null>(null);
 
   useEffect(() => {
     const c = params.get("room");
-    if (!c) { router.replace("/rooms/schulte"); return; }
+    if (!c) { router.replace("/rooms/trail"); return; }
     setCode(c);
   }, [params, router]);
 
@@ -35,38 +36,34 @@ export default function SchultePlayPage() {
 }
 
 function Play({ code }: { code: string }) {
-  const api = useRoomRaceRelay<SchultePuzzle>({
-    game: "schulte",
+  const api = useRoomRaceRelay<TrailPuzzle>({
+    game: "trail",
     roomCode: code,
     totalUnits: TOTAL,
-    generatePuzzle: () => ({
-      numbers: shuffle(Array.from({ length: TOTAL }, (_, i) => i + 1)),
-      size: SIZE,
-    }),
+    generatePuzzle: () => ({ cells: shuffle(SEQ), size: SIZE }),
   });
 
-  const [currentTarget, setCurrentTarget] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [wrongClickIndex, setWrongClickIndex] = useState<number | null>(null);
 
-  // Reset on new race.
   useEffect(() => {
     if (api.status === "playing") {
-      setCurrentTarget(1);
+      setCurrentIndex(0);
       setWrongClickIndex(null);
     }
   }, [api.status, api.puzzle]);
 
-  const numbers = api.puzzle?.numbers ?? [];
+  const cells = api.puzzle?.cells ?? [];
+  const lobbyHint = useMemo(() => `${SIZE}×${SIZE} trail — click 1, A, 2, B, … in order. Fastest wins.`, []);
 
   const handleCellClick = (index: number) => {
     if (api.status !== "playing") return;
-    const n = numbers[index];
-    if (n === undefined) return;
-    if (n === currentTarget) {
-      const next = currentTarget + 1;
-      setCurrentTarget(next);
-      api.reportProgress(next);
-      if (next > numbers.length) {
+    const cell = cells[index];
+    if (cell === SEQ[currentIndex]) {
+      const next = currentIndex + 1;
+      setCurrentIndex(next);
+      api.reportProgress(next + 1); // 1-based for UI consistency with shell
+      if (next >= SEQ.length) {
         api.reportComplete();
       }
     } else {
@@ -75,21 +72,18 @@ function Play({ code }: { code: string }) {
     }
   };
 
-  // Memoize hint to avoid the shell rerendering needlessly.
-  const lobbyHint = useMemo(() => "5×5 race. First to clear all 25 numbers wins.", []);
-
   return (
-    <RoomRaceShell game="schulte" title="Schulte" code={code} api={api} lobbyHint={lobbyHint}>
-      <SchulteGrid
-        numbers={numbers}
+    <RoomRaceShell game="trail" title="Trail Making" code={code} api={api} lobbyHint={lobbyHint}>
+      <TrailGrid
+        cells={cells}
         size={SIZE}
-        currentTarget={currentTarget}
+        currentIndex={currentIndex}
         wrongClickIndex={wrongClickIndex}
         onCellClick={handleCellClick}
         disabled={api.status !== "playing"}
       />
       <p className="font-mono text-xs" style={{ color: "var(--pixel-muted)" }}>
-        next: {currentTarget}
+        next: {SEQ[currentIndex] ?? "—"}
       </p>
     </RoomRaceShell>
   );
