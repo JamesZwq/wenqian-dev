@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://wenqian.dev"
   ),
   title: {
-    default: "Wenqian Zhang | Ph.D. @ UNSW",
+    default: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
     template: "%s | Wenqian Zhang",
   },
   description:
@@ -47,24 +47,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Wenqian Zhang",
-    title: "Wenqian Zhang | Ph.D. @ UNSW",
+    title: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
     description:
       "Wenqian Zhang — UNSW CS Ph.D. researching large-scale graph systems, SIGMOD 2025. Explore interactive P2P web apps and research.",
     images: [
       {
-        url: "/og/default.png",
+        url: "/api/og",
         width: 1200,
         height: 630,
-        alt: "Wenqian Zhang | Ph.D. @ UNSW",
+        alt: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wenqian Zhang | Ph.D. @ UNSW",
+    title: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
     description:
       "Wenqian Zhang — UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025",
-    images: ["/og/default.png"],
+    images: ["/api/og"],
   },
 };
 
