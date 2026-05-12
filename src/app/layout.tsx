@@ -52,7 +52,7 @@ export const metadata: Metadata = {
       "Wenqian Zhang — UNSW CS Ph.D. researching large-scale graph systems, SIGMOD 2025. Explore interactive P2P web apps and research.",
     images: [
       {
-        url: "/api/og",
+        url: "/og/default.png",
         width: 1200,
         height: 630,
         alt: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     title: "Wenqian Zhang | UNSW CS Ph.D. · Graph Systems & P2P Apps",
     description:
       "Wenqian Zhang — UNSW CS Ph.D. | Large-Scale Graph Analysis | SIGMOD 2025",
-    images: ["/api/og"],
+    images: ["/og/default.png"],
   },
 };
 
